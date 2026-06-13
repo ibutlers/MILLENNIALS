@@ -1,0 +1,39 @@
+services:
+  frontend:
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+    restart: unless-stopped
+  api:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    environment:
+      NODE_ENV: production
+      API_PORT: 3001
+      DATABASE_URL: "${DATABASE_URL:-postgres://realstate:realstate_password@postgres:5432/realstate}"
+    depends_on: [postgres]
+    restart: unless-stopped
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-realstate}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-realstate_password}
+      POSTGRES_DB: ${POSTGRES_DB:-realstate}
+    volumes: [postgres-data:/var/lib/postgresql/data]
+    restart: unless-stopped
+  proxy:
+    image: caddy:2-alpine
+    ports: ["${REALSTATE_HTTP_PORT:-8088}:80"]
+    environment:
+      CADDY_DOMAIN: ${CADDY_DOMAIN:-:80}
+    volumes:
+      - ./deploy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+    depends_on: [frontend, api]
+    restart: unless-stopped
+volumes:
+  postgres-data: {}
+  caddy-data: {}
+  caddy-config: {}
