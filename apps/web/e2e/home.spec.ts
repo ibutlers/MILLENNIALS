@@ -69,6 +69,20 @@ test.describe('public landing', () => {
     await expect(menuButton).toBeFocused();
   });
 
+  test('shows honest coming-soon pages for future private routes', async ({ page }) => {
+    await page.goto('/acceso');
+    await expect(page.getByRole('heading', { name: /acceso privado en preparación/i })).toBeVisible();
+    await expect(page.getByText(/no permite iniciar sesión/i)).toBeVisible();
+    await expect(page.getByRole('textbox')).toHaveCount(0);
+    await expect(page.getByRole('button', { name: /enviar|entrar|invertir/i })).toHaveCount(0);
+
+    await page.goto('/inversores');
+    await expect(page.getByRole('heading', { name: /área de inversores en preparación/i })).toBeVisible();
+    await expect(page.getByText(/KYC pendiente/i)).toBeVisible();
+    await expect(page.getByText(/capital potencialmente en riesgo/i)).toBeVisible();
+    await expect(page.getByText(/inversión completada|beneficio seguro|plusvalía garantizada/i)).toHaveCount(0);
+  });
+
   test('shows a visual not found page for unknown SPA routes', async ({ page }) => {
     await page.goto('/ruta-inexistente');
 

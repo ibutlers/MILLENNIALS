@@ -3,15 +3,31 @@
 @tailwind utilities;
 
 @layer base {
+  :root {
+    --color-bg-primary: #08191c;
+    --color-bg-secondary: #10282c;
+    --color-surface-light: #f3efe6;
+    --color-text-on-dark: #f7f4ec;
+    --color-text-on-light: #172126;
+    --color-text-muted: #8fa1a4;
+    --color-accent-primary: #7fa88c;
+    --color-accent-hover: #95b99f;
+    --color-editorial-detail: #9a765a;
+    --color-border: #294247;
+    --color-error: #b85c5c;
+    --color-warning: #c69a4b;
+  }
+
   html {
     scroll-behavior: smooth;
-    background: #070908;
+    background: var(--color-bg-primary);
   }
 
   body {
     margin: 0;
     min-width: 320px;
-    background: #070908;
+    background: var(--color-bg-primary);
+    color: var(--color-text-on-dark);
   }
 
   * {
@@ -19,7 +35,7 @@
   }
 
   ::selection {
-    background: #b66a43;
-    color: #070908;
+    background: var(--color-accent-primary);
+    color: var(--color-text-on-light);
   }
 }

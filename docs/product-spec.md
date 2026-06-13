@@ -18,6 +18,7 @@ La aplicación ofrece una fundación pública profesional para validar marca, na
 - navegación pública desktop y menú móvil fullscreen accesible;
 - selector ES/EN preparado;
 - CTAs diferenciados para oportunidades demo, firma, solicitud de acceso y acceso inversores;
+- rutas informativas honestas para `/acceso` e `/inversores`, sin autenticación simulada;
 - narrativa corporativa antes de oportunidades;
 - tesis de inversión, metodología, tecnología y análisis;
 - indicadores de proceso sin cifras no verificadas;
@@ -40,13 +41,250 @@ Hasta disponer de datos verificables no se publican:
 
 Toda cifra de oportunidad visible en este hito es demo y debe aparecer como dato ilustrativo. No se usa “retorno histórico” en datos mock.
 
+## Arquitectura futura de la zona privada
+
+La zona privada deberá estar separada de la landing pública y de los estados informativos actuales. Su evolución queda documentada para orientar diseño, rutas, modelo de permisos, pruebas y futuras APIs, sin implementar todavía autenticación real, KYC, cartera, pagos ni inversión real.
+
+### 1. Acceso y onboarding
+
+Rutas futuras orientativas:
+
+- `/acceso`
+- `/registro`
+- `/verificar-email`
+- `/onboarding`
+- `/onboarding/perfil`
+- `/onboarding/elegibilidad`
+- `/onboarding/identidad`
+- `/onboarding/fiscalidad`
+- `/onboarding/riesgos`
+- `/onboarding/completado`
+
+El acceso podrá contemplar en el futuro:
+
+- magic link;
+- contraseña;
+- segundo factor;
+- recuperación segura;
+- sesiones y dispositivos.
+
+No crear formularios que aparenten enviar emails o autenticar si no existe backend real. En el Hito 1, `/acceso` es únicamente una pantalla informativa de arquitectura futura.
+
+### 2. Área privada
+
+Rutas futuras:
+
+- `/inversores`
+- `/inversores/oportunidades`
+- `/inversores/oportunidades/:slug`
+- `/inversores/cartera`
+- `/inversores/actualizaciones`
+- `/inversores/documentos`
+- `/inversores/cuenta`
+- `/inversores/ayuda`
+
+Navegación prevista:
+
+- Oportunidades;
+- Cartera;
+- Actualizaciones;
+- Documentos;
+- Centro de ayuda;
+- Cuenta;
+- Cerrar sesión.
+
+En el Hito 1, `/inversores` y rutas relacionadas son pantallas informativas “próximamente”, no un dashboard funcional.
+
+### 3. Estado de verificación
+
+Estados previstos:
+
+- cuenta creada;
+- email verificado;
+- perfil incompleto;
+- KYC pendiente;
+- KYC en revisión;
+- verificado;
+- rechazado;
+- requiere información adicional.
+
+La experiencia futura debe evitar banners grandes repetidos en todas las pantallas. La solución preferente será compacta:
+
+- indicador de estado en header o panel;
+- checklist de onboarding;
+- aviso contextual cuando una acción exija verificación;
+- CTA claro para completar el siguiente paso.
+
+### 4. Catálogo privado de oportunidades
+
+Cada tarjeta futura debe mostrar de forma ordenada:
+
+- nombre;
+- localización;
+- estrategia;
+- estado;
+- plazo;
+- ticket mínimo;
+- capital objetivo;
+- capital comprometido;
+- porcentaje financiado;
+- rentabilidad objetivo estimada;
+- nivel o perfil de riesgo;
+- fecha de cierre;
+- imagen;
+- CTA apropiado.
+
+Estados posibles:
+
+- Próximamente;
+- Abierta;
+- En financiación;
+- Financiada;
+- En ejecución;
+- En comercialización;
+- Cerrada;
+- Cancelada.
+
+No usar “rentabilidad” sin aclarar si es anual o total, si es TIR, ROI u otra métrica, si es bruta o neta, si incluye apalancamiento, y que es una estimación no garantizada.
+
+### 5. Ficha futura de oportunidad
+
+Secciones o pestañas previstas:
+
+- Resumen;
+- Tesis de inversión;
+- Activo;
+- Ubicación y mercado;
+- Estrategia;
+- Plan financiero;
+- Calendario;
+- Riesgos;
+- Equipo y contrapartes;
+- Documentos;
+- Actualizaciones;
+- Preguntas frecuentes.
+
+Resumen superior:
+
+- capital objetivo;
+- capital comprometido;
+- ticket mínimo;
+- plazo;
+- retorno objetivo;
+- tipo de retorno;
+- riesgo;
+- estado;
+- progreso.
+
+### 6. Simulador futuro
+
+El simulador futuro no debe mostrar una cifra única como si fuera segura. Debe contemplar:
+
+- importe;
+- escenario conservador;
+- escenario base;
+- escenario favorable;
+- plazo;
+- comisiones;
+- impuestos no incluidos;
+- capital potencialmente en riesgo;
+- supuestos de cálculo;
+- aviso de que no constituye garantía.
+
+No implementar todavía cálculos financieros reales.
+
+### 7. Flujo de inversión futuro
+
+Pasos previstos:
+
+1. Elegir importe.
+2. Revisar elegibilidad y límites.
+3. Revisar riesgos.
+4. Consultar documentación.
+5. Aceptar declaraciones.
+6. Ver desglose de comisiones.
+7. Seleccionar método de aportación.
+8. Firmar documentación.
+9. Confirmar orden o compromiso.
+10. Recibir justificante y estado.
+
+Debe ser imposible invertir si faltan:
+
+- verificación;
+- documentación obligatoria;
+- aceptación de riesgos;
+- permisos o elegibilidad.
+
+### 8. Cartera futura
+
+El panel de cartera debe mostrar:
+
+- capital comprometido;
+- capital aportado;
+- valor o retorno solo cuando proceda;
+- distribuciones recibidas;
+- proyectos activos;
+- proyectos finalizados;
+- próximos hitos;
+- documentos pendientes;
+- actualizaciones recientes.
+
+No mostrar plusvalías no realizadas como beneficios seguros.
+
+### 9. Actualizaciones y documentos
+
+Cada proyecto deberá poder ofrecer:
+
+- hitos;
+- obra;
+- licencias;
+- financiación;
+- comercialización;
+- incidencias;
+- cambios de calendario;
+- informes periódicos;
+- contratos;
+- anexos;
+- documentación fiscal.
+
+### 10. Diferenciación respecto a referencias
+
+Realstate debe superar el patrón observado mediante:
+
+- menos banners repetitivos;
+- mejor uso del espacio móvil;
+- métricas financieras inequívocas;
+- riesgos visibles junto al retorno;
+- escenarios, no promesas;
+- mejor seguimiento posterior a la inversión;
+- arquitectura documental;
+- claridad sobre estado de la oportunidad;
+- accesibilidad y navegación robustas.
+
+## Aplicación estricta al Hito 1
+
+No implementar todavía autenticación real, KYC, cartera, pagos ni inversión real. En este hito solo se permite:
+
+- documentar la arquitectura futura;
+- preparar CTAs y rutas conceptuales;
+- crear pantallas informativas honestas o estados “próximamente”;
+- mantener pruebas, accesibilidad, responsive, SEO, seguridad y despliegue.
+
+No se permite:
+
+- simular login, registro, magic links, KYC o sesiones;
+- simular una inversión completada;
+- mostrar cartera real o plusvalías no realizadas como beneficios seguros;
+- añadir cifras financieras no verificadas;
+- ampliar el alcance a backend, usuarios o base de datos.
+
 ## Alcance técnico actual
 
 - API mínima con `/health` y `/api/health`.
 - Despliegue con Docker Compose, Caddy y PostgreSQL interno.
-- Pruebas unitarias, accesibilidad con axe y Playwright.
+- Pruebas unitarias, documentación verificada, accesibilidad con axe y Playwright.
 - Cabeceras de seguridad básicas en Caddy.
 
 ## Fuera de alcance del hito actual
 
-Autenticación real, panel administrativo, CRM, pagos, mapas, modelo de datos definitivo, migraciones, CRUD real, persistencia de leads, catálogo conectado a PostgreSQL y zona privada funcional.
+Autenticación real, panel administrativo funcional, CRM, pagos, mapas, modelo de datos definitivo, migraciones, CRUD real, persistencia de leads, catálogo conectado a PostgreSQL y zona privada funcional.

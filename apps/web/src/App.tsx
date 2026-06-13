@@ -149,30 +149,30 @@ function Header() {
   const { isOpen, setIsOpen, openButtonRef, closeButtonRef, drawerRef } = useMobileMenu();
 
   return (
-    <header className="sticky top-0 z-40 border-b border-ivory/10 bg-carbon/95 text-ivory shadow-2xl shadow-black/20 backdrop-blur-xl">
+    <header className="sticky top-0 z-40 border-b border-border bg-carbon/95 text-textLight shadow-2xl shadow-petroleum/30 backdrop-blur-xl">
       <a
         href="#contenido"
-        className="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-50 focus:bg-copper focus:px-4 focus:py-2 focus:text-sm focus:font-bold focus:text-carbon"
+        className="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-50 focus:bg-mineral focus:px-4 focus:py-2 focus:text-sm focus:font-bold focus:text-textDark"
       >
         Saltar al contenido
       </a>
       <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-4 sm:px-6 lg:px-8">
-        <a href="/" className="group inline-flex items-center gap-3 focus:outline-none focus-visible:ring-2 focus-visible:ring-copper focus-visible:ring-offset-4 focus-visible:ring-offset-carbon">
-          <span className="grid h-10 w-10 place-items-center border border-copper/70 text-lg font-black text-copper">R</span>
+        <a href="/" className="group inline-flex items-center gap-3 focus:outline-none focus-visible:ring-2 focus-visible:ring-mineralHover focus-visible:ring-offset-4 focus-visible:ring-offset-carbon">
+          <span className="grid h-10 w-10 place-items-center border border-mineral/70 text-lg font-black text-mineral">R</span>
           <span className="text-lg font-black uppercase tracking-[0.22em] sm:text-xl">Realstate</span>
         </a>
-        <nav aria-label="Navegación principal" className="hidden items-center gap-7 text-xs font-bold uppercase tracking-[0.18em] text-ivory/70 lg:flex">
+        <nav aria-label="Navegación principal" className="hidden items-center gap-7 text-xs font-bold uppercase tracking-[0.18em] text-muted lg:flex">
           {navigation.map((item) => (
-            <a key={item.href} href={item.href} className="transition hover:text-copper focus:outline-none focus-visible:ring-2 focus-visible:ring-copper focus-visible:ring-offset-4 focus-visible:ring-offset-carbon">
+            <a key={item.href} href={item.href} className="transition hover:text-mineral focus:outline-none focus-visible:ring-2 focus-visible:ring-mineralHover focus-visible:ring-offset-4 focus-visible:ring-offset-carbon">
               {item.label}
             </a>
           ))}
         </nav>
         <div className="hidden items-center gap-3 lg:flex">
-          <button type="button" aria-label="Idioma español seleccionado" className="border border-ivory/20 px-3 py-2 text-xs font-black uppercase tracking-[0.18em] text-ivory/80">
+          <button type="button" aria-label="Idioma español seleccionado" className="border border-border px-3 py-2 text-xs font-black uppercase tracking-[0.18em] text-muted">
             ES / EN
           </button>
-          <a href="#acceso" className="border border-ivory/30 px-4 py-2 text-xs font-black uppercase tracking-[0.16em] transition hover:border-copper hover:text-copper focus:outline-none focus-visible:ring-2 focus-visible:ring-copper focus-visible:ring-offset-4 focus-visible:ring-offset-carbon">
+          <a href="/inversores" className="border border-border px-4 py-2 text-xs font-black uppercase tracking-[0.16em] transition hover:border-mineral hover:text-mineral focus:outline-none focus-visible:ring-2 focus-visible:ring-mineralHover focus-visible:ring-offset-4 focus-visible:ring-offset-carbon">
             Acceso inversores
           </a>
         </div>
@@ -181,7 +181,7 @@ function Header() {
           type="button"
           aria-label="Abrir menú"
           aria-expanded={isOpen}
-          className="grid h-11 w-11 place-items-center border border-ivory/20 text-ivory transition hover:border-copper hover:text-copper focus:outline-none focus-visible:ring-2 focus-visible:ring-copper focus-visible:ring-offset-4 focus-visible:ring-offset-carbon lg:hidden"
+          className="grid h-11 w-11 place-items-center border border-border text-textLight transition hover:border-mineral hover:text-mineral focus:outline-none focus-visible:ring-2 focus-visible:ring-mineralHover focus-visible:ring-offset-4 focus-visible:ring-offset-carbon lg:hidden"
           onClick={() => setIsOpen(true)}
         >
           <span aria-hidden="true" className="space-y-1.5">
@@ -192,28 +192,28 @@ function Header() {
         </button>
       </div>
       {isOpen ? (
-        <div className="fixed inset-0 z-50 bg-carbon text-ivory lg:hidden" role="dialog" aria-modal="true" aria-label="Menú de navegación" ref={drawerRef}>
-          <div className="flex items-center justify-between border-b border-ivory/10 px-4 py-4">
+        <div className="fixed inset-0 z-50 bg-carbon text-textLight lg:hidden" role="dialog" aria-modal="true" aria-label="Menú de navegación" ref={drawerRef}>
+          <div className="flex items-center justify-between border-b border-border px-4 py-4">
             <span className="text-lg font-black uppercase tracking-[0.22em]">Realstate</span>
-            <button ref={closeButtonRef} type="button" aria-label="Cerrar menú" className="border border-ivory/20 px-4 py-3 text-sm font-black uppercase tracking-[0.18em] focus:outline-none focus-visible:ring-2 focus-visible:ring-copper" onClick={() => setIsOpen(false)}>
+            <button ref={closeButtonRef} type="button" aria-label="Cerrar menú" className="border border-border px-4 py-3 text-sm font-black uppercase tracking-[0.18em] focus:outline-none focus-visible:ring-2 focus-visible:ring-mineralHover" onClick={() => setIsOpen(false)}>
               Cerrar
             </button>
           </div>
           <div className="grid min-h-[calc(100dvh-73px)] content-between px-6 py-8">
-            <nav aria-label="Navegación móvil" className="grid gap-5 text-3xl font-serif text-ivory">
+            <nav aria-label="Navegación móvil" className="grid gap-5 text-3xl font-serif text-textLight">
               {navigation.map((item) => (
-                <a key={item.href} href={item.href} onClick={() => setIsOpen(false)} className="border-b border-ivory/10 pb-4 focus:outline-none focus-visible:ring-2 focus-visible:ring-copper">
+                <a key={item.href} href={item.href} onClick={() => setIsOpen(false)} className="border-b border-border pb-4 focus:outline-none focus-visible:ring-2 focus-visible:ring-mineralHover">
                   {item.label}
                 </a>
               ))}
             </nav>
             <div className="grid gap-4">
               <div className="flex gap-3">
-                <button type="button" aria-label="Idioma español seleccionado" className="border border-copper bg-copper px-4 py-3 text-sm font-black uppercase tracking-[0.18em] text-carbon focus:outline-none focus-visible:ring-2 focus-visible:ring-ivory">ES</button>
-                <button type="button" aria-label="Cambiar idioma a inglés" className="border border-ivory/20 px-4 py-3 text-sm font-black uppercase tracking-[0.18em] text-ivory/70 focus:outline-none focus-visible:ring-2 focus-visible:ring-copper">EN</button>
+                <button type="button" aria-label="Idioma español seleccionado" className="border border-mineral bg-mineral px-4 py-3 text-sm font-black uppercase tracking-[0.18em] text-textDark focus:outline-none focus-visible:ring-2 focus-visible:ring-ivory">ES</button>
+                <button type="button" aria-label="Cambiar idioma a inglés" className="border border-border px-4 py-3 text-sm font-black uppercase tracking-[0.18em] text-muted focus:outline-none focus-visible:ring-2 focus-visible:ring-mineralHover">EN</button>
               </div>
-              <a href="#acceso" onClick={() => setIsOpen(false)} className="border border-copper bg-copper px-5 py-4 text-center text-sm font-black uppercase tracking-[0.18em] text-carbon focus:outline-none focus-visible:ring-2 focus-visible:ring-ivory">Solicitar acceso</a>
-              <a href="#acceso" onClick={() => setIsOpen(false)} className="border border-ivory/30 px-5 py-4 text-center text-sm font-black uppercase tracking-[0.18em] text-ivory focus:outline-none focus-visible:ring-2 focus-visible:ring-copper">Acceso inversores</a>
+              <a href="/acceso" onClick={() => setIsOpen(false)} className="border border-mineral bg-mineral px-5 py-4 text-center text-sm font-black uppercase tracking-[0.18em] text-textDark focus:outline-none focus-visible:ring-2 focus-visible:ring-ivory">Solicitar acceso</a>
+              <a href="/inversores" onClick={() => setIsOpen(false)} className="border border-border px-5 py-4 text-center text-sm font-black uppercase tracking-[0.18em] text-textLight focus:outline-none focus-visible:ring-2 focus-visible:ring-mineralHover">Acceso inversores</a>
             </div>
           </div>
         </div>
@@ -224,27 +224,27 @@ function Header() {
 
 function Hero() {
   return (
-    <section className="relative min-h-[calc(100svh-73px)] overflow-hidden bg-carbon text-ivory">
+    <section className="relative min-h-[calc(100svh-73px)] overflow-hidden bg-carbon text-textLight">
       <picture>
         <source srcSet="/images/hero-architecture-640.webp 640w, /images/hero-architecture-1280.webp 1280w, /images/hero-architecture-1920.webp 1920w" sizes="100vw" type="image/webp" />
         <img src="/images/hero-architecture-1280.webp" alt="Composición arquitectónica urbana generada para Realstate con edificios al atardecer" width="1280" height="921" className="absolute inset-0 h-full w-full object-cover" fetchPriority="high" />
       </picture>
-      <div className="absolute inset-0 bg-gradient-to-b from-carbon/70 via-carbon/72 to-carbon" aria-hidden="true" />
+      <div className="absolute inset-0 bg-gradient-to-b from-carbon/85 via-carbon/80 to-carbon" aria-hidden="true" />
       <div className="relative mx-auto flex min-h-[calc(100svh-73px)] max-w-7xl flex-col justify-end px-4 py-10 sm:px-6 lg:px-8 lg:py-16">
-        <p className="mb-5 max-w-max border border-ivory/20 bg-carbon/40 px-3 py-2 text-xs font-black uppercase tracking-[0.26em] text-copper backdrop-blur">
+        <p className="mb-5 max-w-max border border-border bg-petroleum/70 px-3 py-2 text-xs font-black uppercase tracking-[0.26em] text-mineral backdrop-blur">
           Realstate — plataforma inmobiliaria privada
         </p>
-        <h1 className="max-w-5xl font-serif text-5xl leading-[0.95] tracking-[-0.04em] text-ivory sm:text-6xl md:text-7xl lg:text-8xl">
+        <h1 className="max-w-5xl font-serif text-5xl leading-[0.95] tracking-[-0.04em] text-textLight sm:text-6xl md:text-7xl lg:text-8xl">
           Inversión inmobiliaria con disciplina, datos y seguimiento operativo.
         </h1>
-        <p className="mt-6 max-w-2xl text-base leading-8 text-ivory/78 sm:text-xl">
+        <p className="mt-6 max-w-2xl text-base leading-8 text-muted sm:text-xl">
           Una base digital para presentar oportunidades, ordenar documentación y preparar una futura zona privada de inversores sin promesas grandilocuentes.
         </p>
         <div className="mt-8 grid gap-3 sm:flex">
-          <a href="#oportunidades" className="group inline-flex items-center justify-center gap-3 bg-copper px-6 py-4 text-sm font-black uppercase tracking-[0.18em] text-carbon transition hover:bg-ivory focus:outline-none focus-visible:ring-2 focus-visible:ring-copper focus-visible:ring-offset-4 focus-visible:ring-offset-carbon">
+          <a href="#oportunidades" className="group inline-flex items-center justify-center gap-3 bg-mineral px-6 py-4 text-sm font-black uppercase tracking-[0.18em] text-textDark transition hover:bg-mineralHover focus:outline-none focus-visible:ring-2 focus-visible:ring-mineralHover focus-visible:ring-offset-4 focus-visible:ring-offset-carbon">
             Ver oportunidades demo <span aria-hidden="true" className="transition group-hover:translate-x-1">→</span>
           </a>
-          <a href="#firma" className="inline-flex items-center justify-center border border-ivory/40 px-6 py-4 text-sm font-black uppercase tracking-[0.18em] text-ivory transition hover:border-copper hover:text-copper focus:outline-none focus-visible:ring-2 focus-visible:ring-copper focus-visible:ring-offset-4 focus-visible:ring-offset-carbon">
+          <a href="#firma" className="inline-flex items-center justify-center border border-border px-6 py-4 text-sm font-black uppercase tracking-[0.18em] text-textLight transition hover:border-mineral hover:text-mineral focus:outline-none focus-visible:ring-2 focus-visible:ring-mineralHover focus-visible:ring-offset-4 focus-visible:ring-offset-carbon">
             Nuestra firma
           </a>
         </div>
@@ -255,15 +255,15 @@ function Hero() {
 
 function FirmNarrative() {
   return (
-    <section id="firma" className="bg-ivory py-16 text-carbon sm:py-24">
+    <section id="firma" className="bg-ivory py-16 text-textDark sm:py-24">
       <div className="mx-auto grid max-w-7xl gap-10 px-4 sm:px-6 lg:grid-cols-[0.85fr_1.15fr] lg:px-8">
         <div>
-          <p className="text-xs font-black uppercase tracking-[0.28em] text-mineral">Sobre la firma</p>
+          <p className="text-xs font-black uppercase tracking-[0.28em] text-textDark">Sobre la firma</p>
           <h2 className="mt-5 font-serif text-4xl leading-tight tracking-[-0.03em] sm:text-6xl">
             Selección rigurosa antes que volumen.
           </h2>
         </div>
-        <div className="space-y-7 text-lg leading-9 text-carbon/72">
+        <div className="space-y-7 text-lg leading-9 text-textDark/72">
           <p>
             Realstate se plantea como una plataforma inmobiliaria profesional para explicar una tesis, organizar oportunidades y comunicar avances con transparencia.
           </p>
@@ -278,20 +278,20 @@ function FirmNarrative() {
 
 function ProcessSection() {
   return (
-    <section id="tesis" className="bg-carbon py-16 text-ivory sm:py-24">
+    <section id="tesis" className="bg-carbon py-16 text-textLight sm:py-24">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <div className="grid gap-8 lg:grid-cols-[0.8fr_1.2fr]">
           <div>
-            <p className="text-xs font-black uppercase tracking-[0.28em] text-copper">Tesis de inversión</p>
+            <p className="text-xs font-black uppercase tracking-[0.28em] text-mineral">Tesis de inversión</p>
             <h2 className="mt-5 font-serif text-4xl leading-tight tracking-[-0.03em] sm:text-6xl">
               Menos ruido, más trazabilidad.
             </h2>
           </div>
-          <div className="grid gap-px overflow-hidden border border-ivory/10 bg-ivory/10 sm:grid-cols-2">
+          <div className="grid gap-px overflow-hidden border border-border bg-petroleum sm:grid-cols-2">
             {processIndicators.map((item) => (
               <div key={item} className="bg-carbon p-6">
-                <span className="mb-5 block h-8 w-8 border border-copper/70" aria-hidden="true" />
-                <p className="text-xl font-semibold text-ivory">{item}</p>
+                <span className="mb-5 block h-8 w-8 border border-mineral/70" aria-hidden="true" />
+                <p className="text-xl font-semibold text-textLight">{item}</p>
               </div>
             ))}
           </div>
@@ -303,10 +303,10 @@ function ProcessSection() {
 
 function Methodology() {
   return (
-    <section id="metodologia" className="bg-stone py-16 text-carbon sm:py-24">
+    <section id="metodologia" className="bg-stone py-16 text-textDark sm:py-24">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <div className="max-w-3xl">
-          <p className="text-xs font-black uppercase tracking-[0.28em] text-mineral">Metodología</p>
+          <p className="text-xs font-black uppercase tracking-[0.28em] text-textDark">Metodología</p>
           <h2 className="mt-5 font-serif text-4xl leading-tight tracking-[-0.03em] sm:text-6xl">
             Una arquitectura tecnológica visible desde el primer contacto.
           </h2>
@@ -314,9 +314,9 @@ function Methodology() {
         <div className="mt-10 grid gap-px border border-carbon/10 bg-carbon/10 lg:grid-cols-3">
           {methodology.map((item) => (
             <article key={item.title} className="bg-stone p-6 sm:p-8">
-              <p className="text-sm font-black uppercase tracking-[0.24em] text-mineral">{item.eyebrow}</p>
+              <p className="text-sm font-black uppercase tracking-[0.24em] text-textDark">{item.eyebrow}</p>
               <h3 className="mt-8 font-serif text-3xl tracking-[-0.03em]">{item.title}</h3>
-              <p className="mt-5 leading-8 text-carbon/68">{item.text}</p>
+              <p className="mt-5 leading-8 text-textDark/68">{item.text}</p>
             </article>
           ))}
         </div>
@@ -327,26 +327,26 @@ function Methodology() {
 
 function OpportunityCard({ opportunity }: { opportunity: (typeof opportunities)[number] }) {
   return (
-    <article aria-label={`Oportunidad demo: ${opportunity.title}`} className="overflow-hidden border border-ivory/12 bg-carbon text-ivory">
+    <article aria-label={`Oportunidad demo: ${opportunity.title}`} className="overflow-hidden border border-border bg-carbon text-textLight">
       <img src={opportunity.image} alt={`Imagen arquitectónica generada para ${opportunity.title}`} width="900" height="600" loading="lazy" className="h-52 w-full object-cover opacity-82" />
       <div className="p-5 sm:p-6">
         <div className="flex flex-wrap items-center gap-2">
-          <span className="border border-copper/50 px-2.5 py-1 text-[0.68rem] font-black uppercase tracking-[0.18em] text-copper">Datos ilustrativos</span>
-          <span className="border border-ivory/15 px-2.5 py-1 text-[0.68rem] font-bold uppercase tracking-[0.18em] text-ivory/65">{opportunity.status}</span>
+          <span className="border border-mineral/50 px-2.5 py-1 text-[0.68rem] font-black uppercase tracking-[0.18em] text-mineral">Datos ilustrativos</span>
+          <span className="border border-border px-2.5 py-1 text-[0.68rem] font-bold uppercase tracking-[0.18em] text-muted">{opportunity.status}</span>
         </div>
         <h3 className="mt-5 font-serif text-3xl leading-tight tracking-[-0.03em]">{opportunity.title}</h3>
-        <p className="mt-2 text-sm font-semibold uppercase tracking-[0.18em] text-ivory/50">{opportunity.area}</p>
-        <dl className="mt-6 grid grid-cols-2 gap-px overflow-hidden border border-ivory/10 bg-ivory/10 text-sm">
-          <div className="bg-carbon p-3"><dt className="text-ivory/65">Rentabilidad objetivo estimada</dt><dd className="mt-1 font-serif text-2xl text-ivory">{opportunity.targetReturn}</dd></div>
-          <div className="bg-carbon p-3"><dt className="text-ivory/65">Plazo estimado</dt><dd className="mt-1 font-semibold">{opportunity.term}</dd></div>
-          <div className="bg-carbon p-3"><dt className="text-ivory/65">Ticket mínimo</dt><dd className="mt-1 font-semibold">{opportunity.minTicket}</dd></div>
-          <div className="bg-carbon p-3"><dt className="text-ivory/65">Capital objetivo</dt><dd className="mt-1 font-semibold">{opportunity.targetCapital}</dd></div>
-          <div className="bg-carbon p-3"><dt className="text-ivory/65">Capital comprometido</dt><dd className="mt-1 font-semibold">{opportunity.committedCapital}</dd></div>
-          <div className="bg-carbon p-3"><dt className="text-ivory/65">Nivel de riesgo</dt><dd className="mt-1 font-semibold">{opportunity.risk}</dd></div>
+        <p className="mt-2 text-sm font-semibold uppercase tracking-[0.18em] text-muted">{opportunity.area}</p>
+        <dl className="mt-6 grid grid-cols-2 gap-px overflow-hidden border border-border bg-petroleum text-sm">
+          <div className="bg-carbon p-3"><dt className="text-muted">Rentabilidad objetivo estimada</dt><dd className="mt-1 font-serif text-2xl text-textLight">{opportunity.targetReturn}</dd></div>
+          <div className="bg-carbon p-3"><dt className="text-muted">Plazo estimado</dt><dd className="mt-1 font-semibold">{opportunity.term}</dd></div>
+          <div className="bg-carbon p-3"><dt className="text-muted">Ticket mínimo</dt><dd className="mt-1 font-semibold">{opportunity.minTicket}</dd></div>
+          <div className="bg-carbon p-3"><dt className="text-muted">Capital objetivo</dt><dd className="mt-1 font-semibold">{opportunity.targetCapital}</dd></div>
+          <div className="bg-carbon p-3"><dt className="text-muted">Capital comprometido</dt><dd className="mt-1 font-semibold">{opportunity.committedCapital}</dd></div>
+          <div className="bg-carbon p-3"><dt className="text-muted">Nivel de riesgo</dt><dd className="mt-1 font-semibold">{opportunity.risk}</dd></div>
         </dl>
         <div className="mt-6">
-          <div className="mb-2 flex justify-between text-xs font-black uppercase tracking-[0.18em] text-ivory/50"><span>Estado</span><span>{opportunity.progress}% demo</span></div>
-          <div className="h-2 bg-ivory/10"><div className="h-2 bg-copper" style={{ width: `${opportunity.progress}%` }} /></div>
+          <div className="mb-2 flex justify-between text-xs font-black uppercase tracking-[0.18em] text-muted"><span>Estado</span><span>{opportunity.progress}% demo</span></div>
+          <div className="h-2 bg-petroleum"><div className="h-2 bg-mineral" style={{ width: `${opportunity.progress}%` }} /></div>
         </div>
       </div>
     </article>
@@ -355,16 +355,16 @@ function OpportunityCard({ opportunity }: { opportunity: (typeof opportunities)[
 
 function Opportunities() {
   return (
-    <section id="oportunidades" className="bg-carbon py-16 text-ivory sm:py-24">
+    <section id="oportunidades" className="bg-carbon py-16 text-textLight sm:py-24">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <div className="grid gap-6 lg:grid-cols-[0.9fr_1.1fr] lg:items-end">
           <div>
-            <p className="text-xs font-black uppercase tracking-[0.28em] text-copper">Oportunidades actuales</p>
+            <p className="text-xs font-black uppercase tracking-[0.28em] text-mineral">Oportunidades actuales</p>
             <h2 className="mt-5 font-serif text-4xl leading-tight tracking-[-0.03em] sm:text-6xl">
               Información pública resumida, sin exponer contenido privado.
             </h2>
           </div>
-          <p className="leading-8 text-ivory/64">
+          <p className="leading-8 text-muted">
             Las cifras son demo y sirven para validar la visualización de riesgo, plazo, capital y estado. No representan una oferta pública ni resultados pasados.
           </p>
         </div>
@@ -378,18 +378,18 @@ function Opportunities() {
 
 function Faq() {
   return (
-    <section id="faq" className="bg-ivory py-16 text-carbon sm:py-24">
+    <section id="faq" className="bg-ivory py-16 text-textDark sm:py-24">
       <div className="mx-auto max-w-5xl px-4 sm:px-6 lg:px-8">
-        <p className="text-xs font-black uppercase tracking-[0.28em] text-mineral">FAQ</p>
+        <p className="text-xs font-black uppercase tracking-[0.28em] text-textDark">FAQ</p>
         <h2 className="mt-5 font-serif text-4xl tracking-[-0.03em] sm:text-6xl">Preguntas frecuentes</h2>
         <div className="mt-10 divide-y divide-carbon/10 border-y border-carbon/10">
           {faqs.map((item) => (
             <details key={item.question} className="group py-6">
-              <summary className="flex cursor-pointer list-none items-center justify-between gap-6 text-xl font-semibold focus:outline-none focus-visible:ring-2 focus-visible:ring-copper">
+              <summary className="flex cursor-pointer list-none items-center justify-between gap-6 text-xl font-semibold focus:outline-none focus-visible:ring-2 focus-visible:ring-mineralHover">
                 {item.question}
-                <span aria-hidden="true" className="text-3xl text-copper transition group-open:rotate-45">+</span>
+                <span aria-hidden="true" className="text-3xl text-textDark transition group-open:rotate-45">+</span>
               </summary>
-              <p className="mt-4 max-w-3xl leading-8 text-carbon/68">{item.answer}</p>
+              <p className="mt-4 max-w-3xl leading-8 text-textDark/68">{item.answer}</p>
             </details>
           ))}
         </div>
@@ -400,17 +400,17 @@ function Faq() {
 
 function AccessCta() {
   return (
-    <section id="acceso" className="bg-mineral py-16 text-ivory sm:py-24">
+    <section id="acceso" className="bg-petroleum py-16 text-textLight sm:py-24">
       <div className="mx-auto grid max-w-7xl gap-8 px-4 sm:px-6 lg:grid-cols-[1fr_auto] lg:items-center lg:px-8">
         <div>
-          <p className="text-xs font-black uppercase tracking-[0.28em] text-ivory">Acceso privado futuro</p>
+          <p className="text-xs font-black uppercase tracking-[0.28em] text-textLight">Acceso privado futuro</p>
           <h2 className="mt-5 font-serif text-4xl leading-tight tracking-[-0.03em] sm:text-6xl">
             Preparado para documentación, hitos y seguimiento de inversores.
           </h2>
         </div>
         <div className="grid gap-3 sm:flex lg:grid">
-          <a href="mailto:contacto@realstate.local" className="bg-copper px-6 py-4 text-center text-sm font-black uppercase tracking-[0.18em] text-carbon transition hover:bg-ivory focus:outline-none focus-visible:ring-2 focus-visible:ring-copper focus-visible:ring-offset-4 focus-visible:ring-offset-mineral">Solicitar acceso</a>
-          <a href="#acceso" className="border border-ivory/30 px-6 py-4 text-center text-sm font-black uppercase tracking-[0.18em] text-ivory transition hover:border-copper hover:text-copper focus:outline-none focus-visible:ring-2 focus-visible:ring-copper focus-visible:ring-offset-4 focus-visible:ring-offset-mineral">Acceso inversores</a>
+          <a href="/acceso" className="bg-mineral px-6 py-4 text-center text-sm font-black uppercase tracking-[0.18em] text-textDark transition hover:bg-mineralHover focus:outline-none focus-visible:ring-2 focus-visible:ring-mineralHover focus-visible:ring-offset-4 focus-visible:ring-offset-petroleum">Solicitar acceso</a>
+          <a href="/inversores" className="border border-border px-6 py-4 text-center text-sm font-black uppercase tracking-[0.18em] text-textLight transition hover:border-mineral hover:text-mineral focus:outline-none focus-visible:ring-2 focus-visible:ring-mineralHover focus-visible:ring-offset-4 focus-visible:ring-offset-petroleum">Acceso inversores</a>
         </div>
       </div>
     </section>
@@ -419,14 +419,14 @@ function AccessCta() {
 
 function Footer() {
   return (
-    <footer className="bg-carbon text-ivory" role="contentinfo">
-      <div className="mx-auto grid max-w-7xl gap-8 border-t border-ivory/10 px-4 py-10 text-sm text-ivory/58 sm:px-6 md:grid-cols-[1fr_auto] lg:px-8">
+    <footer className="bg-carbon text-textLight" role="contentinfo">
+      <div className="mx-auto grid max-w-7xl gap-8 border-t border-border px-4 py-10 text-sm text-muted sm:px-6 md:grid-cols-[1fr_auto] lg:px-8">
         <div>
-          <p className="text-lg font-black uppercase tracking-[0.22em] text-ivory">Realstate</p>
+          <p className="text-lg font-black uppercase tracking-[0.22em] text-textLight">Realstate</p>
           <p className="mt-3 max-w-xl">Plataforma inmobiliaria en construcción. Esta página usa datos demo y activos visuales generados específicamente para Realstate.</p>
         </div>
         <nav aria-label="Navegación secundaria" className="flex flex-wrap gap-4 font-semibold">
-          {navigation.map((item) => <a key={item.href} className="hover:text-copper focus:outline-none focus-visible:ring-2 focus-visible:ring-copper" href={item.href}>{item.label}</a>)}
+          {navigation.map((item) => <a key={item.href} className="hover:text-mineral focus:outline-none focus-visible:ring-2 focus-visible:ring-mineralHover" href={item.href}>{item.label}</a>)}
         </nav>
       </div>
     </footer>
@@ -435,7 +435,7 @@ function Footer() {
 
 export function App() {
   return (
-    <div className="min-h-screen bg-carbon text-carbon antialiased">
+    <div className="min-h-screen bg-carbon text-textDark antialiased">
       <Header />
       <main id="contenido" tabIndex={-1} className="focus:outline-none">
         <Hero />
