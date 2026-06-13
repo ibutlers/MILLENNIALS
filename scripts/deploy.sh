@@ -20,5 +20,5 @@ mkdir -p "$RELEASE_DIR"
 rsync -a --delete --exclude .git --exclude node_modules --exclude dist --exclude coverage --exclude playwright-report "$SRC_DIR/" "$RELEASE_DIR/"
 ln -sfn "$RELEASE_DIR" "$CURRENT_LINK"
 cd "$CURRENT_LINK"
-docker compose up -d --build
+docker compose up -d --build --force-recreate
 ./scripts/healthcheck.sh
