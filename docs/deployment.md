@@ -60,6 +60,21 @@ Antes de activar una nueva release, `deploy.sh` ejecuta `pg_dump -Fc` dentro de 
 
 Estos dumps no deben copiarse al repositorio ni a una release. Para restaurar un backup se debe operar explícitamente sobre PostgreSQL y preservar el volumen `current_postgres-data` salvo autorización destructiva expresa.
 
+## Rutas SPA y 404
+
+El frontend se sirve como SPA desde Nginx detrás de Caddy. Las rutas públicas desconocidas muestran una página visual 404 en React, pero mientras no exista SSR o manejo específico en el proxy la respuesta HTTP puede seguir siendo `200` porque Nginx entrega `index.html` mediante `try_files`.
+
+## Cabeceras de seguridad
+
+Caddy añade cabeceras compatibles con la SPA:
+
+- `X-Content-Type-Options: nosniff`;
+- `Referrer-Policy: strict-origin-when-cross-origin`;
+- `Permissions-Policy` restrictiva para cámara, micrófono, geolocalización y pagos;
+- `Content-Security-Policy` con `frame-ancestors 'none'`, `object-src 'none'` y fuentes/scripts limitados a la propia aplicación.
+
+No se activa HSTS mientras la aplicación siga sirviéndose públicamente por HTTP en el puerto `8088`.
+
 ## Healthchecks
 
 `./scripts/healthcheck.sh` verifica:

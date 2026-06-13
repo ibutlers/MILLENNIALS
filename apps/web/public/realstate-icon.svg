@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-labelledby="title desc">
+  <title id="title">Realstate</title>
+  <desc id="desc">Icono de una casa geométrica con acento dorado.</desc>
+  <rect width="64" height="64" rx="16" fill="#0f4c5c" />
+  <path d="M15 34.5 32 18l17 16.5v15.2a2.3 2.3 0 0 1-2.3 2.3H17.3a2.3 2.3 0 0 1-2.3-2.3V34.5Z" fill="#f8fafc" />
+  <path d="M24 52V38h16v14" fill="#e3b341" />
+  <path d="M20 31.5 32 20l12 11.5" fill="none" stroke="#e3b341" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" />
+</svg>
