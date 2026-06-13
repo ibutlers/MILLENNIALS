@@ -6,12 +6,18 @@ export default {
     extend: {
       colors: {
         brand: {
-          primary: '#0f4c5c',
-          accent: '#e3b341'
-        }
+          primary: '#143f3a',
+          accent: '#9b5e3c'
+        },
+        carbon: '#070908',
+        ivory: '#f4efe6',
+        mineral: '#143f3a',
+        copper: '#b66a43',
+        stone: '#e7e1d6'
       },
       fontFamily: {
-        sans: ['Inter', 'ui-sans-serif', 'system-ui', 'sans-serif']
+        sans: ['Inter', 'ui-sans-serif', 'system-ui', 'sans-serif'],
+        serif: ['Fraunces', 'Cormorant Garamond', 'Georgia', 'serif']
       }
     }
   },

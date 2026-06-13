@@ -1,8 +1,7 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-labelledby="title desc">
   <title id="title">Realstate</title>
-  <desc id="desc">Icono de una casa geométrica con acento dorado.</desc>
-  <rect width="64" height="64" rx="16" fill="#0f4c5c" />
-  <path d="M15 34.5 32 18l17 16.5v15.2a2.3 2.3 0 0 1-2.3 2.3H17.3a2.3 2.3 0 0 1-2.3-2.3V34.5Z" fill="#f8fafc" />
-  <path d="M24 52V38h16v14" fill="#e3b341" />
-  <path d="M20 31.5 32 20l12 11.5" fill="none" stroke="#e3b341" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" />
+  <desc id="desc">Icono geométrico con monograma R en carbón y cobre.</desc>
+  <rect width="64" height="64" fill="#070908" />
+  <path d="M14 14h36v36H14z" fill="none" stroke="#b66a43" stroke-width="2" />
+  <path d="M24 47V18h12.2c6.2 0 10 3.3 10 8.8 0 4.2-2.4 7.2-6.2 8.2L48 47h-7.4l-7.2-11H30v11h-6Zm6-16h5.7c2.8 0 4.5-1.5 4.5-4s-1.7-3.8-4.5-3.8H30V31Z" fill="#f4efe6" />
 </svg>

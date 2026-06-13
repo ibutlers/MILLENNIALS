@@ -5,14 +5,21 @@
 @layer base {
   html {
     scroll-behavior: smooth;
+    background: #070908;
   }
 
   body {
     margin: 0;
     min-width: 320px;
+    background: #070908;
   }
 
   * {
     box-sizing: border-box;
+  }
+
+  ::selection {
+    background: #b66a43;
+    color: #070908;
   }
 }

@@ -1,252 +1,298 @@
-const featuredProperties = [
+import { useEffect, useRef, useState } from 'react';
+
+const navigation = [
+  { label: 'Firma', href: '#firma' },
+  { label: 'Tesis', href: '#tesis' },
+  { label: 'Método', href: '#metodologia' },
+  { label: 'Oportunidades', href: '#oportunidades' },
+  { label: 'FAQ', href: '#faq' }
+];
+
+const processIndicators = [
+  'Análisis proyecto a proyecto',
+  'Documentación estructurada',
+  'Seguimiento periódico',
+  'Inversión con horizonte definido',
+  'Revisión técnica, comercial y financiera',
+  'Actualización de avance'
+];
+
+const methodology = [
   {
-    title: 'Ático luminoso en Chamberí',
-    location: 'Chamberí, Madrid',
-    price: '1.240.000 €',
-    operation: 'Comprar',
-    type: 'Ático',
-    details: '3 hab · 2 baños · 148 m²',
-    accent: 'Terraza privada y orientación sur'
+    eyebrow: '01',
+    title: 'Tesis de inversión',
+    text: 'Definimos ubicación, demanda, estado del activo, liquidez esperada y horizonte antes de presentar una oportunidad.'
   },
   {
-    title: 'Villa mediterránea con jardín',
-    location: 'Nueva Andalucía, Marbella',
-    price: '8.900 €/mes',
-    operation: 'Alquilar',
-    type: 'Villa',
-    details: '5 hab · 4 baños · 420 m²',
-    accent: 'Piscina, privacidad y seguridad 24 h'
+    eyebrow: '02',
+    title: 'Metodología',
+    text: 'Ordenamos documentación, supuestos y riesgos para que cada decisión pueda revisarse con trazabilidad.'
   },
   {
-    title: 'Piso reformado junto al Turia',
-    location: 'El Pla del Remei, Valencia',
-    price: '690.000 €',
-    operation: 'Comprar',
-    type: 'Piso',
-    details: '2 hab · 2 baños · 112 m²',
-    accent: 'Edificio clásico con eficiencia mejorada'
+    eyebrow: '03',
+    title: 'Tecnología y análisis',
+    text: 'La capa digital prepara datos, estados, hitos y comunicación para una futura zona privada de inversores.'
   }
 ];
 
-const services = [
+const opportunities = [
   {
-    title: 'Valoración con datos reales',
-    text: 'Comparamos mercado, demanda y atributos únicos para ayudarte a decidir con menos incertidumbre.'
+    title: 'Rehabilitación residencial en eje consolidado',
+    area: 'Madrid · zona centro norte',
+    image: '/images/opportunity-rehabilitacion.webp',
+    targetReturn: '8,5% anual',
+    term: '18 meses',
+    minTicket: '25.000 €',
+    targetCapital: '1,2 M€',
+    committedCapital: 'Demo: 34%',
+    status: 'En análisis documental',
+    risk: 'Medio',
+    progress: 34
   },
   {
-    title: 'Selección curada',
-    text: 'Priorizamos activos con ubicación, liquidez y calidad visual antes de incorporarlos al escaparate.'
+    title: 'Activo con patio y mejora energética',
+    area: 'Valencia · distrito prime urbano',
+    image: '/images/opportunity-patio.webp',
+    targetReturn: '7,2% anual',
+    term: '14 meses',
+    minTicket: '15.000 €',
+    targetCapital: '780.000 €',
+    committedCapital: 'Demo: 51%',
+    status: 'Pre-reserva abierta',
+    risk: 'Medio-bajo',
+    progress: 51
   },
   {
-    title: 'Acompañamiento experto',
-    text: 'Un equipo operativo prepara visitas, documentación y próximos pasos sin fricción.'
+    title: 'Cambio de uso con demanda contrastable',
+    area: 'Málaga · corredor metropolitano',
+    image: '/images/opportunity-urbano.webp',
+    targetReturn: '9,1% anual',
+    term: '22 meses',
+    minTicket: '30.000 €',
+    targetCapital: '1,6 M€',
+    committedCapital: 'Demo: 18%',
+    status: 'Estructuración inicial',
+    risk: 'Medio-alto',
+    progress: 18
   }
 ];
+
+const faqs = [
+  {
+    question: '¿Qué publica Realstate en abierto?',
+    answer: 'Información resumida, naturaleza ilustrativa de oportunidades demo y criterios de análisis. La documentación privada llegará en una zona segura.'
+  },
+  {
+    question: '¿Las cifras de oportunidades son reales?',
+    answer: 'No. En este hito son datos demo marcados como ilustrativos para validar el diseño antes de conectar datos reales.'
+  },
+  {
+    question: '¿Qué se construirá después?',
+    answer: 'Modelo de datos, API de catálogo, detalle de oportunidad, captación de leads y, más adelante, acceso privado para inversores.'
+  }
+];
+
+function useMobileMenu() {
+  const [isOpen, setIsOpen] = useState(false);
+  const openButtonRef = useRef<HTMLButtonElement>(null);
+  const closeButtonRef = useRef<HTMLButtonElement>(null);
+  const drawerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!isOpen) return undefined;
+
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    closeButtonRef.current?.focus();
+
+    function handleKeyDown(event: KeyboardEvent) {
+      if (event.key === 'Escape') {
+        event.preventDefault();
+        setIsOpen(false);
+        return;
+      }
+
+      if (event.key !== 'Tab' || !drawerRef.current) return;
+
+      const focusable = Array.from(
+        drawerRef.current.querySelectorAll<HTMLElement>(
+          'a[href], button:not([disabled]), [tabindex]:not([tabindex="-1"])'
+        )
+      );
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+
+      if (!first || !last) return;
+
+      if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault();
+        first.focus();
+      }
+    }
+
+    document.addEventListener('keydown', handleKeyDown);
+
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      document.removeEventListener('keydown', handleKeyDown);
+      openButtonRef.current?.focus();
+    };
+  }, [isOpen]);
+
+  return { isOpen, setIsOpen, openButtonRef, closeButtonRef, drawerRef };
+}
 
 function Header() {
+  const { isOpen, setIsOpen, openButtonRef, closeButtonRef, drawerRef } = useMobileMenu();
+
   return (
-    <header className="sticky top-0 z-30 border-b border-white/50 bg-stone-50/90 backdrop-blur-xl">
+    <header className="sticky top-0 z-40 border-b border-ivory/10 bg-carbon/95 text-ivory shadow-2xl shadow-black/20 backdrop-blur-xl">
       <a
         href="#contenido"
-        className="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-50 focus:rounded-full focus:bg-brand-primary focus:px-4 focus:py-2 focus:text-sm focus:font-semibold focus:text-white"
+        className="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-50 focus:bg-copper focus:px-4 focus:py-2 focus:text-sm focus:font-bold focus:text-carbon"
       >
         Saltar al contenido
       </a>
       <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-4 sm:px-6 lg:px-8">
-        <a href="/" className="group inline-flex items-center gap-3 rounded-full focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-accent focus-visible:ring-offset-4">
-          <span className="flex h-10 w-10 items-center justify-center rounded-2xl bg-brand-primary text-lg font-black text-white shadow-lg shadow-brand-primary/20">
-            R
-          </span>
-          <span className="text-xl font-bold tracking-tight text-slate-950">Realstate</span>
+        <a href="/" className="group inline-flex items-center gap-3 focus:outline-none focus-visible:ring-2 focus-visible:ring-copper focus-visible:ring-offset-4 focus-visible:ring-offset-carbon">
+          <span className="grid h-10 w-10 place-items-center border border-copper/70 text-lg font-black text-copper">R</span>
+          <span className="text-lg font-black uppercase tracking-[0.22em] sm:text-xl">Realstate</span>
         </a>
-        <nav aria-label="Navegación principal" className="hidden items-center gap-7 text-sm font-semibold text-slate-700 md:flex">
-          <a className="rounded-full hover:text-brand-primary focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-accent focus-visible:ring-offset-4" href="#propiedades">
-            Propiedades
-          </a>
-          <a className="rounded-full hover:text-brand-primary focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-accent focus-visible:ring-offset-4" href="#servicios">
-            Servicios
-          </a>
-          <a className="rounded-full hover:text-brand-primary focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-accent focus-visible:ring-offset-4" href="#contacto">
-            Contacto
-          </a>
+        <nav aria-label="Navegación principal" className="hidden items-center gap-7 text-xs font-bold uppercase tracking-[0.18em] text-ivory/70 lg:flex">
+          {navigation.map((item) => (
+            <a key={item.href} href={item.href} className="transition hover:text-copper focus:outline-none focus-visible:ring-2 focus-visible:ring-copper focus-visible:ring-offset-4 focus-visible:ring-offset-carbon">
+              {item.label}
+            </a>
+          ))}
         </nav>
-        <a
-          href="#contacto"
-          className="rounded-full bg-slate-950 px-4 py-2 text-sm font-bold text-white shadow-sm transition hover:-translate-y-0.5 hover:bg-brand-primary focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-accent focus-visible:ring-offset-4 sm:px-5"
+        <div className="hidden items-center gap-3 lg:flex">
+          <button type="button" aria-label="Idioma español seleccionado" className="border border-ivory/20 px-3 py-2 text-xs font-black uppercase tracking-[0.18em] text-ivory/80">
+            ES / EN
+          </button>
+          <a href="#acceso" className="border border-ivory/30 px-4 py-2 text-xs font-black uppercase tracking-[0.16em] transition hover:border-copper hover:text-copper focus:outline-none focus-visible:ring-2 focus-visible:ring-copper focus-visible:ring-offset-4 focus-visible:ring-offset-carbon">
+            Acceso inversores
+          </a>
+        </div>
+        <button
+          ref={openButtonRef}
+          type="button"
+          aria-label="Abrir menú"
+          aria-expanded={isOpen}
+          className="grid h-11 w-11 place-items-center border border-ivory/20 text-ivory transition hover:border-copper hover:text-copper focus:outline-none focus-visible:ring-2 focus-visible:ring-copper focus-visible:ring-offset-4 focus-visible:ring-offset-carbon lg:hidden"
+          onClick={() => setIsOpen(true)}
         >
-          Hablar con un asesor
-        </a>
+          <span aria-hidden="true" className="space-y-1.5">
+            <span className="block h-0.5 w-6 bg-current" />
+            <span className="block h-0.5 w-6 bg-current" />
+            <span className="block h-0.5 w-6 bg-current" />
+          </span>
+        </button>
       </div>
+      {isOpen ? (
+        <div className="fixed inset-0 z-50 bg-carbon text-ivory lg:hidden" role="dialog" aria-modal="true" aria-label="Menú de navegación" ref={drawerRef}>
+          <div className="flex items-center justify-between border-b border-ivory/10 px-4 py-4">
+            <span className="text-lg font-black uppercase tracking-[0.22em]">Realstate</span>
+            <button ref={closeButtonRef} type="button" aria-label="Cerrar menú" className="border border-ivory/20 px-4 py-3 text-sm font-black uppercase tracking-[0.18em] focus:outline-none focus-visible:ring-2 focus-visible:ring-copper" onClick={() => setIsOpen(false)}>
+              Cerrar
+            </button>
+          </div>
+          <div className="grid min-h-[calc(100dvh-73px)] content-between px-6 py-8">
+            <nav aria-label="Navegación móvil" className="grid gap-5 text-3xl font-serif text-ivory">
+              {navigation.map((item) => (
+                <a key={item.href} href={item.href} onClick={() => setIsOpen(false)} className="border-b border-ivory/10 pb-4 focus:outline-none focus-visible:ring-2 focus-visible:ring-copper">
+                  {item.label}
+                </a>
+              ))}
+            </nav>
+            <div className="grid gap-4">
+              <div className="flex gap-3">
+                <button type="button" aria-label="Idioma español seleccionado" className="border border-copper bg-copper px-4 py-3 text-sm font-black uppercase tracking-[0.18em] text-carbon focus:outline-none focus-visible:ring-2 focus-visible:ring-ivory">ES</button>
+                <button type="button" aria-label="Cambiar idioma a inglés" className="border border-ivory/20 px-4 py-3 text-sm font-black uppercase tracking-[0.18em] text-ivory/70 focus:outline-none focus-visible:ring-2 focus-visible:ring-copper">EN</button>
+              </div>
+              <a href="#acceso" onClick={() => setIsOpen(false)} className="border border-copper bg-copper px-5 py-4 text-center text-sm font-black uppercase tracking-[0.18em] text-carbon focus:outline-none focus-visible:ring-2 focus-visible:ring-ivory">Solicitar acceso</a>
+              <a href="#acceso" onClick={() => setIsOpen(false)} className="border border-ivory/30 px-5 py-4 text-center text-sm font-black uppercase tracking-[0.18em] text-ivory focus:outline-none focus-visible:ring-2 focus-visible:ring-copper">Acceso inversores</a>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </header>
-  );
-}
-
-function SearchPanel() {
-  return (
-    <form
-      aria-label="Buscar propiedades"
-      role="search"
-      className="mt-8 grid gap-4 rounded-[2rem] border border-white/70 bg-white/95 p-4 shadow-2xl shadow-slate-900/10 md:grid-cols-2"
-    >
-      <label className="grid gap-2 text-sm font-semibold text-slate-700">
-        Operación
-        <select className="min-h-12 rounded-2xl border border-slate-200 bg-white px-4 text-base text-slate-950 outline-none transition focus:border-brand-primary focus:ring-4 focus:ring-brand-primary/15">
-          <option>Comprar</option>
-          <option>Alquilar</option>
-        </select>
-      </label>
-      <label className="grid gap-2 text-sm font-semibold text-slate-700">
-        Ubicación
-        <input
-          className="min-h-12 rounded-2xl border border-slate-200 bg-white px-4 text-base text-slate-950 outline-none transition placeholder:text-slate-400 focus:border-brand-primary focus:ring-4 focus:ring-brand-primary/15"
-          placeholder="Madrid, Valencia, Marbella..."
-          type="text"
-        />
-      </label>
-      <label className="grid gap-2 text-sm font-semibold text-slate-700">
-        Tipo de propiedad
-        <select className="min-h-12 rounded-2xl border border-slate-200 bg-white px-4 text-base text-slate-950 outline-none transition focus:border-brand-primary focus:ring-4 focus:ring-brand-primary/15">
-          <option>Cualquiera</option>
-          <option>Piso</option>
-          <option>Ático</option>
-          <option>Villa</option>
-          <option>Local comercial</option>
-        </select>
-      </label>
-      <label className="grid gap-2 text-sm font-semibold text-slate-700">
-        Precio máximo
-        <select className="min-h-12 rounded-2xl border border-slate-200 bg-white px-4 text-base text-slate-950 outline-none transition focus:border-brand-primary focus:ring-4 focus:ring-brand-primary/15">
-          <option>Sin límite</option>
-          <option>500.000 €</option>
-          <option>750.000 €</option>
-          <option>1.000.000 €</option>
-          <option>2.000.000 €</option>
-        </select>
-      </label>
-      <button
-        type="submit"
-        className="min-h-12 rounded-2xl bg-brand-primary px-6 text-base font-bold text-white shadow-lg shadow-brand-primary/20 transition hover:-translate-y-0.5 hover:bg-[#0b3d49] focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-accent focus-visible:ring-offset-4 md:col-span-2"
-      >
-        Buscar propiedades
-      </button>
-    </form>
   );
 }
 
 function Hero() {
   return (
-    <section className="relative overflow-hidden bg-[radial-gradient(circle_at_top_left,_rgba(227,179,65,0.25),_transparent_32%),linear-gradient(135deg,#f8fafc_0%,#f5efe3_42%,#e8f0f1_100%)]">
-      <div className="absolute right-0 top-0 h-64 w-64 rounded-full bg-brand-primary/10 blur-3xl" aria-hidden="true" />
-      <div className="mx-auto grid max-w-7xl gap-10 px-4 py-16 sm:px-6 sm:py-20 lg:grid-cols-[minmax(0,1fr)_360px] lg:px-8 lg:py-24 xl:grid-cols-[minmax(0,1fr)_420px]">
-        <div className="min-w-0 flex flex-col justify-center">
-          <p className="mb-5 w-fit rounded-full border border-brand-accent/40 bg-white/70 px-4 py-2 text-sm font-bold uppercase tracking-[0.18em] text-brand-primary">
-            Real estate curado para decidir mejor
-          </p>
-          <h1 className="max-w-4xl text-4xl font-black tracking-tight text-slate-950 sm:text-5xl lg:text-6xl">
-            Encuentra una propiedad con criterio, datos y acompañamiento experto.
-          </h1>
-          <p className="mt-6 max-w-2xl text-lg leading-8 text-slate-700">
-            Realstate combina selección inmobiliaria, lectura de mercado y una experiencia digital clara para comprar o alquilar activos con confianza.
-          </p>
-          <div className="mt-7 flex flex-col gap-3 sm:flex-row">
-            <a
-              href="#propiedades"
-              className="inline-flex items-center justify-center rounded-full bg-slate-950 px-6 py-3 text-base font-bold text-white shadow-xl shadow-slate-950/10 transition hover:-translate-y-0.5 hover:bg-brand-primary focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-accent focus-visible:ring-offset-4"
-            >
-              Ver propiedades destacadas
-            </a>
-            <a
-              href="#servicios"
-              className="inline-flex items-center justify-center rounded-full border border-slate-300 bg-white/70 px-6 py-3 text-base font-bold text-slate-900 transition hover:-translate-y-0.5 hover:border-brand-primary focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-accent focus-visible:ring-offset-4"
-            >
-              Cómo trabajamos
-            </a>
-          </div>
-          <SearchPanel />
+    <section className="relative min-h-[calc(100svh-73px)] overflow-hidden bg-carbon text-ivory">
+      <picture>
+        <source srcSet="/images/hero-architecture-640.webp 640w, /images/hero-architecture-1280.webp 1280w, /images/hero-architecture-1920.webp 1920w" sizes="100vw" type="image/webp" />
+        <img src="/images/hero-architecture-1280.webp" alt="Composición arquitectónica urbana generada para Realstate con edificios al atardecer" width="1280" height="921" className="absolute inset-0 h-full w-full object-cover" fetchPriority="high" />
+      </picture>
+      <div className="absolute inset-0 bg-gradient-to-b from-carbon/70 via-carbon/72 to-carbon" aria-hidden="true" />
+      <div className="relative mx-auto flex min-h-[calc(100svh-73px)] max-w-7xl flex-col justify-end px-4 py-10 sm:px-6 lg:px-8 lg:py-16">
+        <p className="mb-5 max-w-max border border-ivory/20 bg-carbon/40 px-3 py-2 text-xs font-black uppercase tracking-[0.26em] text-copper backdrop-blur">
+          Realstate — plataforma inmobiliaria privada
+        </p>
+        <h1 className="max-w-5xl font-serif text-5xl leading-[0.95] tracking-[-0.04em] text-ivory sm:text-6xl md:text-7xl lg:text-8xl">
+          Inversión inmobiliaria con disciplina, datos y seguimiento operativo.
+        </h1>
+        <p className="mt-6 max-w-2xl text-base leading-8 text-ivory/78 sm:text-xl">
+          Una base digital para presentar oportunidades, ordenar documentación y preparar una futura zona privada de inversores sin promesas grandilocuentes.
+        </p>
+        <div className="mt-8 grid gap-3 sm:flex">
+          <a href="#oportunidades" className="group inline-flex items-center justify-center gap-3 bg-copper px-6 py-4 text-sm font-black uppercase tracking-[0.18em] text-carbon transition hover:bg-ivory focus:outline-none focus-visible:ring-2 focus-visible:ring-copper focus-visible:ring-offset-4 focus-visible:ring-offset-carbon">
+            Ver oportunidades demo <span aria-hidden="true" className="transition group-hover:translate-x-1">→</span>
+          </a>
+          <a href="#firma" className="inline-flex items-center justify-center border border-ivory/40 px-6 py-4 text-sm font-black uppercase tracking-[0.18em] text-ivory transition hover:border-copper hover:text-copper focus:outline-none focus-visible:ring-2 focus-visible:ring-copper focus-visible:ring-offset-4 focus-visible:ring-offset-carbon">
+            Nuestra firma
+          </a>
         </div>
-        <aside aria-label="Resumen del mercado" className="relative min-h-[420px] min-w-0 overflow-hidden rounded-[2.5rem] bg-slate-950 p-6 text-white shadow-2xl shadow-slate-900/25">
-          <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_20%,rgba(227,179,65,0.28),transparent_28%),radial-gradient(circle_at_80%_10%,rgba(15,76,92,0.7),transparent_30%)]" aria-hidden="true" />
-          <div className="relative flex h-full flex-col justify-between gap-8">
-            <div className="rounded-[2rem] border border-white/10 bg-white/10 p-5 backdrop-blur">
-              <p className="text-sm font-semibold text-slate-300">Oportunidad destacada</p>
-              <p className="mt-3 text-3xl font-black">Chamberí · 148 m²</p>
-              <p className="mt-2 text-slate-300">Ático con terraza, luz natural y demanda premium contrastada.</p>
-            </div>
-            <div className="grid grid-cols-2 gap-3">
-              <div className="rounded-3xl bg-white p-4 text-slate-950">
-                <p className="text-3xl font-black">42</p>
-                <p className="text-sm font-semibold text-slate-500">activos revisados</p>
-              </div>
-              <div className="rounded-3xl bg-brand-accent p-4 text-slate-950">
-                <p className="text-3xl font-black">3.8%</p>
-                <p className="text-sm font-semibold text-slate-700">rentabilidad estimada</p>
-              </div>
-            </div>
-          </div>
-        </aside>
       </div>
     </section>
   );
 }
 
-function FeaturedProperties() {
+function FirmNarrative() {
   return (
-    <section id="propiedades" className="bg-white py-16 sm:py-24">
-      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-        <div className="max-w-3xl">
-          <p className="text-sm font-black uppercase tracking-[0.2em] text-brand-primary">Propiedades destacadas</p>
-          <h2 className="mt-3 text-3xl font-black tracking-tight text-slate-950 sm:text-4xl">
-            Una primera selección para validar el escaparate público.
+    <section id="firma" className="bg-ivory py-16 text-carbon sm:py-24">
+      <div className="mx-auto grid max-w-7xl gap-10 px-4 sm:px-6 lg:grid-cols-[0.85fr_1.15fr] lg:px-8">
+        <div>
+          <p className="text-xs font-black uppercase tracking-[0.28em] text-mineral">Sobre la firma</p>
+          <h2 className="mt-5 font-serif text-4xl leading-tight tracking-[-0.03em] sm:text-6xl">
+            Selección rigurosa antes que volumen.
           </h2>
-          <p className="mt-4 text-lg leading-8 text-slate-600">
-            Datos mock realistas mientras se implementa el catálogo conectado a PostgreSQL en el siguiente hito.
-          </p>
         </div>
-        <div className="mt-10 grid gap-6 lg:grid-cols-3">
-          {featuredProperties.map((property) => (
-            <article
-              key={property.title}
-              aria-label={`Propiedad destacada: ${property.title}`}
-              className="group overflow-hidden rounded-[2rem] border border-slate-200 bg-white shadow-sm transition hover:-translate-y-1 hover:shadow-2xl hover:shadow-slate-900/10"
-            >
-              <div className="relative h-56 bg-[linear-gradient(135deg,#0f4c5c,#172554)] p-5 text-white">
-                <div className="absolute inset-0 opacity-60 [background-image:radial-gradient(circle_at_20%_20%,rgba(227,179,65,.55),transparent_24%),linear-gradient(120deg,transparent_45%,rgba(255,255,255,.16)_45%,rgba(255,255,255,.16)_58%,transparent_58%)]" aria-hidden="true" />
-                <div className="relative flex h-full flex-col justify-between">
-                  <span className="w-fit rounded-full bg-white/15 px-3 py-1 text-sm font-bold backdrop-blur">{property.operation}</span>
-                  <div>
-                    <p className="text-sm text-slate-200">{property.location}</p>
-                    <h3 className="mt-1 text-2xl font-black">{property.title}</h3>
-                  </div>
-                </div>
-              </div>
-              <div className="p-6">
-                <p className="text-2xl font-black text-slate-950">{property.price}</p>
-                <p className="mt-2 font-semibold text-brand-primary">{property.type} · {property.details}</p>
-                <p className="mt-4 text-slate-600">{property.accent}</p>
-              </div>
-            </article>
-          ))}
+        <div className="space-y-7 text-lg leading-9 text-carbon/72">
+          <p>
+            Realstate se plantea como una plataforma inmobiliaria profesional para explicar una tesis, organizar oportunidades y comunicar avances con transparencia.
+          </p>
+          <p>
+            La primera capa pública evita cifras no verificadas y prioriza proceso: revisión técnica, comercial y financiera, documentación estructurada y seguimiento periódico.
+          </p>
         </div>
       </div>
     </section>
   );
 }
 
-function Services() {
+function ProcessSection() {
   return (
-    <section id="servicios" className="bg-slate-950 py-16 text-white sm:py-24">
+    <section id="tesis" className="bg-carbon py-16 text-ivory sm:py-24">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-        <div className="grid gap-10 lg:grid-cols-[0.8fr_1.2fr] lg:items-start">
+        <div className="grid gap-8 lg:grid-cols-[0.8fr_1.2fr]">
           <div>
-            <p className="text-sm font-black uppercase tracking-[0.2em] text-brand-accent">Servicios</p>
-            <h2 className="mt-3 text-3xl font-black tracking-tight sm:text-4xl">Más que un listado: contexto para decidir.</h2>
+            <p className="text-xs font-black uppercase tracking-[0.28em] text-copper">Tesis de inversión</p>
+            <h2 className="mt-5 font-serif text-4xl leading-tight tracking-[-0.03em] sm:text-6xl">
+              Menos ruido, más trazabilidad.
+            </h2>
           </div>
-          <div className="grid gap-5 md:grid-cols-3">
-            {services.map((service) => (
-              <article key={service.title} className="rounded-[2rem] border border-white/10 bg-white/10 p-6 backdrop-blur">
-                <h3 className="text-xl font-black">{service.title}</h3>
-                <p className="mt-3 leading-7 text-slate-300">{service.text}</p>
-              </article>
+          <div className="grid gap-px overflow-hidden border border-ivory/10 bg-ivory/10 sm:grid-cols-2">
+            {processIndicators.map((item) => (
+              <div key={item} className="bg-carbon p-6">
+                <span className="mb-5 block h-8 w-8 border border-copper/70" aria-hidden="true" />
+                <p className="text-xl font-semibold text-ivory">{item}</p>
+              </div>
             ))}
           </div>
         </div>
@@ -255,23 +301,117 @@ function Services() {
   );
 }
 
-function ContactCta() {
+function Methodology() {
   return (
-    <section id="contacto" className="bg-stone-50 py-16 sm:py-24">
-      <div className="mx-auto max-w-5xl px-4 text-center sm:px-6 lg:px-8">
-        <p className="text-sm font-black uppercase tracking-[0.2em] text-brand-primary">Siguiente paso</p>
-        <h2 className="mt-3 text-3xl font-black tracking-tight text-slate-950 sm:text-5xl">
-          Prepara tu búsqueda con un asesor de Realstate.
-        </h2>
-        <p className="mx-auto mt-5 max-w-2xl text-lg leading-8 text-slate-600">
-          Cuéntanos zona, presupuesto y objetivo. En esta fase el contacto es visual; la persistencia de leads llegará con el modelo de datos.
-        </p>
-        <a
-          href="mailto:contacto@realstate.local"
-          className="mt-8 inline-flex rounded-full bg-brand-primary px-7 py-3 text-base font-bold text-white shadow-xl shadow-brand-primary/20 transition hover:-translate-y-0.5 hover:bg-[#0b3d49] focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-accent focus-visible:ring-offset-4"
-        >
-          Solicitar orientación
-        </a>
+    <section id="metodologia" className="bg-stone py-16 text-carbon sm:py-24">
+      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+        <div className="max-w-3xl">
+          <p className="text-xs font-black uppercase tracking-[0.28em] text-mineral">Metodología</p>
+          <h2 className="mt-5 font-serif text-4xl leading-tight tracking-[-0.03em] sm:text-6xl">
+            Una arquitectura tecnológica visible desde el primer contacto.
+          </h2>
+        </div>
+        <div className="mt-10 grid gap-px border border-carbon/10 bg-carbon/10 lg:grid-cols-3">
+          {methodology.map((item) => (
+            <article key={item.title} className="bg-stone p-6 sm:p-8">
+              <p className="text-sm font-black uppercase tracking-[0.24em] text-mineral">{item.eyebrow}</p>
+              <h3 className="mt-8 font-serif text-3xl tracking-[-0.03em]">{item.title}</h3>
+              <p className="mt-5 leading-8 text-carbon/68">{item.text}</p>
+            </article>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function OpportunityCard({ opportunity }: { opportunity: (typeof opportunities)[number] }) {
+  return (
+    <article aria-label={`Oportunidad demo: ${opportunity.title}`} className="overflow-hidden border border-ivory/12 bg-carbon text-ivory">
+      <img src={opportunity.image} alt={`Imagen arquitectónica generada para ${opportunity.title}`} width="900" height="600" loading="lazy" className="h-52 w-full object-cover opacity-82" />
+      <div className="p-5 sm:p-6">
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="border border-copper/50 px-2.5 py-1 text-[0.68rem] font-black uppercase tracking-[0.18em] text-copper">Datos ilustrativos</span>
+          <span className="border border-ivory/15 px-2.5 py-1 text-[0.68rem] font-bold uppercase tracking-[0.18em] text-ivory/65">{opportunity.status}</span>
+        </div>
+        <h3 className="mt-5 font-serif text-3xl leading-tight tracking-[-0.03em]">{opportunity.title}</h3>
+        <p className="mt-2 text-sm font-semibold uppercase tracking-[0.18em] text-ivory/50">{opportunity.area}</p>
+        <dl className="mt-6 grid grid-cols-2 gap-px overflow-hidden border border-ivory/10 bg-ivory/10 text-sm">
+          <div className="bg-carbon p-3"><dt className="text-ivory/65">Rentabilidad objetivo estimada</dt><dd className="mt-1 font-serif text-2xl text-ivory">{opportunity.targetReturn}</dd></div>
+          <div className="bg-carbon p-3"><dt className="text-ivory/65">Plazo estimado</dt><dd className="mt-1 font-semibold">{opportunity.term}</dd></div>
+          <div className="bg-carbon p-3"><dt className="text-ivory/65">Ticket mínimo</dt><dd className="mt-1 font-semibold">{opportunity.minTicket}</dd></div>
+          <div className="bg-carbon p-3"><dt className="text-ivory/65">Capital objetivo</dt><dd className="mt-1 font-semibold">{opportunity.targetCapital}</dd></div>
+          <div className="bg-carbon p-3"><dt className="text-ivory/65">Capital comprometido</dt><dd className="mt-1 font-semibold">{opportunity.committedCapital}</dd></div>
+          <div className="bg-carbon p-3"><dt className="text-ivory/65">Nivel de riesgo</dt><dd className="mt-1 font-semibold">{opportunity.risk}</dd></div>
+        </dl>
+        <div className="mt-6">
+          <div className="mb-2 flex justify-between text-xs font-black uppercase tracking-[0.18em] text-ivory/50"><span>Estado</span><span>{opportunity.progress}% demo</span></div>
+          <div className="h-2 bg-ivory/10"><div className="h-2 bg-copper" style={{ width: `${opportunity.progress}%` }} /></div>
+        </div>
+      </div>
+    </article>
+  );
+}
+
+function Opportunities() {
+  return (
+    <section id="oportunidades" className="bg-carbon py-16 text-ivory sm:py-24">
+      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+        <div className="grid gap-6 lg:grid-cols-[0.9fr_1.1fr] lg:items-end">
+          <div>
+            <p className="text-xs font-black uppercase tracking-[0.28em] text-copper">Oportunidades actuales</p>
+            <h2 className="mt-5 font-serif text-4xl leading-tight tracking-[-0.03em] sm:text-6xl">
+              Información pública resumida, sin exponer contenido privado.
+            </h2>
+          </div>
+          <p className="leading-8 text-ivory/64">
+            Las cifras son demo y sirven para validar la visualización de riesgo, plazo, capital y estado. No representan una oferta pública ni resultados pasados.
+          </p>
+        </div>
+        <div className="mt-10 grid gap-5 lg:grid-cols-3">
+          {opportunities.map((opportunity) => <OpportunityCard key={opportunity.title} opportunity={opportunity} />)}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function Faq() {
+  return (
+    <section id="faq" className="bg-ivory py-16 text-carbon sm:py-24">
+      <div className="mx-auto max-w-5xl px-4 sm:px-6 lg:px-8">
+        <p className="text-xs font-black uppercase tracking-[0.28em] text-mineral">FAQ</p>
+        <h2 className="mt-5 font-serif text-4xl tracking-[-0.03em] sm:text-6xl">Preguntas frecuentes</h2>
+        <div className="mt-10 divide-y divide-carbon/10 border-y border-carbon/10">
+          {faqs.map((item) => (
+            <details key={item.question} className="group py-6">
+              <summary className="flex cursor-pointer list-none items-center justify-between gap-6 text-xl font-semibold focus:outline-none focus-visible:ring-2 focus-visible:ring-copper">
+                {item.question}
+                <span aria-hidden="true" className="text-3xl text-copper transition group-open:rotate-45">+</span>
+              </summary>
+              <p className="mt-4 max-w-3xl leading-8 text-carbon/68">{item.answer}</p>
+            </details>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function AccessCta() {
+  return (
+    <section id="acceso" className="bg-mineral py-16 text-ivory sm:py-24">
+      <div className="mx-auto grid max-w-7xl gap-8 px-4 sm:px-6 lg:grid-cols-[1fr_auto] lg:items-center lg:px-8">
+        <div>
+          <p className="text-xs font-black uppercase tracking-[0.28em] text-ivory">Acceso privado futuro</p>
+          <h2 className="mt-5 font-serif text-4xl leading-tight tracking-[-0.03em] sm:text-6xl">
+            Preparado para documentación, hitos y seguimiento de inversores.
+          </h2>
+        </div>
+        <div className="grid gap-3 sm:flex lg:grid">
+          <a href="mailto:contacto@realstate.local" className="bg-copper px-6 py-4 text-center text-sm font-black uppercase tracking-[0.18em] text-carbon transition hover:bg-ivory focus:outline-none focus-visible:ring-2 focus-visible:ring-copper focus-visible:ring-offset-4 focus-visible:ring-offset-mineral">Solicitar acceso</a>
+          <a href="#acceso" className="border border-ivory/30 px-6 py-4 text-center text-sm font-black uppercase tracking-[0.18em] text-ivory transition hover:border-copper hover:text-copper focus:outline-none focus-visible:ring-2 focus-visible:ring-copper focus-visible:ring-offset-4 focus-visible:ring-offset-mineral">Acceso inversores</a>
+        </div>
       </div>
     </section>
   );
@@ -279,16 +419,14 @@ function ContactCta() {
 
 function Footer() {
   return (
-    <footer className="bg-white" role="contentinfo">
-      <div className="mx-auto grid max-w-7xl gap-8 border-t border-slate-200 px-4 py-10 text-sm text-slate-600 sm:px-6 md:grid-cols-[1fr_auto] lg:px-8">
+    <footer className="bg-carbon text-ivory" role="contentinfo">
+      <div className="mx-auto grid max-w-7xl gap-8 border-t border-ivory/10 px-4 py-10 text-sm text-ivory/58 sm:px-6 md:grid-cols-[1fr_auto] lg:px-8">
         <div>
-          <p className="text-lg font-black text-slate-950">Realstate</p>
-          <p className="mt-2 max-w-xl">Fundación pública para una plataforma inmobiliaria profesional, preparada para catálogo, datos reales y captación de leads.</p>
+          <p className="text-lg font-black uppercase tracking-[0.22em] text-ivory">Realstate</p>
+          <p className="mt-3 max-w-xl">Plataforma inmobiliaria en construcción. Esta página usa datos demo y activos visuales generados específicamente para Realstate.</p>
         </div>
         <nav aria-label="Navegación secundaria" className="flex flex-wrap gap-4 font-semibold">
-          <a className="hover:text-brand-primary focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-accent focus-visible:ring-offset-4" href="#propiedades">Propiedades</a>
-          <a className="hover:text-brand-primary focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-accent focus-visible:ring-offset-4" href="#servicios">Servicios</a>
-          <a className="hover:text-brand-primary focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-accent focus-visible:ring-offset-4" href="#contacto">Contacto</a>
+          {navigation.map((item) => <a key={item.href} className="hover:text-copper focus:outline-none focus-visible:ring-2 focus-visible:ring-copper" href={item.href}>{item.label}</a>)}
         </nav>
       </div>
     </footer>
@@ -297,13 +435,16 @@ function Footer() {
 
 export function App() {
   return (
-    <div className="min-h-screen bg-stone-50 text-slate-900 antialiased">
+    <div className="min-h-screen bg-carbon text-carbon antialiased">
       <Header />
       <main id="contenido" tabIndex={-1} className="focus:outline-none">
         <Hero />
-        <FeaturedProperties />
-        <Services />
-        <ContactCta />
+        <FirmNarrative />
+        <ProcessSection />
+        <Methodology />
+        <Opportunities />
+        <Faq />
+        <AccessCta />
       </main>
       <Footer />
     </div>

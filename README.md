@@ -1,23 +1,27 @@
 # Realstate
 
-Webapp inmobiliaria para presentar oportunidades de real estate con una base pública profesional, responsive y preparada para catálogo real.
+Webapp inmobiliaria para presentar oportunidades de real estate con una base pública institucional, responsive y preparada para una futura zona privada de inversores.
 
 ## Estado actual
 
-La aplicación desplegada incluye una landing pública mobile-first con:
+La aplicación desplegada incluye una landing pública mobile-first refinada con:
 
-- cabecera, navegación y footer;
-- hero con propuesta de valor;
-- buscador visual de propiedades;
-- selector comprar/alquilar, ubicación, tipo y precio máximo;
-- propiedades destacadas con datos mock realistas;
-- servicios/ventajas;
-- CTA de contacto;
+- hero visual con imagen arquitectónica generada específicamente para Realstate, overlay oscuro y CTAs jerarquizados;
+- identidad propia basada en carbón profundo, marfil cálido, verde mineral y cobre oscuro;
+- titulares editoriales con serif contemporánea y UI tecnológica con sans legible;
+- narrativa corporativa antes de oportunidades;
+- tesis de inversión, metodología, tecnología y análisis;
+- indicadores de proceso sin métricas no verificadas;
+- oportunidades públicas demo con rentabilidad objetivo estimada, plazo, ticket mínimo, capital objetivo, capital comprometido, estado, nivel de riesgo y progreso;
+- menú móvil fullscreen accesible con Escape, foco atrapado, restauración de foco, bloqueo de scroll y selector ES/EN preparado;
+- FAQ, CTA de acceso privado futuro y footer;
 - página visual 404 para rutas desconocidas;
 - metadatos SEO básicos y favicon propio;
 - cabeceras de seguridad configuradas en Caddy.
 
-La base de datos, autenticación, CRUD, panel administrativo y catálogo real quedan para hitos posteriores.
+Las oportunidades y cifras visibles son demo y están marcadas como datos ilustrativos. No se publica capital gestionado, rentabilidad histórica, número de proyectos, volumen de análisis, oficinas ni presencia internacional hasta tener datos verificables.
+
+La base de datos, autenticación, CRUD, panel administrativo, captación persistente, catálogo real y zona privada funcional quedan para hitos posteriores.
 
 ## Stack
 
@@ -33,6 +37,7 @@ pnpm typecheck
 pnpm test
 pnpm test:e2e
 pnpm build
+pnpm audit --audit-level=low
 bash -n scripts/*.sh
 git diff --check
 ./scripts/deploy.sh

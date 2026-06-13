@@ -2,21 +2,23 @@ import { AxeBuilder } from '@axe-core/playwright';
 import { expect, test } from '@playwright/test';
 
 test.describe('public landing', () => {
-  test('loads the home page, navigation and search experience', async ({ page }) => {
+  test('loads the refined institutional home page, narrative and opportunity cards', async ({ page }) => {
     await page.goto('/');
 
     await expect(
       page.getByRole('heading', {
-        name: /encuentra una propiedad con criterio, datos y acompañamiento experto/i
+        name: /inversión inmobiliaria con disciplina, datos y seguimiento operativo/i
       })
     ).toBeVisible();
     await expect(page.getByRole('navigation', { name: /navegación principal/i })).toBeVisible();
-    await expect(page.getByRole('search', { name: /buscar propiedades/i })).toBeVisible();
-    await expect(page.getByLabel(/ubicación/i)).toBeVisible();
-    await expect(page.getByRole('article', { name: /propiedad destacada/i })).toHaveCount(3);
+    await expect(page.getByRole('heading', { name: /tesis de inversión/i })).toBeVisible();
+    await expect(page.getByRole('heading', { name: /tecnología y análisis/i })).toBeVisible();
+    await expect(page.getByRole('article', { name: /oportunidad demo/i })).toHaveCount(3);
+    await expect(page.getByText(/datos ilustrativos/i).first()).toBeVisible();
+    await expect(page.getByText(/retorno histórico/i)).toHaveCount(0);
   });
 
-  test('supports basic keyboard navigation', async ({ page }) => {
+  test('supports skip link keyboard navigation', async ({ page }) => {
     await page.goto('/');
 
     await page.keyboard.press('Tab');
@@ -46,7 +48,25 @@ test.describe('public landing', () => {
     }));
 
     expect(metrics.scrollWidth).toBeLessThanOrEqual(metrics.clientWidth);
-    await expect(page.getByRole('search', { name: /buscar propiedades/i })).toBeVisible();
+    await expect(page.getByRole('heading', { name: /inversión inmobiliaria/i })).toBeVisible();
+  });
+
+  test('provides an accessible fullscreen mobile menu with Escape close and focus restore', async ({ page }) => {
+    await page.setViewportSize({ width: 375, height: 812 });
+    await page.goto('/');
+
+    const menuButton = page.getByRole('button', { name: /abrir menú/i });
+    await menuButton.focus();
+    await menuButton.press('Enter');
+    const dialog = page.getByRole('dialog', { name: /menú de navegación/i });
+    await expect(dialog).toBeVisible();
+    await expect(dialog.getByRole('link', { name: /solicitar acceso/i })).toBeVisible();
+    await expect(dialog.getByRole('link', { name: /acceso inversores/i })).toBeVisible();
+    await expect(dialog.getByRole('button', { name: /idioma español seleccionado/i })).toBeVisible();
+
+    await page.keyboard.press('Escape');
+    await expect(page.getByRole('dialog', { name: /menú de navegación/i })).toHaveCount(0);
+    await expect(menuButton).toBeFocused();
   });
 
   test('shows a visual not found page for unknown SPA routes', async ({ page }) => {
