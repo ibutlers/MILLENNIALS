@@ -72,6 +72,13 @@ function checkOrigin(request: { method: string; headers: Record<string, string |
     return;
   }
 
+  // Allow localhost origins in E2E/test environments (different ports = different origins)
+  const isE2E = process.env.E2E_TEST_MODE === 'true' || process.env.NODE_ENV === 'test' || process.env.NODE_ENV === 'e2e';
+  if (isE2E && (origin.startsWith('http://127.0.0.1:') || origin.startsWith('http://localhost:'))) {
+    SAFE_ORIGINS.add(origin);
+    return;
+  }
+
   throw Object.assign(new Error('Invalid origin'), { statusCode: 403 });
 }
 

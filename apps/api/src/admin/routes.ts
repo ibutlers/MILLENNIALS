@@ -157,9 +157,9 @@ export function registerAdminRoutes(app: FastifyInstance, options: { pool: Pool;
     const slug = b.slug || `opp-${Date.now().toString(36)}`;
     const title = b.title || 'Sin t\u00edtulo';
     const { rows: [opp] } = await pool.query(
-      `INSERT INTO opportunities (slug, title, short_description, city, country_code, asset_type, strategy, editorial_status, visibility, status, version)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,'draft','private','coming_soon',1) RETURNING *`,
-      [slug, title, b.shortDescription || '', b.city || '', b.countryCode || 'ES', b.assetType || '', b.strategy || '']
+      `INSERT INTO opportunities (slug, title, short_description, description, city, country_code, asset_type, strategy, currency, target_amount_cents, minimum_investment_cents, estimated_term_months, target_return_type, risk_level, editorial_status, visibility, status, version)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,'draft','private','coming_soon',1) RETURNING *`,
+      [slug, title, b.shortDescription || '', b.description || '', b.city || '', b.countryCode || 'ES', b.assetType || '', b.strategy || '', b.currency || 'EUR', b.targetAmountCents || 0, b.minimumInvestmentCents || 0, b.estimatedTermMonths || 12, b.targetReturnType || 'target_irr', b.riskLevel || 'medium']
     );
     return reply.status(201).send({ data: opp });
   });
@@ -208,7 +208,7 @@ export function registerAdminRoutes(app: FastifyInstance, options: { pool: Pool;
       );
       if (opp) {
         await pool.query('INSERT INTO opportunity_versions (opportunity_id, version, data) VALUES ($1,$2,$3)', [oppId, newVersion, JSON.stringify(opp)]).catch(() => {});
-        await pool.query("INSERT INTO audit_events (actor_id, event_type, entity_type, entity_reference, summary) VALUES ($1,$2,$3,$4,$5)", ['system', 'opportunity_updated', 'opportunity', opp.slug, `Updated, version ${newVersion}`]).catch(() => {});
+        await pool.query("INSERT INTO audit_events (user_id, event_type, entity_type, entity_reference, summary) VALUES ($1,$2,$3,$4,$5)", ['system', 'opportunity_updated', 'opportunity', opp.slug, `Updated, version ${newVersion}`]).catch(() => {});
       }
       return { data: opp };
     }
@@ -226,7 +226,7 @@ export function registerAdminRoutes(app: FastifyInstance, options: { pool: Pool;
       [oppId]
     );
     if (!rows[0]) return reply.status(400).send({ error: { code: 'invalid_state', message: 'No se puede publicar esta oportunidad.' } });
-    await pool.query("INSERT INTO audit_events (actor_id, event_type, entity_type, entity_reference, summary) VALUES ($1,$2,$3,$4,$5)", ['system', 'opportunity_published', 'opportunity', rows[0].slug, 'Published']).catch(() => {});
+    await pool.query("INSERT INTO audit_events (user_id, event_type, entity_type, entity_reference, summary) VALUES ($1,$2,$3,$4,$5)", ['system', 'opportunity_published', 'opportunity', rows[0].slug, 'Published']).catch(() => {});
     return { data: rows[0] };
   });
 
@@ -240,7 +240,7 @@ export function registerAdminRoutes(app: FastifyInstance, options: { pool: Pool;
       [oppId]
     );
     if (!opp) return reply.status(404).send({ error: { code: 'not_found', message: 'Oportunidad no encontrada.' } });
-    await pool.query("INSERT INTO audit_events (actor_id, event_type, entity_type, entity_reference, summary) VALUES ($1,$2,$3,$4,$5)", ['system', 'opportunity_unpublished', 'opportunity', opp.slug, 'Unpublished']).catch(() => {});
+    await pool.query("INSERT INTO audit_events (user_id, event_type, entity_type, entity_reference, summary) VALUES ($1,$2,$3,$4,$5)", ['system', 'opportunity_unpublished', 'opportunity', opp.slug, 'Unpublished']).catch(() => {});
     return { data: opp };
   });
 
@@ -254,7 +254,7 @@ export function registerAdminRoutes(app: FastifyInstance, options: { pool: Pool;
       [oppId]
     );
     if (!opp) return reply.status(404).send({ error: { code: 'not_found', message: 'Oportunidad no encontrada.' } });
-    await pool.query("INSERT INTO audit_events (actor_id, event_type, entity_type, entity_reference, summary) VALUES ($1,$2,$3,$4,$5)", ['system', 'opportunity_archived', 'opportunity', opp.slug, 'Archived']).catch(() => {});
+    await pool.query("INSERT INTO audit_events (user_id, event_type, entity_type, entity_reference, summary) VALUES ($1,$2,$3,$4,$5)", ['system', 'opportunity_archived', 'opportunity', opp.slug, 'Archived']).catch(() => {});
     return { data: opp };
   });
 
@@ -314,7 +314,7 @@ export function registerAdminRoutes(app: FastifyInstance, options: { pool: Pool;
     const { rows: [lead] } = await pool.query('SELECT id FROM leads WHERE public_reference=$1', [(req.params as any).reference]);
     if (!lead) return reply.status(404).send({ error: { code: 'not_found', message: 'Lead no encontrado.' } });
     await pool.query('INSERT INTO lead_notes (lead_id, author_id, content) VALUES ($1,$2,$3)', [lead.id, '00000000-0000-0000-0000-000000000000', body.content]);
-    await pool.query("INSERT INTO audit_events (actor_id, event_type, entity_type, entity_reference, summary) VALUES ($1,$2,$3,$4,$5)", ['system', 'lead_note_added', 'lead', (req.params as any).reference, 'Note added']).catch(() => {});
+    await pool.query("INSERT INTO audit_events (user_id, event_type, entity_type, entity_reference, summary) VALUES ($1,$2,$3,$4,$5)", ['system', 'lead_note_added', 'lead', (req.params as any).reference, 'Note added']).catch(() => {});
     return reply.status(201).send({ data: { created: true } });
   });
 
@@ -393,7 +393,7 @@ export function registerAdminRoutes(app: FastifyInstance, options: { pool: Pool;
   }, async (req, reply) => {
     const q = paginationSchema.parse(req.query);
     const { rows } = await pool.query(
-      'SELECT id, actor_id, event_type, entity_type, entity_reference, summary, created_at FROM audit_events ORDER BY created_at DESC LIMIT $1 OFFSET $2',
+      'SELECT id, user_id, event_type, entity_type, entity_reference, summary, created_at FROM audit_events ORDER BY created_at DESC LIMIT $1 OFFSET $2',
       [q.limit, q.offset]
     );
     const { rows: [{ count }] } = await pool.query('SELECT count(*)::int FROM audit_events');
@@ -578,7 +578,7 @@ export function registerAdminRoutes(app: FastifyInstance, options: { pool: Pool;
 
       // Audit
       await client.query(
-        "INSERT INTO audit_events (actor_id, event_type, entity_type, entity_reference, summary) VALUES ($1,$2,$3,$4,$5)",
+        "INSERT INTO audit_events (user_id, event_type, entity_type, entity_reference, summary) VALUES ($1,$2,$3,$4,$5)",
         ['system', 'opportunity_subentities_updated', 'opportunity', opp.slug, `Sub-entities updated, version ${newVersion}`]
       );
 
@@ -665,7 +665,7 @@ export function registerAdminRoutes(app: FastifyInstance, options: { pool: Pool;
         ]
       );
 
-      await client.query("INSERT INTO audit_events (actor_id, event_type, entity_type, entity_reference, summary) VALUES ($1,$2,$3,$4,$5)",
+      await client.query("INSERT INTO audit_events (user_id, event_type, entity_type, entity_reference, summary) VALUES ($1,$2,$3,$4,$5)",
         ['system', 'version_restored', 'opportunity', current.slug, `Restored version ${restoreVersion} as draft (v${newVersion})`]);
       await client.query('COMMIT');
       return { data: restored, meta: { restoredFrom: restoreVersion, newVersion } };
@@ -819,7 +819,7 @@ export function registerAdminRoutes(app: FastifyInstance, options: { pool: Pool;
 
     // Audit
     await pool.query(
-      "INSERT INTO audit_events (actor_id, event_type, entity_type, entity_reference, summary) VALUES ($1,$2,$3,$4,$5)",
+      "INSERT INTO audit_events (user_id, event_type, entity_type, entity_reference, summary) VALUES ($1,$2,$3,$4,$5)",
       ['system', `opportunity_${to}`, 'opportunity', current.slug, `Transitioned from ${current.editorial_status} to ${to}`]
     ).catch(() => {});
 

@@ -336,14 +336,14 @@ export class AuthRepository {
 
       // Delete any existing unconsumed verification tokens for this user
       await client.query(
-        `DELETE FROM verification_tokens
+        `DELETE FROM email_verification_tokens
          WHERE user_id = $1 AND consumed_at IS NULL`,
         [userId],
       );
 
       // Insert the new token
       await client.query(
-        `INSERT INTO verification_tokens (user_id, token_hash, expires_at)
+        `INSERT INTO email_verification_tokens (user_id, token_hash, expires_at)
          VALUES ($1, $2, $3)`,
         [userId, tokenHash, expiresAt.toISOString()],
       );
@@ -362,7 +362,7 @@ export class AuthRepository {
     tokenHash: string,
   ): Promise<{ userId: string } | null> {
     const result = await this.pool.query(
-      `UPDATE verification_tokens
+      `UPDATE email_verification_tokens
        SET consumed_at = now()
        WHERE token_hash = $1
          AND consumed_at IS NULL
