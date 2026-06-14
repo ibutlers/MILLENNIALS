@@ -1,0 +1,55 @@
+version: "3.8"
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: realstate_e2e
+      POSTGRES_PASSWORD: e2e_test_password
+      POSTGRES_DB: realstate_e2e
+    ports:
+      - "127.0.0.1:5433:5432"
+    volumes:
+      - e2e_postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U realstate_e2e -d realstate_e2e"]
+      interval: 2s
+      timeout: 5s
+      retries: 10
+
+  api:
+    build:
+      context: ..
+      dockerfile: apps/api/Dockerfile
+    environment:
+      DATABASE_URL: postgres://realstate_e2e:e2e_test_password@postgres:5432/realstate_e2e
+      AUTH_ENABLED: "true"
+      REGISTRATION_ENABLED: "true"
+      EMAIL_DELIVERY_ENABLED: "true"
+      ADMIN_ENABLED: "true"
+      ADMIN_MEDIA_UPLOAD_ENABLED: "false"
+      DEMO_SEED_ENABLED: "true"
+      LEADS_ENABLED: "true"
+      APP_BASE_URL: http://127.0.0.1:8089
+      SESSION_COOKIE_SECURE: "false"
+      PRIVACY_CONTROLLER_NAME: "Realstate E2E Test"
+      PRIVACY_CONTACT_EMAIL: "e2e@realstate.test"
+      PRIVACY_POLICY_VERSION: "2026-06-e2e"
+    ports:
+      - "127.0.0.1:8089:3000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  frontend:
+    build:
+      context: ..
+      dockerfile: apps/web/Dockerfile
+    environment:
+      VITE_API_URL: http://127.0.0.1:8089
+    ports:
+      - "127.0.0.1:8090:80"
+    depends_on:
+      - api
+
+volumes:
+  e2e_postgres_data:

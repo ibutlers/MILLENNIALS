@@ -399,4 +399,286 @@ export function registerAdminRoutes(app: FastifyInstance, options: { pool: Pool;
     const { rows: [{ count }] } = await pool.query('SELECT count(*)::int FROM audit_events');
     return buildPaginatedResponse(rows, Number(count), q.limit, q.offset);
   });
+
+  // ══════════════════════════════════════
+  // Sub-entities — transactional update
+  // ══════════════════════════════════════
+
+  const subEntitiesSchema = z.object({
+    highlights: z.array(z.object({
+      _id: z.string().optional(),
+      label: z.string().min(1).max(200),
+      value: z.string().min(1).max(500),
+      position: z.number().int().min(0),
+    })).optional(),
+    risks: z.array(z.object({
+      _id: z.string().optional(),
+      title: z.string().min(1).max(200),
+      description: z.string().min(1).max(2000),
+      position: z.number().int().min(0),
+    })).optional(),
+    milestones: z.array(z.object({
+      _id: z.string().optional(),
+      title: z.string().min(1).max(200),
+      description: z.string().min(1).max(2000),
+      plannedDate: z.string().nullable().optional(),
+      completedAt: z.string().nullable().optional(),
+      position: z.number().int().min(0),
+    })).optional(),
+    media: z.array(z.object({
+      _id: z.string().optional(),
+      assetId: z.string().min(1).max(100),
+      altText: z.string().max(500).optional().default(''),
+      isPrimary: z.boolean().optional().default(false),
+      position: z.number().int().min(0),
+    })).optional(),
+    version: z.number().int().min(1),
+  });
+
+  app.patch('/api/v1/admin/opportunities/:id/subentities', {
+    preHandler: [adminGate(config), requireRole(pool, 'admin', 'operator')]
+  }, async (req, reply) => {
+    const oppId = (req.params as any).id;
+    const body = subEntitiesSchema.parse(req.body);
+
+    // Version check
+    const { rows: [current] } = await pool.query('SELECT id, version FROM opportunities WHERE id = $1', [oppId]);
+    if (!current) return reply.status(404).send({ error: { code: 'not_found', message: 'Oportunidad no encontrada.' } });
+    if (body.version !== current.version) {
+      return reply.status(409).send({
+        error: { code: 'version_conflict', message: 'La oportunidad fue modificada por otro usuario.', currentVersion: current.version, providedVersion: body.version }
+      });
+    }
+
+    const client = await pool.connect();
+    try {
+      await client.query('BEGIN');
+
+      // Highlights
+      if (body.highlights !== undefined) {
+        await client.query('DELETE FROM opportunity_highlights WHERE opportunity_id = $1', [oppId]);
+        for (const h of body.highlights) {
+          await client.query(
+            'INSERT INTO opportunity_highlights (opportunity_id, label, value, position) VALUES ($1,$2,$3,$4)',
+            [oppId, h.label, h.value, h.position]
+          );
+        }
+      }
+
+      // Risks
+      if (body.risks !== undefined) {
+        await client.query('DELETE FROM opportunity_risks WHERE opportunity_id = $1', [oppId]);
+        for (const r of body.risks) {
+          await client.query(
+            'INSERT INTO opportunity_risks (opportunity_id, title, description, position) VALUES ($1,$2,$3,$4)',
+            [oppId, r.title, r.description, r.position]
+          );
+        }
+      }
+
+      // Milestones
+      if (body.milestones !== undefined) {
+        await client.query('DELETE FROM opportunity_milestones WHERE opportunity_id = $1', [oppId]);
+        for (const m of body.milestones) {
+          await client.query(
+            'INSERT INTO opportunity_milestones (opportunity_id, title, description, planned_date, completed_at, position) VALUES ($1,$2,$3,$4,$5,$6)',
+            [oppId, m.title, m.description, m.plannedDate || null, m.completedAt || null, m.position]
+          );
+        }
+      }
+
+      // Media
+      if (body.media !== undefined) {
+        await client.query('DELETE FROM opportunity_media WHERE opportunity_id = $1', [oppId]);
+        for (const md of body.media) {
+          await client.query(
+            'INSERT INTO opportunity_media (opportunity_id, type, url, alt_text, position) VALUES ($1,$2,$3,$4,$5)',
+            [oppId, md.isPrimary ? 'primary' : 'secondary', `/assets/${md.assetId}`, md.altText || '', md.position]
+          );
+        }
+      }
+
+      // Bump version
+      const newVersion = current.version + 1;
+      const { rows: [opp] } = await client.query(
+        'UPDATE opportunities SET version = $1, updated_at = now() WHERE id = $2 RETURNING *',
+        [newVersion, oppId]
+      );
+
+      // Snapshot
+      await client.query(
+        'INSERT INTO opportunity_versions (opportunity_id, version, data) VALUES ($1,$2,$3)',
+        [oppId, newVersion, JSON.stringify(opp)]
+      );
+
+      // Audit
+      await client.query(
+        "INSERT INTO audit_events (actor_id, event_type, entity_type, entity_reference, summary) VALUES ($1,$2,$3,$4,$5)",
+        ['system', 'opportunity_subentities_updated', 'opportunity', opp.slug, `Sub-entities updated, version ${newVersion}`]
+      );
+
+      await client.query('COMMIT');
+      return { data: opp };
+    } catch (err) {
+      await client.query('ROLLBACK');
+      throw err;
+    } finally {
+      client.release();
+    }
+  });
+
+  // ══════════════════════════════════════
+  // Preview
+  // ══════════════════════════════════════
+  app.get('/api/v1/admin/opportunities/:id/preview', {
+    preHandler: [adminGate(config), requireRole(pool, 'admin', 'operator')]
+  }, async (req, reply) => {
+    const oppId = (req.params as any).id;
+    const { rows: [opp] } = await pool.query('SELECT * FROM opportunities WHERE id = $1', [oppId]);
+    if (!opp) return reply.status(404).send({ error: { code: 'not_found', message: 'Oportunidad no encontrada.' } });
+
+    // Fetch sub-entities
+    const [{ rows: highlights }, { rows: risks }, { rows: milestones }, { rows: media }] = await Promise.all([
+      pool.query('SELECT * FROM opportunity_highlights WHERE opportunity_id = $1 ORDER BY position', [oppId]),
+      pool.query('SELECT * FROM opportunity_risks WHERE opportunity_id = $1 ORDER BY position', [oppId]),
+      pool.query('SELECT * FROM opportunity_milestones WHERE opportunity_id = $1 ORDER BY position', [oppId]),
+      pool.query('SELECT * FROM opportunity_media WHERE opportunity_id = $1 ORDER BY position', [oppId]),
+    ]);
+
+    return {
+      data: { ...opp, highlights, risks, milestones, media },
+      meta: { preview: true, message: 'Vista previa privada — no compartir públicamente' }
+    };
+  });
+
+  // ══════════════════════════════════════
+  // Version history
+  // ══════════════════════════════════════
+  const versionQuerySchema = z.object({
+    limit: z.coerce.number().int().min(1).max(20).default(10),
+    offset: z.coerce.number().int().min(0).default(0),
+  });
+
+  app.get('/api/v1/admin/opportunities/:id/versions', {
+    preHandler: [adminGate(config), requireRole(pool, 'admin', 'operator')]
+  }, async (req, reply) => {
+    const oppId = (req.params as any).id;
+    const q = versionQuerySchema.parse(req.query);
+
+    // Check opportunity exists
+    const { rows: [opp] } = await pool.query('SELECT id FROM opportunities WHERE id = $1', [oppId]);
+    if (!opp) return reply.status(404).send({ error: { code: 'not_found', message: 'Oportunidad no encontrada.' } });
+
+    const { rows } = await pool.query(
+      'SELECT version, created_at, summary FROM audit_events WHERE entity_type = $1 AND entity_reference = (SELECT slug FROM opportunities WHERE id = $2) ORDER BY created_at DESC LIMIT $3 OFFSET $4',
+      ['opportunity', oppId, q.limit, q.offset]
+    );
+    const { rows: [{ count }] } = await pool.query(
+      'SELECT count(*)::int FROM audit_events WHERE entity_type = $1 AND entity_reference = (SELECT slug FROM opportunities WHERE id = $2)',
+      ['opportunity', oppId]
+    );
+    return buildPaginatedResponse(rows, Number(count), q.limit, q.offset);
+  });
+
+  // ══════════════════════════════════════
+  // Workflow transition validation helper
+  // ══════════════════════════════════════
+  const VALID_TRANSITIONS: Record<string, string[]> = {
+    draft: ['review'],
+    review: ['draft', 'published'],
+    published: ['unlisted', 'private', 'archived'],
+    unlisted: ['published', 'private', 'archived'],
+    private: ['draft', 'review', 'archived'],
+    archived: [], // no transitions from archived
+  };
+
+  function validateTransition(from: string, to: string, role: string): boolean {
+    if (role === 'admin') {
+      // Admin can do any defined transition
+      return (VALID_TRANSITIONS[from] || []).includes(to);
+    }
+    // Operator can only: draft → review, review → draft
+    if (role === 'operator') {
+      const operatorAllowed: Record<string, string[]> = {
+        draft: ['review'],
+        review: ['draft'],
+      };
+      return (operatorAllowed[from] || []).includes(to);
+    }
+    return false;
+  }
+
+  // ── Workflow endpoint ──
+  const transitionSchema = z.object({
+    to: z.enum(['draft', 'review', 'published', 'unlisted', 'private', 'archived']),
+  });
+
+  app.post('/api/v1/admin/opportunities/:id/transition', {
+    preHandler: [adminGate(config), requireRole(pool, 'admin', 'operator')]
+  }, async (req, reply) => {
+    const oppId = (req.params as any).id;
+    const { to } = transitionSchema.parse(req.body);
+
+    const { rows: [current] } = await pool.query('SELECT id, slug, editorial_status FROM opportunities WHERE id = $1', [oppId]);
+    if (!current) return reply.status(404).send({ error: { code: 'not_found', message: 'Oportunidad no encontrada.' } });
+
+    // Get user role from auth context
+    const user = (req as any)._authUser;
+    const role = user?.roles?.includes('admin') ? 'admin' : 'operator';
+
+    if (!validateTransition(current.editorial_status, to, role)) {
+      return reply.status(409).send({
+        error: { code: 'invalid_transition', message: `No se permite la transición de ${current.editorial_status} a ${to}.` }
+      });
+    }
+
+    // If publishing, validate completeness
+    if (to === 'published') {
+      const { rows: [counts] } = await pool.query(
+        `SELECT
+          (SELECT count(*) FROM opportunity_risks WHERE opportunity_id = $1) as risk_count,
+          (SELECT count(*) FROM opportunity_media WHERE opportunity_id = $1) as media_count
+        `, [oppId]
+      );
+      const { rows: [opp] } = await pool.query('SELECT title, slug, description, city, target_return_type FROM opportunities WHERE id = $1', [oppId]);
+      const errors: string[] = [];
+      if (!opp.title) errors.push('Falta el título');
+      if (!opp.slug) errors.push('Falta el slug');
+      if (!opp.description) errors.push('Falta la descripción');
+      if (!opp.city) errors.push('Falta la ciudad');
+      if (!opp.target_return_type) errors.push('Falta el tipo de retorno');
+      if (Number(counts?.risk_count || 0) === 0) errors.push('Se requiere al menos un riesgo');
+      if (Number(counts?.media_count || 0) === 0) errors.push('Se requiere al menos una imagen');
+      if (errors.length > 0) {
+        return reply.status(422).send({ error: { code: 'validation_failed', message: 'Validación de publicación fallida', details: errors } });
+      }
+    }
+
+    // Apply transition
+    const visibilityMap: Record<string, string> = {
+      published: 'public', unlisted: 'unlisted', private: 'private',
+      draft: 'private', review: 'private', archived: 'private',
+    };
+    const newVersion = current.version + 1;
+    const { rows: [updated] } = await pool.query(
+      `UPDATE opportunities SET editorial_status = $1, visibility = $2, version = $3, updated_at = now(),
+       published_at = CASE WHEN $1 = 'published' THEN COALESCE(published_at, now()) ELSE published_at END
+       WHERE id = $4 RETURNING *`,
+      [to, visibilityMap[to] || 'private', current.version + 1, oppId]
+    );
+
+    // Audit
+    await pool.query(
+      "INSERT INTO audit_events (actor_id, event_type, entity_type, entity_reference, summary) VALUES ($1,$2,$3,$4,$5)",
+      ['system', `opportunity_${to}`, 'opportunity', current.slug, `Transitioned from ${current.editorial_status} to ${to}`]
+    ).catch(() => {});
+
+    // Snapshot
+    await pool.query(
+      'INSERT INTO opportunity_versions (opportunity_id, version, data) VALUES ($1,$2,$3)',
+      [oppId, newVersion, JSON.stringify(updated)]
+    ).catch(() => {});
+
+    return { data: updated };
+  });
 }
