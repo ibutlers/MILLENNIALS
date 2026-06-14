@@ -94,7 +94,7 @@ export function registerAdminRoutes(app: FastifyInstance, options: { pool: Pool;
   app.get('/api/v1/admin/leads/:reference', { preHandler: [requireRole(pool, 'admin', 'operator')] }, async (req: any, reply: any) => {
     if (!gate(reply)) return;
     const { rows } = await pool.query(
-      'SELECT l.*, COALESCE(json_agg(json_build_object(\\'id\\', ln.id, \\'content\\', ln.content, \\'author_id\\', ln.author_id, \\'created_at\\', ln.created_at)) FILTER (WHERE ln.id IS NOT NULL), \\'[]\\') as notes FROM leads l LEFT JOIN lead_notes ln ON ln.lead_id = l.id WHERE l.public_reference = $1 GROUP BY l.id',
+      'SELECT l.* FROM leads l WHERE l.public_reference = $1',
       [(req.params as any).reference]
     );
     if (!rows[0]) return reply.status(404).send({ error: { code: 'not_found' } });
