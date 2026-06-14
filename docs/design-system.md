@@ -4,81 +4,87 @@ Principios: sobrio, rápido, mobile-first, accesible, transparente y orientado a
 
 ## Personalidad visual
 
-MILLENNIALS CONSTRUYEN | CAPITAL debe sentirse como una plataforma inmobiliaria profesional con criterio inversor, no como una plantilla de portal ni como una copia de referencias externas. La identidad actual se aleja del negro/cobre dominante y se basa en:
+MILLENNIALS CONSTRUYEN | CAPITAL debe sentirse como una plataforma inmobiliaria profesional con criterio inversor, no como una plantilla de portal ni como una copia de referencias externas. La identidad se basa en:
 
-- azul petróleo profundo para la base institucional;
-- marfil cálido para lectura editorial;
-- verde mineral para acción, foco y estados interactivos principales;
-- azul grisáceo para bordes y separadores;
-- bronce editorial solo como microdetalle secundario;
-- serif contemporánea para titulares, mensajes institucionales y cifras demo;
-- sans serif legible para navegación, labels, datos y cuerpo;
+- **navy charcoal** para la base institucional — neutro, atemporal, premium;
+- **cream cálido** para lectura editorial;
+- **amber gold** para acción, foco y estados interactivos principales — transmite prosperidad y exige jerarquía;
+- **forest green** exclusivamente como color semántico: progreso de financiación, hitos completados, éxito;
+- **tan editorial** solo como microdetalle secundario (disclaimers, separadores decorativos);
+- **serif contemporánea** para titulares, mensajes institucionales y cifras demo;
+- **sans serif legible** para navegación, labels, datos y cuerpo;
 - UI precisa con bordes finos, separadores, tarjetas estructuradas y estados de foco claros.
 
-## Tokens actuales
+## Tokens actuales — Palette v3 "Navy & Amber"
 
 Variables CSS base:
 
 ```css
---color-bg-primary: #08191C;
---color-bg-secondary: #10282C;
---color-surface-light: #F3EFE6;
---color-text-on-dark: #F7F4EC;
---color-text-on-light: #172126;
---color-text-muted: #8FA1A4;
---color-accent-primary: #7FA88C;
---color-accent-hover: #95B99F;
---color-editorial-detail: #9A765A;
---color-border: #294247;
---color-error: #B85C5C;
---color-warning: #C69A4B;
+--color-bg-primary: #0C1524;
+--color-bg-secondary: #141E30;
+--color-surface-light: #F7F3EC;
+--color-text-on-dark: #F0EBE0;
+--color-text-on-light: #1A202C;
+--color-text-muted: #8F9AA5;
+--color-accent-primary: #C9A44B;
+--color-accent-hover: #D9BA66;
+--color-editorial-detail: #B8926A;
+--color-success: #5B9A7C;
+--color-border: #2A3344;
+--color-error: #C75B5B;
+--color-warning: #D4A24E;
 ```
 
 Alias Tailwind:
 
-- `carbon`: `#08191C`.
-- `petroleum`: `#10282C`.
-- `ivory` / `stone`: `#F3EFE6`.
-- `textLight`: `#F7F4EC`.
-- `textDark`: `#172126`.
-- `muted`: `#8FA1A4`.
-- `mineral`: `#7FA88C`.
-- `mineralHover`: `#95B99F`.
-- `bronze`: `#9A765A`.
-- `border`: `#294247`.
-- `danger`: `#B85C5C`.
-- `warning`: `#C69A4B`.
+- `navy`: `#0C1524` — base oscura principal.
+- `navyLight`: `#141E30` — fondo secundario.
+- `cream` / `ivory` / `stone`: `#F7F3EC` — superficie clara de lectura.
+- `amber` / `mineral`: `#C9A44B` — acento principal, CTAs.
+- `amberHover` / `mineralHover`: `#D9BA66` — hover de acento.
+- `tan` / `bronze`: `#B8926A` — detalle editorial secundario.
+- `forest`: `#5B9A7C` — verde semántico: progreso, éxito, hitos.
+- `textLight`: `#F0EBE0` — texto sobre fondos oscuros.
+- `textDark`: `#1A202C` — texto sobre fondos claros.
+- `muted`: `#8F9AA5` — texto secundario.
+- `border`: `#2A3344` — bordes y separadores.
+- `danger`: `#C75B5B` — error.
+- `warning`: `#D4A24E` — advertencia funcional.
+
+Alias heredados preservados para compatibilidad: `carbon` → `navy`, `petroleum` → `navyLight`.
 
 ## Reglas de aplicación cromática
 
-- Fondo general oscuro en azul petróleo, no negro puro.
-- Hero con degradado azul petróleo y fotografía oscurecida.
-- CTAs principales en verde mineral.
-- Hover y focus en verde mineral más claro.
-- Textos principales en marfil cálido sobre fondos oscuros.
-- Bordes y separadores en azul grisáceo.
-- Bronce solo como detalle editorial muy secundario: líneas, etiquetas no críticas y microdetalles; nunca como color dominante ni como único indicador funcional.
-- Secciones claras en marfil cálido, evitando blanco puro.
-- Tarjetas con contraste suave entre `#08191C` y `#10282C`.
+- Fondo general oscuro en navy charcoal, no negro puro.
+- Hero con degradado navy y fotografía oscurecida.
+- **CTAs principales en amber gold** — nunca verde (el verde es semántico).
+- Hover y focus en amber más claro.
+- Textos principales en cream cálido sobre fondos oscuros.
+- Bordes y separadores en navy sutil.
+- **Tan solo como detalle editorial** muy secundario: líneas, etiquetas no críticas, disclaimers y microdetalles; nunca como color dominante ni como único indicador funcional.
+- Secciones claras en cream cálido, evitando blanco puro.
+- Tarjetas con contraste suave entre `navy` y `navyLight`.
+- **Forest green reservado exclusivamente para**: barras de progreso de financiación, indicadores de hitos completados, estados de éxito. Nunca para CTAs ni navegación.
 - Riesgo, advertencia y error deben usar colores semánticos accesibles, no color de marca.
 
 ## Contraste y accesibilidad
 
 Contrastes base comprobados:
 
-- `#F7F4EC` sobre `#08191C`: AA/AAA para texto normal.
-- `#8FA1A4` sobre `#08191C`: AA para texto normal.
-- `#7FA88C` sobre `#08191C`: AA para texto normal.
-- `#172126` sobre `#7FA88C`: AA para CTAs.
-- `#172126` sobre `#F3EFE6`: AA/AAA para texto normal.
+- `#F0EBE0` sobre `#0C1524`: AA/AAA para texto normal.
+- `#8F9AA5` sobre `#0C1524`: AA para texto normal.
+- `#C9A44B` sobre `#0C1524`: AA para texto grande.
+- `#1A202C` sobre `#C9A44B`: AA para CTAs.
+- `#1A202C` sobre `#F7F3EC`: AA/AAA para texto normal.
+- `#5B9A7C` sobre `#141E30`: AA para barras de progreso.
 
-`#9A765A` no debe usarse como texto pequeño sobre oscuro cuando sea información esencial: queda reservado a microdetalles editoriales o elementos con soporte semántico adicional.
+`#B8926A` no debe usarse como texto pequeño sobre oscuro cuando sea información esencial: queda reservado a microdetalles editoriales o elementos con soporte semántico adicional.
 
 ## Componentes actuales
 
 - `Header`: logotipo textual MILLENNIALS CONSTRUYEN | CAPITAL, navegación desktop, selector ES/EN preparado, acceso inversores y menú móvil.
 - Menú móvil fullscreen: dialog accesible, cierre visible, Escape, restauración de foco y bloqueo de scroll del fondo.
-- `Hero`: imagen arquitectónica generada específicamente para MILLENNIALS CONSTRUYEN | CAPITAL en WebP responsive con overlay azul petróleo oscuro, titular editorial y dos CTAs jerarquizados.
+- `Hero`: imagen arquitectónica generada específicamente para MILLENNIALS CONSTRUYEN | CAPITAL en WebP responsive con overlay navy oscuro, titular editorial y dos CTAs jerarquizados.
 - `FirmNarrative`: narrativa corporativa antes de oportunidades.
 - `ProcessSection`: indicadores de proceso sin cifras no verificadas.
 - `Methodology`: tesis, metodología, tecnología y análisis.
@@ -93,7 +99,7 @@ Contrastes base comprobados:
 
 Hasta disponer de datos verificables no se publican cifras de capital gestionado, rentabilidad histórica, número de proyectos reales, propiedades analizadas, redes de colaboradores, oficinas ni presencia internacional. Las oportunidades y cifras de este hito son demo y se etiquetan como datos ilustrativos.
 
-No usar “retorno histórico” en datos mock. Las tarjetas deben distinguir como mínimo:
+No usar «retorno histórico» en datos mock. Las tarjetas deben distinguir como mínimo:
 
 - rentabilidad objetivo estimada;
 - plazo estimado;
@@ -123,24 +129,24 @@ Detalle de oportunidad, filtros persistentes por query string, formularios con e
 
 Componentes públicos añadidos:
 
-- `OpportunitiesCatalogPage`: página `/oportunidades` con fondo azul petróleo, filtros en panel técnico, tarjetas marfil compactas y paginación.
+- `OpportunitiesCatalogPage`: página `/oportunidades` con fondo navy, filtros en panel técnico, tarjetas cream compactas y paginación.
 - `OpportunityCard`: tarjeta compacta con imagen local lazy, badges de estado/riesgo, métricas densas y progreso accesible.
-- `OpportunityDetailPage`: ficha visual `/oportunidades/:slug` con hero oscuro, imagen principal eager/fetch priority, cuerpo editorial marfil y aside sticky de métricas.
+- `OpportunityDetailPage`: ficha visual `/oportunidades/:slug` con hero oscuro, imagen principal eager/fetch priority, cuerpo editorial cream y aside sticky de métricas.
 - `FundingProgress`, `Metric`, `StatusBadge`, `RiskBadge`: primitives reutilizables para mantener riesgo visible junto a retorno y evitar depender solo del color.
 
 Reglas visuales específicas:
 
-- Catálogo: base azul petróleo, panel de filtros tecnológico, cards marfil para lectura y escaneo móvil.
-- Ficha: cabecera institucional oscura, contenido editorial claro, CTA mineral y riesgo con soporte textual.
+- Catálogo: base navy, panel de filtros tecnológico, cards cream para lectura y escaneo móvil.
+- Ficha: cabecera institucional oscura, contenido editorial claro, CTA amber y riesgo con soporte textual.
 - Imágenes fuera del hero/ficha principal usan `loading="lazy"`; la imagen principal de ficha usa dimensiones explícitas y prioridad alta.
 - No usar patrones visuales de portal inmobiliario masivo ni copiar composición de competidores.
 
 ## Hito 4 — formularios públicos
 
-Los formularios mantienen azul petróleo, marfil, verde mineral y bronce secundario. Reglas de UX:
+Los formularios mantienen navy, cream, amber y tan secundario. Reglas de UX:
 - labels visibles y ayuda contextual;
 - resumen accesible de errores con foco gestionado;
-- CTA mineral no transaccional;
+- CTA amber no transaccional;
 - estado desactivado honesto cuando falta configuración legal;
 - referencia pública visible solo tras éxito real;
 - honeypot invisible fuera del flujo de teclado;

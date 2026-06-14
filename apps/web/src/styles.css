@@ -4,18 +4,19 @@
 
 @layer base {
   :root {
-    --color-bg-primary: #08191c;
-    --color-bg-secondary: #10282c;
-    --color-surface-light: #f3efe6;
-    --color-text-on-dark: #f7f4ec;
-    --color-text-on-light: #172126;
-    --color-text-muted: #8fa1a4;
-    --color-accent-primary: #7fa88c;
-    --color-accent-hover: #95b99f;
-    --color-editorial-detail: #9a765a;
-    --color-border: #294247;
-    --color-error: #b85c5c;
-    --color-warning: #c69a4b;
+    --color-bg-primary: #0C1524;
+    --color-bg-secondary: #141E30;
+    --color-surface-light: #F7F3EC;
+    --color-text-on-dark: #F0EBE0;
+    --color-text-on-light: #1A202C;
+    --color-text-muted: #8F9AA5;
+    --color-accent-primary: #C9A44B;
+    --color-accent-hover: #D9BA66;
+    --color-editorial-detail: #B8926A;
+    --color-success: #5B9A7C;
+    --color-border: #2A3344;
+    --color-error: #C75B5B;
+    --color-warning: #D4A24E;
   }
 
   html {

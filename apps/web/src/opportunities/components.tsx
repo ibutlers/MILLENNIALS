@@ -40,7 +40,7 @@ export function FundingProgress({ value, dark = false }: { value: number; dark?:
         aria-valuenow={safeValue}
         className={`h-2 overflow-hidden ${dark ? 'bg-petroleum' : 'bg-carbon/12'}`}
       >
-        <div className="h-full bg-mineral" style={{ width: `${safeValue}%` }} />
+        <div className="h-full bg-forest" style={{ width: `${safeValue}%` }} />
       </div>
     </div>
   );

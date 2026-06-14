@@ -6,23 +6,32 @@ export default {
     extend: {
       colors: {
         brand: {
-          primary: '#7FA88C',
-          accent: '#9A765A',
-          hover: '#95B99F'
+          primary: '#C9A44B',
+          accent: '#B8926A',
+          hover: '#D9BA66'
         },
-        carbon: '#08191C',
-        petroleum: '#10282C',
-        ivory: '#F3EFE6',
-        mineral: '#7FA88C',
-        mineralHover: '#95B99F',
-        bronze: '#9A765A',
-        border: '#294247',
-        muted: '#8FA1A4',
-        textLight: '#F7F4EC',
-        textDark: '#172126',
-        warning: '#C69A4B',
-        danger: '#B85C5C',
-        stone: '#F3EFE6'
+        navy: '#0C1524',
+        navyLight: '#141E30',
+        cream: '#F7F3EC',
+        amber: '#C9A44B',
+        amberHover: '#D9BA66',
+        tan: '#B8926A',
+        forest: '#5B9A7C',
+        border: '#2A3344',
+        muted: '#8F9AA5',
+        textLight: '#F0EBE0',
+        textDark: '#1A202C',
+        warning: '#D4A24E',
+        danger: '#C75B5B',
+
+        // Legacy aliases preserved for existing component class references
+        carbon: '#0C1524',
+        petroleum: '#141E30',
+        ivory: '#F7F3EC',
+        stone: '#F7F3EC',
+        mineral: '#C9A44B',
+        mineralHover: '#D9BA66',
+        bronze: '#B8926A'
       },
       fontFamily: {
         sans: ['Inter', 'ui-sans-serif', 'system-ui', 'sans-serif'],

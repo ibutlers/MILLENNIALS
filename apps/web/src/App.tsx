@@ -315,7 +315,7 @@ function OpportunityCard({ opportunity }: { opportunity: PublicOpportunity }) {
         </dl>
         <div className="mt-6">
           <div className="mb-2 flex justify-between text-xs font-black uppercase tracking-[0.18em] text-muted"><span>Financiación</span><span>{progress}% demo</span></div>
-          <div className="h-2 bg-petroleum"><div className="h-2 bg-mineral" style={{ width: `${progress}%` }} /></div>
+          <div className="h-2 bg-petroleum"><div className="h-2 bg-forest" style={{ width: `${progress}%` }} /></div>
         </div>
         <a href={`/oportunidades/${opportunity.slug}`} className="mt-6 inline-flex border border-border px-4 py-3 text-xs font-black uppercase tracking-[0.16em] text-textLight transition hover:border-mineral hover:text-mineral focus:outline-none focus-visible:ring-2 focus-visible:ring-mineralHover">Ver oportunidad</a>
       </div>
