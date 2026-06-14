@@ -136,7 +136,7 @@ pnpm --filter @realstate/api db:seed
 
 `deploy.sh` ejecuta `node apps/api/dist/db/migrate.js` y después `node apps/api/dist/db/seed.js` mediante Compose antes de activar la release. Si una migración o seed falla, el despliegue se detiene y no cambia `current`.
 
-El migrador usa `schema_migrations` con checksum SHA-256 y `pg_advisory_lock` para evitar dos migradores simultáneos. No hay migraciones destructivas en Hito 2.
+El migrador usa `schema_migrations` con checksum SHA-256 y `pg_try_advisory_lock` para evitar dos migradores simultáneos sin bloquear indefinidamente. No hay migraciones destructivas en Hito 2.
 
 Los despliegues deben poder hacer rollback a la release anterior sin perder datos. Cualquier migración de base de datos debe ser retrocompatible durante al menos una release:
 
@@ -147,3 +147,26 @@ Los despliegues deben poder hacer rollback a la release anterior sin perder dato
 - documentar comandos manuales y plan de recuperación si una migración no puede ser reversible.
 
 Si una migración no es retrocompatible, detenerse antes del despliegue y solicitar autorización explícita.
+
+
+## Trazabilidad de commit desplegado
+
+Durante `./scripts/deploy.sh`, después de validar que `main` está limpio y sincronizado con `origin/main`, se calcula el SHA desplegado y se escribe en la nueva release:
+
+```bash
+cat /srv/deployments/realstate/current/REVISION
+git -C /srv/workspaces/realstate rev-parse HEAD
+```
+
+Ambos valores deben coincidir después de un despliegue correcto. `REVISION` contiene únicamente el SHA completo, no secretos ni metadatos sensibles. El script también informa `SHA desplegado: <sha>` durante el deploy.
+
+## Variables opcionales de readiness PostgreSQL
+
+`deploy.sh` acepta variables opcionales para controlar la espera de PostgreSQL antes de backup y migraciones:
+
+```dotenv
+REALSTATE_POSTGRES_READY_ATTEMPTS=30
+REALSTATE_POSTGRES_READY_SLEEP=2
+```
+
+Si no se definen, el script usa sus valores por defecto internos. En producción pueden ajustarse en `/srv/deployments/realstate/shared/.env` sin tocar el repositorio.

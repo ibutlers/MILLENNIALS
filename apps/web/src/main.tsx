@@ -5,6 +5,8 @@ import { createBrowserRouter, RouterProvider } from 'react-router';
 import { App } from './App';
 import { NotFound } from './NotFound';
 import { PlannedAccess } from './PlannedAccess';
+import { OpportunitiesCatalogPage } from './opportunities/OpportunitiesCatalogPage';
+import { OpportunityDetailPage } from './opportunities/OpportunityDetailPage';
 import './styles.css';
 
 const queryClient = new QueryClient();
@@ -34,6 +36,8 @@ const plannedInvestorRoutes = [
 
 const router = createBrowserRouter([
   { path: '/', element: <App /> },
+  { path: '/oportunidades', element: <OpportunitiesCatalogPage /> },
+  { path: '/oportunidades/:slug', element: <OpportunityDetailPage /> },
   ...plannedAccessRoutes.map((path) => ({ path, element: <PlannedAccess variant="access" /> })),
   ...plannedInvestorRoutes.map((path) => ({ path, element: <PlannedAccess variant="investors" /> })),
   { path: '*', element: <NotFound /> }

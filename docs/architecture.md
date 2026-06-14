@@ -155,3 +155,21 @@ Errores públicos siguen formato seguro:
 ```
 
 Los logs incluyen identificador de error y contexto seguro, sin credenciales ni SQL sensible.
+
+
+## Frontend Hito 3
+
+Rutas públicas visuales:
+
+- `/oportunidades`: catálogo público conectado a PostgreSQL vía API.
+- `/oportunidades/:slug`: ficha pública visual conectada a API.
+
+La navegación se gestiona con React Router y las rutas funcionan al navegar, abrir directamente y refrescar gracias al fallback SPA del frontend. TanStack Query gestiona cache, cancelación mediante `AbortSignal`, conservación de datos durante paginación y evita requests duplicadas.
+
+El cliente `apps/web/src/opportunities/api.ts` valida respuestas con Zod antes de renderizar. Si la API falla, el frontend muestra estados honestos y no inventa oportunidades.
+
+La URL del catálogo es la fuente del estado de filtros/orden/paginación. Al abrir una ficha desde el catálogo se preserva el query string para volver con filtros restaurados.
+
+## Trazabilidad de release
+
+Cada nueva release creada por `scripts/deploy.sh` incluye un archivo `REVISION` generado después de validar que `main` está limpia y coincide con `origin/main`. El archivo contiene únicamente el SHA completo desplegado.

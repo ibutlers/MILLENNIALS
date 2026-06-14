@@ -117,3 +117,20 @@ Diseño mobile-first validado en 375 px, 768 px y 1440 px. No debe existir scrol
 ## Componentes previstos siguientes
 
 Detalle de oportunidad, filtros persistentes por query string, formularios con estados de carga/error/éxito conectados a backend real, modelo de datos, documentación privada y zona de inversores funcional.
+
+
+## Hito 3 — catálogo y ficha
+
+Componentes públicos añadidos:
+
+- `OpportunitiesCatalogPage`: página `/oportunidades` con fondo azul petróleo, filtros en panel técnico, tarjetas marfil compactas y paginación.
+- `OpportunityCard`: tarjeta compacta con imagen local lazy, badges de estado/riesgo, métricas densas y progreso accesible.
+- `OpportunityDetailPage`: ficha visual `/oportunidades/:slug` con hero oscuro, imagen principal eager/fetch priority, cuerpo editorial marfil y aside sticky de métricas.
+- `FundingProgress`, `Metric`, `StatusBadge`, `RiskBadge`: primitives reutilizables para mantener riesgo visible junto a retorno y evitar depender solo del color.
+
+Reglas visuales específicas:
+
+- Catálogo: base azul petróleo, panel de filtros tecnológico, cards marfil para lectura y escaneo móvil.
+- Ficha: cabecera institucional oscura, contenido editorial claro, CTA mineral y riesgo con soporte textual.
+- Imágenes fuera del hero/ficha principal usan `loading="lazy"`; la imagen principal de ficha usa dimensiones explícitas y prioridad alta.
+- No usar patrones visuales de portal inmobiliario masivo ni copiar composición de competidores.

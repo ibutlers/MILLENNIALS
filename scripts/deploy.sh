@@ -54,6 +54,10 @@ HTTP_PORT="${HTTP_PORT:-8088}"
 
 DB_USER="$(read_env POSTGRES_USER)"
 DB_NAME="$(read_env POSTGRES_DB)"
+POSTGRES_READY_ATTEMPTS="$(read_env REALSTATE_POSTGRES_READY_ATTEMPTS)"
+POSTGRES_READY_SLEEP="$(read_env REALSTATE_POSTGRES_READY_SLEEP)"
+POSTGRES_READY_ATTEMPTS="${POSTGRES_READY_ATTEMPTS:-30}"
+POSTGRES_READY_SLEEP="${POSTGRES_READY_SLEEP:-2}"
 
 [[ "$(git -C "$SRC_DIR" branch --show-current)" == "main" ]] ||
   fail "El despliegue solo puede realizarse desde main"
@@ -63,7 +67,9 @@ DB_NAME="$(read_env POSTGRES_DB)"
 
 git -C "$SRC_DIR" fetch origin main
 
-[[ "$(git -C "$SRC_DIR" rev-parse HEAD)" == \
+DEPLOYED_SHA="$(git -C "$SRC_DIR" rev-parse HEAD)"
+
+[[ "$DEPLOYED_SHA" == \
    "$(git -C "$SRC_DIR" rev-parse origin/main)" ]] ||
   fail "main local no coincide con origin/main"
 
@@ -82,8 +88,8 @@ POSTGRES_CONTAINER="${PROJECT_NAME}-postgres-1"
 BACKUP_CREATED="false"
 
 wait_for_postgres() {
-  local attempts="${REALSTATE_POSTGRES_READY_ATTEMPTS:-60}"
-  local sleep_seconds="${REALSTATE_POSTGRES_READY_SLEEP:-1}"
+  local attempts="$POSTGRES_READY_ATTEMPTS"
+  local sleep_seconds="$POSTGRES_READY_SLEEP"
 
   for ((attempt = 1; attempt <= attempts; attempt += 1)); do
     if docker exec "$POSTGRES_CONTAINER" \
@@ -144,6 +150,9 @@ rsync -a --delete \
   "$RELEASE_DIR/"
 
 ln -sfn ../../shared/.env "$RELEASE_DIR/.env"
+printf '%s\n' "$DEPLOYED_SHA" > "$RELEASE_DIR/REVISION"
+
+echo "SHA desplegado: $DEPLOYED_SHA"
 
 compose_release() {
   local directory="$1"

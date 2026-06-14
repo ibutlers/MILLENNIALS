@@ -5,7 +5,7 @@ const navigation = [
   { label: 'Firma', href: '#firma' },
   { label: 'Tesis', href: '#tesis' },
   { label: 'Método', href: '#metodologia' },
-  { label: 'Oportunidades', href: '#oportunidades' },
+  { label: 'Oportunidades', href: '/oportunidades' },
   { label: 'FAQ', href: '#faq' }
 ];
 
@@ -200,7 +200,7 @@ function Hero() {
           Una base digital para presentar oportunidades, ordenar documentación y preparar una futura zona privada de inversores sin promesas grandilocuentes.
         </p>
         <div className="mt-8 grid gap-3 sm:flex">
-          <a href="#oportunidades" className="group inline-flex items-center justify-center gap-3 bg-mineral px-6 py-4 text-sm font-black uppercase tracking-[0.18em] text-textDark transition hover:bg-mineralHover focus:outline-none focus-visible:ring-2 focus-visible:ring-mineralHover focus-visible:ring-offset-4 focus-visible:ring-offset-carbon">
+          <a href="/oportunidades" className="group inline-flex items-center justify-center gap-3 bg-mineral px-6 py-4 text-sm font-black uppercase tracking-[0.18em] text-textDark transition hover:bg-mineralHover focus:outline-none focus-visible:ring-2 focus-visible:ring-mineralHover focus-visible:ring-offset-4 focus-visible:ring-offset-carbon">
             Ver oportunidades demo <span aria-hidden="true" className="transition group-hover:translate-x-1">→</span>
           </a>
           <a href="#firma" className="inline-flex items-center justify-center border border-border px-6 py-4 text-sm font-black uppercase tracking-[0.18em] text-textLight transition hover:border-mineral hover:text-mineral focus:outline-none focus-visible:ring-2 focus-visible:ring-mineralHover focus-visible:ring-offset-4 focus-visible:ring-offset-carbon">
@@ -315,7 +315,7 @@ function OpportunityCard({ opportunity }: { opportunity: PublicOpportunity }) {
           <div className="mb-2 flex justify-between text-xs font-black uppercase tracking-[0.18em] text-muted"><span>Financiación</span><span>{progress}% demo</span></div>
           <div className="h-2 bg-petroleum"><div className="h-2 bg-mineral" style={{ width: `${progress}%` }} /></div>
         </div>
-        <a href={`/api/v1/opportunities/${opportunity.slug}`} className="mt-6 inline-flex border border-border px-4 py-3 text-xs font-black uppercase tracking-[0.16em] text-textLight transition hover:border-mineral hover:text-mineral focus:outline-none focus-visible:ring-2 focus-visible:ring-mineralHover">Ver ficha pública</a>
+        <a href={`/oportunidades/${opportunity.slug}`} className="mt-6 inline-flex border border-border px-4 py-3 text-xs font-black uppercase tracking-[0.16em] text-textLight transition hover:border-mineral hover:text-mineral focus:outline-none focus-visible:ring-2 focus-visible:ring-mineralHover">Ver oportunidad</a>
       </div>
     </article>
   );

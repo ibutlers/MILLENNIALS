@@ -94,3 +94,24 @@ Reglas de seguridad operativa:
 - usar rollback con `./scripts/rollback.sh` si procede.
 
 Ver `AGENTS.md` y `docs/` antes de modificar el proyecto.
+
+
+## Catálogo y ficha pública
+
+Rutas Hito 3:
+
+```text
+/oportunidades
+/oportunidades/:slug
+```
+
+El catálogo consume `GET /api/v1/opportunities` con filtros `status`, `city`, `assetType`, `strategy`, `riskLevel`, `sort`, `direction`, `limit` y `offset`. La ficha consume `GET /api/v1/opportunities/:slug`. Ambas rutas validan contratos con Zod y muestran estados loading/error/empty sin inventar datos si la API falla.
+
+Los CTAs públicos son `Ver oportunidad`, `Solicitar información` y `Solicitar acceso`. No hay autenticación, KYC, pagos, cartera, administración ni inversión real.
+
+Después de deploy puede verificarse la trazabilidad con:
+
+```bash
+cat /srv/deployments/realstate/current/REVISION
+git -C /srv/workspaces/realstate rev-parse HEAD
+```

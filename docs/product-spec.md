@@ -294,3 +294,23 @@ No se permite:
 ## Fuera de alcance del hito actual
 
 Autenticación real, panel administrativo funcional, CRM, pagos, mapas, modelo de datos definitivo, migraciones, CRUD real, persistencia de leads, catálogo conectado a PostgreSQL y zona privada funcional.
+
+
+## Hito 3 — catálogo público y ficha visual
+
+El catálogo público vive en `/oportunidades` y consume exclusivamente `GET /api/v1/opportunities`. No usa mocks ni datos embebidos como fuente de verdad.
+
+Capacidades visibles:
+
+- introducción editorial con disclaimer demo;
+- filtros por estado, ciudad, tipo de activo, estrategia y riesgo;
+- ordenación por campos permitidos por API;
+- paginación por `limit`/`offset`;
+- filtros sincronizados con la URL para abrir, refrescar, compartir y volver desde una ficha;
+- estados loading, error y vacío;
+- tarjetas compactas con imagen, ubicación, activo, estrategia, estado, riesgo, ticket mínimo, capital objetivo, capital comprometido, progreso, plazo, retorno objetivo, tipo de retorno y cierre;
+- CTA `Ver oportunidad` hacia la ficha visual.
+
+La ficha pública vive en `/oportunidades/:slug` y consume `GET /api/v1/opportunities/:slug`. Incluye breadcrumb, imagen principal, resumen, métricas, progreso accesible, descripción, highlights, riesgos, hitos, media disponible y próximos pasos. Los CTAs permitidos son `Solicitar información` y `Solicitar acceso`; no hay `Invertir ahora`, simuladores ficticios, formularios transaccionales ni órdenes de inversión.
+
+La clasificación de riesgo es informativa/demo y se muestra junto al retorno; no debe comunicarse solo por color ni presentarse como valoración regulatoria oficial.

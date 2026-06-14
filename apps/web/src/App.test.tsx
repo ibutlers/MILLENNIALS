@@ -76,7 +76,7 @@ describe('Realstate landing', () => {
     expect(within(card).getByText('8,2%')).toBeInTheDocument();
     expect(within(card).getByText(/1\.250\.000\s*€/)).toBeInTheDocument();
     expect(within(card).getByText(/medio · no regulatorio/i)).toBeInTheDocument();
-    expect(within(card).getByRole('link', { name: /ver ficha pública/i })).toHaveAttribute('href', '/api/v1/opportunities/eixample-rehabilitacion-luminosa');
+    expect(within(card).getByRole('link', { name: /ver oportunidad/i })).toHaveAttribute('href', '/oportunidades/eixample-rehabilitacion-luminosa');
     expect(screen.getByText(/los objetivos no están garantizados/i)).toBeInTheDocument();
   });
 
