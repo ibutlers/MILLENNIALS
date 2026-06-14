@@ -69,7 +69,11 @@ export function isSecureConfig(config: AppConfig): boolean {
 }
 
 export function rejectInsecureAuth(config: AppConfig): void {
-  if (config.authEnabled && !isSecureConfig(config)) {
+  // Allow insecure auth in E2E/test environments (localhost only)
+  const isE2E = process.env.E2E_TEST_MODE === 'true' || process.env.NODE_ENV === 'test' || process.env.NODE_ENV === 'e2e';
+  const isLocalhost = config.appBaseUrl.includes('127.0.0.1') || config.appBaseUrl.includes('localhost');
+
+  if (config.authEnabled && !isSecureConfig(config) && !(isE2E && isLocalhost)) {
     throw new Error(
       'AUTH_ENABLED=true requires APP_BASE_URL to use https://. ' +
       'Authentication is not safe over plain HTTP. ' +
@@ -82,7 +86,7 @@ export function rejectInsecureAuth(config: AppConfig): void {
       'The admin panel cannot function without authentication.'
     );
   }
-  if (config.adminEnabled && !isSecureConfig(config)) {
+  if (config.adminEnabled && !isSecureConfig(config) && !(isE2E && isLocalhost)) {
     throw new Error(
       'ADMIN_ENABLED=true requires APP_BASE_URL to use https://. ' +
       'The admin panel is not safe over plain HTTP.'

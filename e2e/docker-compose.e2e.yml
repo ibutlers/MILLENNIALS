@@ -20,7 +20,7 @@ services:
       context: ..
       dockerfile: apps/api/Dockerfile
     environment:
-      DATABASE_URL: postgres://realstate_e2e:***@postgres:5432/realstate_e2e
+      DATABASE_URL: postgres://realstate_e2e:e2e_test_password@postgres:5432/realstate_e2e
       AUTH_ENABLED: "true"
       REGISTRATION_ENABLED: "false"
       EMAIL_DELIVERY_ENABLED: "false"
@@ -36,7 +36,7 @@ services:
       PRIVACY_CONTACT_EMAIL: "e2e@realstate.test"
       PRIVACY_POLICY_VERSION: "2026-06-e2e"
     ports:
-      - "127.0.0.1:8089:3000"
+      - "127.0.0.1:8089:3001"
     depends_on:
       postgres:
         condition: service_healthy
