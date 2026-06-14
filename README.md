@@ -115,3 +115,25 @@ Después de deploy puede verificarse la trazabilidad con:
 cat /srv/deployments/realstate/current/REVISION
 git -C /srv/workspaces/realstate rev-parse HEAD
 ```
+
+## Leads y solicitudes públicas
+
+Hito 4 añade `POST /api/v1/leads` para tres tipos: `access_request`, `opportunity_inquiry` y `general_contact`. No hay endpoints públicos de listado de leads. La respuesta de éxito devuelve solo referencia pública, tipo, estado `new`, fecha y mensaje genérico.
+
+Feature flags y privacidad:
+```dotenv
+LEADS_ENABLED=false
+PRIVACY_CONTROLLER_NAME=
+PRIVACY_CONTACT_EMAIL=
+PRIVACY_POLICY_VERSION=2026-06-14
+LEADS_RATE_LIMIT_MAX=5
+LEADS_RATE_LIMIT_WINDOW_MS=900000
+```
+
+Mientras falten datos legales reales, producción debe permanecer con captación desactivada. Gestión local:
+```bash
+pnpm leads:summary
+pnpm leads:list -- --status new --limit 20
+pnpm leads:update -- --reference <ref> --status contacted
+```
+Usa `--show-pii` solo cuando sea necesario operacionalmente.

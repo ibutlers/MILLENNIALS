@@ -90,9 +90,32 @@ test.describe('public opportunities milestone', () => {
     await expect(page.locator('#contenido')).toBeFocused();
   });
 
+  test('lead forms submit successfully in the controlled E2E environment', async ({ page }) => {
+    await page.goto('/');
+    await page.getByRole('link', { name: /solicitar acceso/i }).first().click();
+    await expect(page).toHaveURL(/\/solicitar-acceso/);
+    await page.getByRole('button', { name: /enviar solicitud/i }).click();
+    await expect(page.getByRole('alert')).toContainText(/campo obligatorio/i);
+    await page.getByLabel(/^Nombre/i).fill('Ada');
+    await page.getByLabel(/Apellidos/i).fill('Lovelace');
+    await page.getByLabel(/Email/i).fill('ada@example.test');
+    await page.getByLabel(/Acepto la información de privacidad/i).check();
+    await page.waitForTimeout(1600);
+    await page.getByRole('button', { name: /enviar solicitud/i }).click();
+    await expect(page.getByText(/RS-\d{8}-[A-F0-9]+/)).toBeVisible();
+
+    await page.goto('/contacto');
+    await expect(page.getByRole('heading', { name: /contactar con realstate/i })).toBeVisible();
+
+    await page.goto('/oportunidades/eixample-rehabilitacion-luminosa');
+    await page.getByRole('link', { name: /solicitar información/i }).click();
+    await expect(page).toHaveURL(/\/solicitar-informacion/);
+    await expect(page.getByRole('heading', { name: /rehabilitación luminosa/i })).toBeVisible();
+  });
+
   test('future private routes remain honest non-transactional pages', async ({ page }) => {
-    await page.goto('/acceso');
-    await expect(page.getByRole('heading', { name: /acceso privado en preparación/i })).toBeVisible();
+    await page.goto('/inversores');
+    await expect(page.getByRole('heading', { name: /área de inversores en preparación/i })).toBeVisible();
     await expect(page.getByRole('textbox')).toHaveCount(0);
     await expect(page.getByRole('button', { name: /enviar|entrar|invertir/i })).toHaveCount(0);
   });

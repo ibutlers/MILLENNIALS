@@ -1,7 +1,11 @@
 import Fastify, { type FastifyInstance } from 'fastify';
 import type { Pool } from 'pg';
 import { ZodError } from 'zod';
+import { getConfig, leadsCaptureAvailable, type AppConfig } from './config.js';
 import { getPool } from './db/pool.js';
+import { OriginRateLimiter } from './leads/rate-limit.js';
+import { LeadRepository } from './leads/repository.js';
+import { leadCreatedResponseSchema, leadRequestSchema, normalizeLeadInput } from './leads/schemas.js';
 import { OpportunityRepository } from './opportunities/repository.js';
 import {
   errorResponseSchema,
@@ -15,7 +19,9 @@ import {
 export type AppDependencies = {
   pool?: Pool;
   opportunities?: OpportunityRepository;
-  logger?: boolean;
+  leads?: Pick<LeadRepository, 'create'>;
+  config?: Partial<AppConfig>;
+  logger?: boolean | object;
 };
 
 function errorId() {
@@ -32,9 +38,12 @@ function validatePublicResponse<T>(result: { success: true; data: T } | { succes
 }
 
 export function buildApp(dependencies: AppDependencies = {}): FastifyInstance {
-  const app = Fastify({ logger: dependencies.logger ?? true });
-  const pool = dependencies.pool ?? getPool();
-  const opportunities = dependencies.opportunities ?? new OpportunityRepository(pool);
+  const app = Fastify({ logger: dependencies.logger ?? true, bodyLimit: 16 * 1024 });
+  const pool = dependencies.pool ?? (dependencies.opportunities && dependencies.leads ? undefined : getPool());
+  const config = { ...getConfig(), ...dependencies.config };
+  const opportunities = dependencies.opportunities ?? new OpportunityRepository(pool as Pool);
+  const leads = dependencies.leads ?? new LeadRepository(pool as Pool);
+  const leadRateLimiter = new OriginRateLimiter(config.leadsRateLimitMax, config.leadsRateLimitWindowMs);
 
   app.setErrorHandler((error, request, reply) => {
     if (error instanceof ZodError) {
@@ -52,7 +61,9 @@ export function buildApp(dependencies: AppDependencies = {}): FastifyInstance {
 
   app.get('/api/health', async (_request, reply) => {
     try {
-      await pool.query('SELECT 1');
+      const activePool = pool as Pool | undefined;
+      if (!activePool) throw new Error('Postgres pool unavailable');
+      await activePool.query('SELECT 1');
       return { status: 'ok', service: 'api', dependencies: { postgres: 'ok' } };
     } catch (error) {
       app.log.error({ err: error }, 'postgres dependency unavailable');
@@ -62,7 +73,9 @@ export function buildApp(dependencies: AppDependencies = {}): FastifyInstance {
 
   app.get('/api/ready', async (_request, reply) => {
     try {
-      await pool.query('SELECT 1');
+      const activePool = pool as Pool | undefined;
+      if (!activePool) throw new Error('Postgres pool unavailable');
+      await activePool.query('SELECT 1');
       return { status: 'ready' };
     } catch (error) {
       app.log.error({ err: error }, 'readiness check failed');
@@ -97,6 +110,51 @@ export function buildApp(dependencies: AppDependencies = {}): FastifyInstance {
       }
     })
   );
+
+  app.get('/api/v1/lead-settings', async () => ({
+    data: {
+      enabled: leadsCaptureAvailable(config),
+      privacyPolicyVersion: config.privacyPolicyVersion,
+      controllerConfigured: Boolean(config.privacyControllerName),
+      privacyContactConfigured: Boolean(config.privacyContactEmail)
+    }
+  }));
+
+  app.post('/api/v1/leads', async (request, reply) => {
+    if (!leadsCaptureAvailable(config)) {
+      const body = publicError('leads_disabled', 'La captación de solicitudes todavía no está habilitada.');
+      return reply.status(503).send(errorResponseSchema.parse(body));
+    }
+
+    const origin = request.ip || 'unknown';
+    const rate = leadRateLimiter.check(origin);
+    if (!rate.allowed) {
+      const body = publicError('rate_limited', 'Hemos recibido demasiadas solicitudes. Inténtalo más tarde.');
+      return reply.status(429).send(errorResponseSchema.parse(body));
+    }
+
+    const parsed = leadRequestSchema.parse(request.body);
+    const normalized = normalizeLeadInput(parsed);
+    try {
+      const created = await leads.create({ ...normalized, privacyPolicyVersion: config.privacyPolicyVersion });
+      request.log.info({ leadReference: created.publicReference, leadKind: created.kind }, 'lead request created');
+      return reply.status(201).send(leadCreatedResponseSchema.parse({
+        data: {
+          publicReference: created.publicReference,
+          kind: created.kind,
+          status: 'new',
+          createdAt: created.createdAt,
+          message: 'Solicitud recibida. Conserva esta referencia para futuras comunicaciones.'
+        }
+      }));
+    } catch (error) {
+      if ((error as Error).name === 'OpportunityNotFoundError') {
+        const body = publicError('invalid_request', 'La oportunidad indicada no está disponible.');
+        return reply.status(400).send(errorResponseSchema.parse(body));
+      }
+      throw error;
+    }
+  });
 
   return app;
 }

@@ -170,3 +170,32 @@ REALSTATE_POSTGRES_READY_SLEEP=2
 ```
 
 Si no se definen, el script usa sus valores por defecto internos. En producción pueden ajustarse en `/srv/deployments/realstate/shared/.env` sin tocar el repositorio.
+
+## Hito 4 — despliegue de captación
+
+La migración `0002_create_leads.sql` es aditiva y compatible con rollback de la release anterior: no modifica oportunidades existentes y no expone leads por HTTP. El script de deploy sigue creando backup, esperando PostgreSQL, ejecutando migraciones/seed y escribiendo `REVISION` en la release antes de activar `current`.
+
+Variables nuevas:
+```dotenv
+LEADS_ENABLED=false
+PRIVACY_CONTROLLER_NAME=
+PRIVACY_CONTACT_EMAIL=
+PRIVACY_POLICY_VERSION=2026-06-14
+LEADS_RATE_LIMIT_MAX=5
+LEADS_RATE_LIMIT_WINDOW_MS=900000
+```
+
+`LEADS_ENABLED=false` debe mantenerse en producción hasta disponer de responsable real, correo real de privacidad y versión de política validada. Para verificar trazabilidad tras deploy:
+```bash
+cat /srv/deployments/realstate/current/REVISION
+git -C /srv/workspaces/realstate rev-parse HEAD
+```
+
+Comandos operativos locales, no expuestos por HTTP:
+```bash
+pnpm leads:summary
+pnpm leads:list -- --status new --limit 20
+pnpm leads:list -- --status new --limit 20 --show-pii
+pnpm leads:update -- --reference RS-YYYYMMDD-XXXX --status contacted
+```
+Por defecto se ocultan email y teléfono y no se imprimen mensajes completos.

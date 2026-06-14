@@ -171,7 +171,7 @@ function Header() {
                 <button type="button" aria-label="Idioma español seleccionado" className="border border-mineral bg-mineral px-4 py-3 text-sm font-black uppercase tracking-[0.18em] text-textDark focus:outline-none focus-visible:ring-2 focus-visible:ring-ivory">ES</button>
                 <button type="button" aria-label="Cambiar idioma a inglés" className="border border-border px-4 py-3 text-sm font-black uppercase tracking-[0.18em] text-muted focus:outline-none focus-visible:ring-2 focus-visible:ring-mineralHover">EN</button>
               </div>
-              <a href="/acceso" onClick={() => setIsOpen(false)} className="border border-mineral bg-mineral px-5 py-4 text-center text-sm font-black uppercase tracking-[0.18em] text-textDark focus:outline-none focus-visible:ring-2 focus-visible:ring-ivory">Solicitar acceso</a>
+              <a href="/solicitar-acceso" onClick={() => setIsOpen(false)} className="border border-mineral bg-mineral px-5 py-4 text-center text-sm font-black uppercase tracking-[0.18em] text-textDark focus:outline-none focus-visible:ring-2 focus-visible:ring-ivory">Solicitar acceso</a>
               <a href="/inversores" onClick={() => setIsOpen(false)} className="border border-border px-5 py-4 text-center text-sm font-black uppercase tracking-[0.18em] text-textLight focus:outline-none focus-visible:ring-2 focus-visible:ring-mineralHover">Acceso inversores</a>
             </div>
           </div>
@@ -429,8 +429,8 @@ function AccessCta() {
           </h2>
         </div>
         <div className="grid gap-3 sm:flex lg:grid">
-          <a href="/acceso" className="bg-mineral px-6 py-4 text-center text-sm font-black uppercase tracking-[0.18em] text-textDark transition hover:bg-mineralHover focus:outline-none focus-visible:ring-2 focus-visible:ring-mineralHover focus-visible:ring-offset-4 focus-visible:ring-offset-petroleum">Solicitar acceso</a>
-          <a href="/inversores" className="border border-border px-6 py-4 text-center text-sm font-black uppercase tracking-[0.18em] text-textLight transition hover:border-mineral hover:text-mineral focus:outline-none focus-visible:ring-2 focus-visible:ring-mineralHover focus-visible:ring-offset-4 focus-visible:ring-offset-petroleum">Acceso inversores</a>
+          <a href="/solicitar-acceso" className="bg-mineral px-6 py-4 text-center text-sm font-black uppercase tracking-[0.18em] text-textDark transition hover:bg-mineralHover focus:outline-none focus-visible:ring-2 focus-visible:ring-mineralHover focus-visible:ring-offset-4 focus-visible:ring-offset-petroleum">Solicitar acceso</a>
+          <a href="/contacto" className="border border-border px-6 py-4 text-center text-sm font-black uppercase tracking-[0.18em] text-textLight transition hover:border-mineral hover:text-mineral focus:outline-none focus-visible:ring-2 focus-visible:ring-mineralHover focus-visible:ring-offset-4 focus-visible:ring-offset-petroleum">Contactar</a>
         </div>
       </div>
     </section>

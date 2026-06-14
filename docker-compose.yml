@@ -12,6 +12,12 @@ services:
       NODE_ENV: production
       API_PORT: 3001
       DATABASE_URL: "${DATABASE_URL:-postgres://realstate:realstate_password@postgres:5432/realstate}"
+      LEADS_ENABLED: "${LEADS_ENABLED:-false}"
+      PRIVACY_CONTROLLER_NAME: "${PRIVACY_CONTROLLER_NAME:-}"
+      PRIVACY_CONTACT_EMAIL: "${PRIVACY_CONTACT_EMAIL:-}"
+      PRIVACY_POLICY_VERSION: "${PRIVACY_POLICY_VERSION:-2026-06-14}"
+      LEADS_RATE_LIMIT_MAX: "${LEADS_RATE_LIMIT_MAX:-5}"
+      LEADS_RATE_LIMIT_WINDOW_MS: "${LEADS_RATE_LIMIT_WINDOW_MS:-900000}"
     depends_on: [postgres]
     restart: unless-stopped
   postgres:

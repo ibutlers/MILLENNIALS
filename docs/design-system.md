@@ -134,3 +134,16 @@ Reglas visuales específicas:
 - Ficha: cabecera institucional oscura, contenido editorial claro, CTA mineral y riesgo con soporte textual.
 - Imágenes fuera del hero/ficha principal usan `loading="lazy"`; la imagen principal de ficha usa dimensiones explícitas y prioridad alta.
 - No usar patrones visuales de portal inmobiliario masivo ni copiar composición de competidores.
+
+## Hito 4 — formularios públicos
+
+Los formularios mantienen azul petróleo, marfil, verde mineral y bronce secundario. Reglas de UX:
+- labels visibles y ayuda contextual;
+- resumen accesible de errores con foco gestionado;
+- CTA mineral no transaccional;
+- estado desactivado honesto cuando falta configuración legal;
+- referencia pública visible solo tras éxito real;
+- honeypot invisible fuera del flujo de teclado;
+- sin localStorage para datos del formulario.
+
+Las páginas `/solicitar-acceso`, `/contacto`, `/oportunidades/:slug/solicitar-informacion` y `/privacidad` deben mantener lectura móvil excelente y axe sin errores críticos o serios.

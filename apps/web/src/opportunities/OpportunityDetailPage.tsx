@@ -122,8 +122,8 @@ export function OpportunityDetailPage() {
                 <h2 className="font-serif text-3xl tracking-[-0.035em]">Próximos pasos</h2>
                 <p className="mt-3 text-sm leading-6 text-textDark/70">Solicita información o acceso futuro para recibir documentación cuando la zona privada esté disponible. No hay inversión ni formulario transaccional en este hito.</p>
                 <div className="mt-5 grid gap-3">
-                  <Link to="/acceso" onMouseEnter={() => queryClient.prefetchQuery({ queryKey: ['opportunities', 'prefetch'], queryFn: ({ signal }) => fetch('/api/v1/opportunities?limit=3', { signal }).then((r) => r.json()) })} className="bg-mineral px-5 py-4 text-center text-sm font-black uppercase tracking-[0.16em] text-textDark transition hover:bg-mineralHover focus:outline-none focus-visible:ring-2 focus-visible:ring-mineralHover">Solicitar información</Link>
-                  <Link to="/acceso" className="border border-textDark/20 px-5 py-4 text-center text-sm font-black uppercase tracking-[0.16em] transition hover:border-mineral focus:outline-none focus-visible:ring-2 focus-visible:ring-mineralHover">Solicitar acceso</Link>
+                  <Link to={`/oportunidades/${opportunity.slug}/solicitar-informacion`} onMouseEnter={() => queryClient.prefetchQuery({ queryKey: ['opportunities', 'prefetch'], queryFn: ({ signal }) => fetch('/api/v1/opportunities?limit=3', { signal }).then((r) => r.json()) })} className="bg-mineral px-5 py-4 text-center text-sm font-black uppercase tracking-[0.16em] text-textDark transition hover:bg-mineralHover focus:outline-none focus-visible:ring-2 focus-visible:ring-mineralHover">Solicitar información</Link>
+                  <Link to="/solicitar-acceso" className="border border-textDark/20 px-5 py-4 text-center text-sm font-black uppercase tracking-[0.16em] transition hover:border-mineral focus:outline-none focus-visible:ring-2 focus-visible:ring-mineralHover">Solicitar acceso</Link>
                 </div>
               </section>
             </aside>

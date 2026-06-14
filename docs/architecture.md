@@ -173,3 +173,16 @@ La URL del catálogo es la fuente del estado de filtros/orden/paginación. Al ab
 ## Trazabilidad de release
 
 Cada nueva release creada por `scripts/deploy.sh` incluye un archivo `REVISION` generado después de validar que `main` está limpia y coincide con `origin/main`. El archivo contiene únicamente el SHA completo desplegado.
+
+## Hito 4 — arquitectura de leads
+
+La API añade `POST /api/v1/leads` y `GET /api/v1/lead-settings`. No existe ningún `GET` público de leads. La persistencia se implementa con SQL explícito y `pg`, manteniendo la misma política de migraciones reproducibles y no destructivas.
+
+`0002_create_leads.sql` crea:
+- enum `lead_kind`: `access_request`, `opportunity_inquiry`, `general_contact`;
+- enum `lead_status`: `new`, `in_review`, `contacted`, `qualified`, `closed`, `rejected`;
+- tabla `leads` con `public_reference` único, FK nullable a `opportunities`, email normalizado, consentimientos separados y checks de longitud.
+
+La captación queda detrás de `LEADS_ENABLED` y además requiere `PRIVACY_CONTROLLER_NAME`, `PRIVACY_CONTACT_EMAIL` y `PRIVACY_POLICY_VERSION`. El rate limit en memoria por origen reduce abuso sin añadir CAPTCHA externo. Los logs del endpoint solo incluyen referencia pública y tipo; no nombres, emails, teléfonos ni mensajes.
+
+El frontend usa code-splitting por ruta mediante `React.lazy` para catálogo, ficha, formularios, páginas informativas y rutas de acceso futuro.

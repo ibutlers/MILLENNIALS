@@ -108,8 +108,8 @@ describe('public opportunity detail', () => {
     expect(screen.getByRole('heading', { name: /hitos/i })).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: /media disponible/i })).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: /próximos pasos/i })).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: /solicitar información/i })).toHaveAttribute('href', '/acceso');
-    expect(screen.getByRole('link', { name: /solicitar acceso/i })).toHaveAttribute('href', '/acceso');
+    expect(screen.getByRole('link', { name: /solicitar información/i })).toHaveAttribute('href', '/oportunidades/eixample-rehabilitacion-luminosa/solicitar-informacion');
+    expect(screen.getByRole('link', { name: /solicitar acceso/i })).toHaveAttribute('href', '/solicitar-acceso');
     expect(document.body).not.toHaveTextContent(/invertir ahora|simulador|orden de inversión/i);
   });
 

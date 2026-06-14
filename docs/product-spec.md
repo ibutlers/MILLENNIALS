@@ -314,3 +314,15 @@ Capacidades visibles:
 La ficha pública vive en `/oportunidades/:slug` y consume `GET /api/v1/opportunities/:slug`. Incluye breadcrumb, imagen principal, resumen, métricas, progreso accesible, descripción, highlights, riesgos, hitos, media disponible y próximos pasos. Los CTAs permitidos son `Solicitar información` y `Solicitar acceso`; no hay `Invertir ahora`, simuladores ficticios, formularios transaccionales ni órdenes de inversión.
 
 La clasificación de riesgo es informativa/demo y se muestra junto al retorno; no debe comunicarse solo por color ni presentarse como valoración regulatoria oficial.
+
+## Hito 4 — captación segura de solicitudes
+
+El producto incorpora flujos reales, no transaccionales, para `/solicitar-acceso`, `/contacto` y `/oportunidades/:slug/solicitar-informacion`. Los CTA públicos apuntan a estos flujos y ya no a páginas de preparación cuando la intención es solicitar acceso o información.
+
+Reglas de producto:
+- solicitar información no implica inversión, reserva, autenticación, KYC ni orden;
+- el éxito solo se muestra tras respuesta `201` de la API;
+- si `LEADS_ENABLED=false` o faltan datos legales reales, los formularios se muestran desactivados con un mensaje honesto;
+- la política `/privacidad` es provisional, explica límites y no inventa sociedad, CIF, domicilio ni cumplimiento certificado.
+
+Datos recogidos: nombre, apellidos, email normalizado, teléfono opcional, país opcional, rango aproximado opcional, mensaje opcional, origen/UTM y consentimientos separados. No se recogen documentos, patrimonio, DNI, datos bancarios ni KYC.

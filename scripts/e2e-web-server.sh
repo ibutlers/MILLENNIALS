@@ -35,9 +35,16 @@ docker exec "$CONTAINER_NAME" pg_isready -U realstate -d realstate_test >/dev/nu
 (
   cd "$ROOT_DIR"
   pnpm --filter @realstate/api build >/dev/null
-  DB_URL="postgresql://realstate@127.0.0.1:${DB_PORT}/realstate_test"
+  DB_URL=$(printf 'postgresql://realstate@127.0.0.1:%s/realstate_test' "$DB_PORT")
   DATABASE_URL="$DB_URL" node apps/api/dist/db/migrate.js >/dev/null
   DATABASE_URL="$DB_URL" node apps/api/dist/db/seed.js >/dev/null
-  DATABASE_URL="$DB_URL" API_PORT=3001 pnpm --filter @realstate/api dev >/tmp/realstate-e2e-api.log 2>&1 &
+  DATABASE_URL="$DB_URL" \
+    LEADS_ENABLED=true \
+    PRIVACY_CONTROLLER_NAME="Realstate Demo Controller" \
+    PRIVACY_CONTACT_EMAIL="privacy@example.test" \
+    PRIVACY_POLICY_VERSION="2026-06-14" \
+    LEADS_RATE_LIMIT_MAX=50 \
+    API_PORT=3001 \
+    pnpm --filter @realstate/api dev >/tmp/realstate-e2e-api.log 2>&1 &
   pnpm --filter @realstate/web dev
 )
