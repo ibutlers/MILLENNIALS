@@ -199,3 +199,38 @@ pnpm leads:list -- --status new --limit 20 --show-pii
 pnpm leads:update -- --reference RS-YYYYMMDD-XXXX --status contacted
 ```
 Por defecto se ocultan email y teléfono y no se imprimen mensajes completos.
+
+## Hito 5 — variables de autenticación
+
+Variables nuevas en `shared/.env`:
+
+```dotenv
+AUTH_ENABLED=false
+REGISTRATION_ENABLED=false
+EMAIL_DELIVERY_ENABLED=false
+AUTH_RATE_LIMIT_MAX=5
+AUTH_RATE_LIMIT_WINDOW_MS=900000
+SESSION_MAX_AGE_MS=86400000
+APP_BASE_URL=http://localhost:8088
+```
+
+### Requisito de seguridad
+
+`AUTH_ENABLED=true` solo se permite si `APP_BASE_URL` comienza con `https://`. El inicio de la API rechazará configuraciones inseguras que habiliten autenticación sobre HTTP sin TLS.
+
+En producción, mantener `AUTH_ENABLED=false` hasta disponer de HTTPS y dominio real.
+
+### Migración
+
+La migración `0003_create_auth.sql` es aditiva y compatible con rollback. No modifica tablas de oportunidades ni leads.
+
+### Comandos administrativos
+
+```bash
+pnpm users:create-admin
+pnpm users:list
+pnpm users:disable -- --email <email>
+pnpm users:revoke-sessions -- --email <email>
+```
+
+No expuestos por HTTP. Solo accesibles desde el servidor.

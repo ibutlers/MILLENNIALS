@@ -326,3 +326,56 @@ Reglas de producto:
 - la política `/privacidad` es provisional, explica límites y no inventa sociedad, CIF, domicilio ni cumplimiento certificado.
 
 Datos recogidos: nombre, apellidos, email normalizado, teléfono opcional, país opcional, rango aproximado opcional, mensaje opcional, origen/UTM y consentimientos separados. No se recogen documentos, patrimonio, DNI, datos bancarios ni KYC.
+
+## Hito 5: Identidad y sesiones
+
+El producto incorpora un sistema de identidad propio sin dependencia de terceros OAuth ni social login.
+
+### Registro y verificación
+
+- Registro con email y contraseña.
+- Verificación de email mediante token enviado por correo.
+- Anti-enumeración: mensajes genéricos en todos los endpoints de autenticación.
+
+### Login y sesiones
+
+- Login con email y contraseña.
+- Sesiones opacas con hash SHA-256 en base de datos.
+- Cookies HttpOnly, SameSite=Lax, Secure.
+- Logout que invalida la sesión en servidor.
+- Rate limiting por endpoint para prevenir abuso.
+
+### Roles
+
+- `investor` — acceso al área privada de inversores.
+- `operator` — gestión de oportunidades y leads.
+- `admin` — administración completa del sistema.
+
+### Área privada
+
+Rutas bajo `/inversores/*`:
+
+- `/inversores` — dashboard privado.
+- `/inversores/oportunidades` — catálogo privado.
+- `/inversores/cuenta` — perfil y configuración.
+- `/inversores/seguridad` — cambio de contraseña y sesiones activas.
+
+### Recuperación de contraseña
+
+Flujo de recuperación con token enviado por email y expiración. Sin preguntas de seguridad ni datos personales.
+
+### Bootstrap administrativo
+
+CLI para crear el primer administrador sin pasar por registro público:
+
+```bash
+pnpm users:create-admin
+pnpm users:list
+pnpm users:disable -- --email <email>
+pnpm users:revoke-sessions -- --email <email>
+```
+
+### Limitaciones del hito
+
+- No autenticación OAuth, social login ni MFA.
+- Auth desactivada en producción hasta disponer de HTTPS y dominio real (HTTP sin TLS no es seguro para transmitir credenciales).

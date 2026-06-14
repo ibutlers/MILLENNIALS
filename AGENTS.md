@@ -64,3 +64,11 @@ Una tarea de producción no está terminada hasta que el cambio esté desplegado
 
 ## Documentación
 Cambios de arquitectura, comandos, variables, deploy, healthcheck o rollback deben actualizar `docs/` y este archivo si aplica.
+
+## Seguridad de autenticación
+- Nunca habilitar `AUTH_ENABLED` en producción sin HTTPS ni dominio real.
+- La API rechazará iniciar con `AUTH_ENABLED=true` si `APP_BASE_URL` no comienza con `https://`.
+- No exponer endpoints de gestión de usuarios por HTTP.
+- Las contraseñas usan Argon2id; nunca almacenar ni transmitir contraseñas en texto plano.
+- Usar rate limiting por endpoint de autenticación para prevenir abuso.
+- Mensajes genéricos en login, registro y recuperación para evitar enumeración de cuentas.

@@ -1,9 +1,6 @@
 import { Link } from 'react-router';
 
 const onboardingRoutes = [
-  '/acceso',
-  '/registro',
-  '/verificar-email',
   '/onboarding',
   '/onboarding/perfil',
   '/onboarding/elegibilidad',

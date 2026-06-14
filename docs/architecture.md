@@ -186,3 +186,47 @@ La API añade `POST /api/v1/leads` y `GET /api/v1/lead-settings`. No existe ning
 La captación queda detrás de `LEADS_ENABLED` y además requiere `PRIVACY_CONTROLLER_NAME`, `PRIVACY_CONTACT_EMAIL` y `PRIVACY_POLICY_VERSION`. El rate limit en memoria por origen reduce abuso sin añadir CAPTCHA externo. Los logs del endpoint solo incluyen referencia pública y tipo; no nombres, emails, teléfonos ni mensajes.
 
 El frontend usa code-splitting por ruta mediante `React.lazy` para catálogo, ficha, formularios, páginas informativas y rutas de acceso futuro.
+
+## Hito 5 — identidad y autenticación
+
+### Modelo de datos de autenticación
+
+Migración `0003_create_auth.sql` (aditiva, no destructiva):
+
+- `users` — cuentas de usuario con email único normalizado, contraseña con hash Argon2id, estado y rol.
+- `user_roles` — roles asignados: `investor`, `operator`, `admin`.
+- `sessions` — sesiones opacas con hash SHA-256 almacenado en PostgreSQL. Cookies HttpOnly, SameSite=Lax, Secure.
+- `email_verification_tokens` — tokens de verificación de email con expiración.
+- `password_reset_tokens` — tokens de recuperación de contraseña con expiración.
+- `audit_events` — eventos de auditoría para acciones sensibles.
+
+### Contraseñas y sesiones
+
+- Contraseñas: Argon2id con 64 MiB de memoria, timeCost=3, parallelism=1.
+- Sesiones: token opaco generado en servidor, hash SHA-256 almacenado en PostgreSQL. Cookie `session_id` con flags HttpOnly, SameSite=Lax y Secure.
+- Rate limiting por endpoint para prevenir abuso.
+- Anti-enumeración de cuentas: mensajes genéricos en login, registro y recuperación.
+
+### Feature flags
+
+```dotenv
+AUTH_ENABLED=false
+REGISTRATION_ENABLED=false
+EMAIL_DELIVERY_ENABLED=false
+```
+
+### Bootstrap administrativo
+
+CLI administrativo para gestionar usuarios sin pasar por registro público:
+
+```bash
+pnpm users:create-admin
+pnpm users:list
+pnpm users:disable -- --email <email>
+pnpm users:revoke-sessions -- --email <email>
+```
+
+### Limitaciones del hito
+
+- No autenticación OAuth, social login ni MFA en este hito.
+- Auth desactivada en producción hasta disponer de HTTPS y dominio real.

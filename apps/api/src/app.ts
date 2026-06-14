@@ -1,7 +1,8 @@
 import Fastify, { type FastifyInstance } from 'fastify';
+import cookie from '@fastify/cookie';
 import type { Pool } from 'pg';
 import { ZodError } from 'zod';
-import { getConfig, leadsCaptureAvailable, type AppConfig } from './config.js';
+import { getConfig, leadsCaptureAvailable, rejectInsecureAuth, type AppConfig } from './config.js';
 import { getPool } from './db/pool.js';
 import { OriginRateLimiter } from './leads/rate-limit.js';
 import { LeadRepository } from './leads/repository.js';
@@ -15,11 +16,19 @@ import {
   opportunityListResponseSchema,
   slugParamsSchema
 } from './opportunities/schemas.js';
+import { AuthRepository } from './auth/repository.js';
+import { ConsoleEmailTransport, type EmailTransport } from './auth/email.js';
+import { registerAuthRoutes } from './auth/routes.js';
 
 export type AppDependencies = {
   pool?: Pool;
   opportunities?: OpportunityRepository;
   leads?: Pick<LeadRepository, 'create'>;
+  auth?: {
+    repo: AuthRepository;
+    emailTransport: EmailTransport;
+  };
+  emailTransport?: EmailTransport;
   config?: Partial<AppConfig>;
   logger?: boolean | object;
 };
@@ -37,14 +46,64 @@ function validatePublicResponse<T>(result: { success: true; data: T } | { succes
   throw new Error('Response contract validation failed');
 }
 
+const SAFE_ORIGINS = new Set<string>();
+
+function isStateChanging(method: string): boolean {
+  return ['POST', 'PUT', 'PATCH', 'DELETE'].includes(method.toUpperCase());
+}
+
+/** CSRF / Origin protection for state-changing requests */
+function checkOrigin(request: { method: string; headers: Record<string, string | undefined> }, config: AppConfig): void {
+  if (!isStateChanging(request.method)) return;
+  if (!config.authEnabled) return; // Only enforce when auth is active
+
+  const origin = request.headers['origin'];
+  if (!origin) {
+    // Allow same-origin requests that don't send Origin (form posts from same domain)
+    return;
+  }
+
+  if (SAFE_ORIGINS.has(origin)) return;
+
+  // Check if origin matches app base URL
+  if (origin === config.appBaseUrl) {
+    SAFE_ORIGINS.add(origin);
+    return;
+  }
+
+  throw Object.assign(new Error('Invalid origin'), { statusCode: 403 });
+}
+
 export function buildApp(dependencies: AppDependencies = {}): FastifyInstance {
   const app = Fastify({ logger: dependencies.logger ?? true, bodyLimit: 16 * 1024 });
   const pool = dependencies.pool ?? (dependencies.opportunities && dependencies.leads ? undefined : getPool());
   const config = { ...getConfig(), ...dependencies.config };
+
+  // Reject insecure auth config at startup
+  rejectInsecureAuth(config);
+
   const opportunities = dependencies.opportunities ?? new OpportunityRepository(pool as Pool);
   const leads = dependencies.leads ?? new LeadRepository(pool as Pool);
   const leadRateLimiter = new OriginRateLimiter(config.leadsRateLimitMax, config.leadsRateLimitWindowMs);
 
+  // Auth dependencies
+  const authRepo = dependencies.auth?.repo ?? new AuthRepository(pool as Pool);
+  const emailTransport = dependencies.emailTransport ?? dependencies.auth?.emailTransport ?? new ConsoleEmailTransport();
+
+  // ── Plugins ──
+  app.register(cookie);
+
+  // ── CSRF / Origin check ──
+  app.addHook('onRequest', async (request) => {
+    try {
+      checkOrigin({ method: request.method, headers: request.headers as Record<string, string | undefined> }, config);
+    } catch (err) {
+      const statusCode = (err as { statusCode?: number }).statusCode || 403;
+      throw Object.assign(new Error('Forbidden'), { statusCode });
+    }
+  });
+
+  // ── Error handler ──
   app.setErrorHandler((error, request, reply) => {
     if (error instanceof ZodError) {
       const body = publicError('invalid_request', 'Los parámetros de la solicitud no son válidos.');
@@ -57,6 +116,7 @@ export function buildApp(dependencies: AppDependencies = {}): FastifyInstance {
     return reply.status(500).send(errorResponseSchema.parse(body));
   });
 
+  // ── Health ──
   app.get('/health', async () => 'ok');
 
   app.get('/api/health', async (_request, reply) => {
@@ -83,6 +143,7 @@ export function buildApp(dependencies: AppDependencies = {}): FastifyInstance {
     }
   });
 
+  // ── Opportunities ──
   app.get('/api/v1/opportunities', async (request) => {
     const query = opportunityListQuerySchema.parse(request.query);
     const response = await opportunities.list(query);
@@ -111,6 +172,7 @@ export function buildApp(dependencies: AppDependencies = {}): FastifyInstance {
     })
   );
 
+  // ── Lead settings ──
   app.get('/api/v1/lead-settings', async () => ({
     data: {
       enabled: leadsCaptureAvailable(config),
@@ -120,6 +182,7 @@ export function buildApp(dependencies: AppDependencies = {}): FastifyInstance {
     }
   }));
 
+  // ── Leads ──
   app.post('/api/v1/leads', async (request, reply) => {
     if (!leadsCaptureAvailable(config)) {
       const body = publicError('leads_disabled', 'La captación de solicitudes todavía no está habilitada.');
@@ -154,6 +217,14 @@ export function buildApp(dependencies: AppDependencies = {}): FastifyInstance {
       }
       throw error;
     }
+  });
+
+  // ── Auth routes ──
+  registerAuthRoutes(app, {
+    pool: pool as Pool,
+    repo: authRepo,
+    config,
+    emailTransport,
   });
 
   return app;

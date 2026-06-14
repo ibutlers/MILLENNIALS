@@ -22,7 +22,7 @@ La aplicación desplegada incluye:
 
 Las oportunidades y cifras visibles son demo y están marcadas como datos ilustrativos. No se publica capital gestionado, rentabilidad histórica, número de proyectos reales, oficinas ni presencia internacional hasta tener datos verificables.
 
-No están implementados todavía: autenticación real, KYC, pagos, cartera, inversión real, panel administrativo funcional ni documentos privados.
+No están implementados todavía: KYC, pagos, cartera, inversión real, panel administrativo funcional ni documentos privados.
 
 ## Stack
 
@@ -137,3 +137,15 @@ pnpm leads:list -- --status new --limit 20
 pnpm leads:update -- --reference <ref> --status contacted
 ```
 Usa `--show-pii` solo cuando sea necesario operacionalmente.
+
+## Autenticación y sesiones (Hito 5)
+
+- Identidad de inversores con registro y verificación de email.
+- Sesiones seguras con hash SHA-256 en PostgreSQL, cookies HttpOnly/SameSite/Secure.
+- Contraseñas con Argon2id (64 MiB, timeCost=3, parallelism=1).
+- Área privada bajo `/inversores/*` con dashboard, oportunidades, cuenta y seguridad.
+- Roles: `investor`, `operator`, `admin`.
+- Recuperación de contraseña con token enviado por email.
+- Bootstrap administrativo vía CLI (`pnpm users:create-admin`, `users:list`, `users:disable`, `users:revoke-sessions`).
+- Auth desactivada en producción hasta disponer de HTTPS y dominio real.
+- Rate limiting y anti-enumeración de cuentas en todos los endpoints de autenticación.

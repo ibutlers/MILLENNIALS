@@ -1,11 +1,4 @@
-export type AppConfig = {
-  leadsEnabled: boolean;
-  privacyControllerName: string;
-  privacyContactEmail: string;
-  privacyPolicyVersion: string;
-  leadsRateLimitMax: number;
-  leadsRateLimitWindowMs: number;
-  // Auth
+export type AuthConfig = {
   authEnabled: boolean;
   registrationEnabled: boolean;
   emailDeliveryEnabled: boolean;
@@ -29,15 +22,8 @@ function num(value: string | undefined, defaultValue: number): number {
   return Number.isFinite(parsed) ? parsed : defaultValue;
 }
 
-export function getConfig(): AppConfig {
+export function getAuthConfig(): AuthConfig {
   return {
-    leadsEnabled: bool(process.env.LEADS_ENABLED, false),
-    privacyControllerName: process.env.PRIVACY_CONTROLLER_NAME?.trim() ?? '',
-    privacyContactEmail: process.env.PRIVACY_CONTACT_EMAIL?.trim() ?? '',
-    privacyPolicyVersion: process.env.PRIVACY_POLICY_VERSION?.trim() ?? '2026-06-14',
-    leadsRateLimitMax: num(process.env.LEADS_RATE_LIMIT_MAX, 5),
-    leadsRateLimitWindowMs: num(process.env.LEADS_RATE_LIMIT_WINDOW_MS, 900_000),
-    // Auth
     authEnabled: bool(process.env.AUTH_ENABLED, false),
     registrationEnabled: bool(process.env.REGISTRATION_ENABLED, false),
     emailDeliveryEnabled: bool(process.env.EMAIL_DELIVERY_ENABLED, false),
@@ -52,15 +38,11 @@ export function getConfig(): AppConfig {
   };
 }
 
-export function leadsCaptureAvailable(config: AppConfig): boolean {
-  return Boolean(config.leadsEnabled && config.privacyControllerName && config.privacyContactEmail && config.privacyPolicyVersion);
-}
-
-export function isSecureConfig(config: AppConfig): boolean {
+export function isSecureConfig(config: AuthConfig): boolean {
   return config.appBaseUrl.startsWith('https://');
 }
 
-export function rejectInsecureAuth(config: AppConfig): void {
+export function rejectInsecureAuth(config: AuthConfig): void {
   if (config.authEnabled && !isSecureConfig(config)) {
     throw new Error(
       'AUTH_ENABLED=true requires APP_BASE_URL to use https://. ' +
