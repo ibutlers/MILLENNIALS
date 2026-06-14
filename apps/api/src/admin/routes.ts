@@ -411,12 +411,14 @@ export function registerAdminRoutes(app: FastifyInstance, options: { pool: Pool;
       value: z.string().min(1).max(500),
       position: z.number().int().min(0),
     })).optional(),
+    removedHighlightIds: z.array(z.string().uuid()).optional(),
     risks: z.array(z.object({
       _id: z.string().optional(),
       title: z.string().min(1).max(200),
       description: z.string().min(1).max(2000),
       position: z.number().int().min(0),
     })).optional(),
+    removedRiskIds: z.array(z.string().uuid()).optional(),
     milestones: z.array(z.object({
       _id: z.string().optional(),
       title: z.string().min(1).max(200),
@@ -425,6 +427,7 @@ export function registerAdminRoutes(app: FastifyInstance, options: { pool: Pool;
       completedAt: z.string().nullable().optional(),
       position: z.number().int().min(0),
     })).optional(),
+    removedMilestoneIds: z.array(z.string().uuid()).optional(),
     media: z.array(z.object({
       _id: z.string().optional(),
       assetId: z.string().min(1).max(100),
@@ -432,6 +435,7 @@ export function registerAdminRoutes(app: FastifyInstance, options: { pool: Pool;
       isPrimary: z.boolean().optional().default(false),
       position: z.number().int().min(0),
     })).optional(),
+    removedMediaIds: z.array(z.string().uuid()).optional(),
     version: z.number().int().min(1),
   });
 
@@ -454,48 +458,109 @@ export function registerAdminRoutes(app: FastifyInstance, options: { pool: Pool;
     try {
       await client.query('BEGIN');
 
+      // Helper: upsert sub-entities by ID (preserving stable identities)
+      // Pattern: UPDATE existing rows, INSERT new ones, DELETE explicitly removed
+      async function upsertSubEntities(
+        table: string,
+        columns: string[],
+        items: Array<Record<string, any>>,
+        removedIds: string[],
+        oppId: string,
+      ) {
+        // Validate all _id values belong to this opportunity
+        const existingIds = new Set(
+          (await client.query(`SELECT id FROM ${table} WHERE opportunity_id = $1`, [oppId])).rows.map((r: any) => r.id)
+        );
+
+        for (const item of items) {
+          if (item._id && !existingIds.has(item._id)) {
+            if (existingIds.size > 0) {
+              throw Object.assign(new Error(`Sub-entity ${item._id} does not belong to this opportunity`), { statusCode: 403 });
+            }
+          }
+        }
+
+        // Delete explicitly removed items (only IDs that exist and are marked for removal)
+        if (removedIds.length > 0) {
+          const validRemoved = removedIds.filter((id) => existingIds.has(id));
+          if (validRemoved.length > 0) {
+            await client.query(
+              `DELETE FROM ${table} WHERE opportunity_id = $1 AND id = ANY($2::uuid[])`,
+              [oppId, validRemoved]
+            );
+          }
+        }
+
+        // Update existing, insert new
+        for (const item of items) {
+          const isExisting = item._id && existingIds.has(item._id);
+          if (isExisting) {
+            const setClauses = columns.map((col, i) => `${col} = $${i + 3}`);
+            const values = columns.map((col) => item[col] ?? null);
+            await client.query(
+              `UPDATE ${table} SET ${setClauses.join(', ')} WHERE id = $1 AND opportunity_id = $2`,
+              [item._id, oppId, ...values]
+            );
+          } else {
+            const placeholders = columns.map((_, i) => `$${i + 2}`);
+            const values = columns.map((col) => item[col] ?? null);
+            await client.query(
+              `INSERT INTO ${table} (opportunity_id, ${columns.join(', ')}) VALUES ($1, ${placeholders.join(', ')})`,
+              [oppId, ...values]
+            );
+          }
+        }
+      }
+
       // Highlights
       if (body.highlights !== undefined) {
-        await client.query('DELETE FROM opportunity_highlights WHERE opportunity_id = $1', [oppId]);
-        for (const h of body.highlights) {
-          await client.query(
-            'INSERT INTO opportunity_highlights (opportunity_id, label, value, position) VALUES ($1,$2,$3,$4)',
-            [oppId, h.label, h.value, h.position]
-          );
-        }
+        await upsertSubEntities(
+          'opportunity_highlights',
+          ['label', 'value', 'position'],
+          body.highlights,
+          body.removedHighlightIds || [],
+          oppId,
+        );
       }
 
       // Risks
       if (body.risks !== undefined) {
-        await client.query('DELETE FROM opportunity_risks WHERE opportunity_id = $1', [oppId]);
-        for (const r of body.risks) {
-          await client.query(
-            'INSERT INTO opportunity_risks (opportunity_id, title, description, position) VALUES ($1,$2,$3,$4)',
-            [oppId, r.title, r.description, r.position]
-          );
-        }
+        await upsertSubEntities(
+          'opportunity_risks',
+          ['title', 'description', 'position'],
+          body.risks,
+          body.removedRiskIds || [],
+          oppId,
+        );
       }
 
       // Milestones
       if (body.milestones !== undefined) {
-        await client.query('DELETE FROM opportunity_milestones WHERE opportunity_id = $1', [oppId]);
-        for (const m of body.milestones) {
-          await client.query(
-            'INSERT INTO opportunity_milestones (opportunity_id, title, description, planned_date, completed_at, position) VALUES ($1,$2,$3,$4,$5,$6)',
-            [oppId, m.title, m.description, m.plannedDate || null, m.completedAt || null, m.position]
-          );
-        }
+        await upsertSubEntities(
+          'opportunity_milestones',
+          ['title', 'description', 'planned_date', 'completed_at', 'position'],
+          body.milestones.map((m: any) => ({ ...m, planned_date: m.plannedDate || null, completed_at: m.completedAt || null })),
+          body.removedMilestoneIds || [],
+          oppId,
+        );
       }
 
       // Media
       if (body.media !== undefined) {
-        await client.query('DELETE FROM opportunity_media WHERE opportunity_id = $1', [oppId]);
-        for (const md of body.media) {
-          await client.query(
-            'INSERT INTO opportunity_media (opportunity_id, type, url, alt_text, position) VALUES ($1,$2,$3,$4,$5)',
-            [oppId, md.isPrimary ? 'primary' : 'secondary', `/assets/${md.assetId}`, md.altText || '', md.position]
-          );
-        }
+        const mediaRows = body.media.map((md: any) => ({
+          type: md.isPrimary ? 'primary' : 'secondary',
+          url: `/assets/${md.assetId}`,
+          alt_text: md.altText || '',
+          position: md.position,
+          _id: md._id,
+        }));
+        await upsertSubEntities(
+          'opportunity_media',
+          ['type', 'url', 'alt_text', 'position'],
+          mediaRows,
+          body.removedMediaIds || [],
+          oppId,
+        );
       }
 
       // Bump version
@@ -519,6 +584,91 @@ export function registerAdminRoutes(app: FastifyInstance, options: { pool: Pool;
 
       await client.query('COMMIT');
       return { data: opp };
+    } catch (err) {
+      await client.query('ROLLBACK');
+      throw err;
+    } finally {
+      client.release();
+    }
+  });
+
+  // GET sub-entities for an opportunity
+  app.get('/api/v1/admin/opportunities/:id/subentities', {
+    preHandler: [adminGate(config), requireRole(pool, 'admin', 'operator')]
+  }, async (req, reply) => {
+    const oppId = (req.params as any).id;
+    const { rows: [opp] } = await pool.query('SELECT id FROM opportunities WHERE id = $1', [oppId]);
+    if (!opp) return reply.status(404).send({ error: { code: 'not_found', message: 'Oportunidad no encontrada.' } });
+
+    const [{ rows: highlights }, { rows: risks }, { rows: milestones }, { rows: media }] = await Promise.all([
+      pool.query('SELECT id, label, value, position FROM opportunity_highlights WHERE opportunity_id = $1 ORDER BY position', [oppId]),
+      pool.query('SELECT id, title, description, position FROM opportunity_risks WHERE opportunity_id = $1 ORDER BY position', [oppId]),
+      pool.query('SELECT id, title, description, planned_date, completed_at, position FROM opportunity_milestones WHERE opportunity_id = $1 ORDER BY position', [oppId]),
+      pool.query('SELECT id, type, url, alt_text, position FROM opportunity_media WHERE opportunity_id = $1 ORDER BY position', [oppId]),
+    ]);
+
+    return { data: { highlights, risks, milestones, media } };
+  });
+
+  // ══════════════════════════════════════
+  // Version restore
+  // ══════════════════════════════════════
+  app.post('/api/v1/admin/opportunities/:id/versions/:version/restore', {
+    preHandler: [adminGate(config), requireRole(pool, 'admin')]
+  }, async (req, reply) => {
+    const oppId = (req.params as any).id;
+    const restoreVersion = parseInt((req.params as any).version, 10);
+    if (!Number.isInteger(restoreVersion) || restoreVersion < 1) {
+      return reply.status(400).send({ error: { code: 'invalid_version', message: 'Versión inválida.' } });
+    }
+    const { rows: [current] } = await pool.query('SELECT * FROM opportunities WHERE id = $1', [oppId]);
+    if (!current) return reply.status(404).send({ error: { code: 'not_found', message: 'Oportunidad no encontrada.' } });
+    const { rows: [snapshot] } = await pool.query(
+      'SELECT version, data FROM opportunity_versions WHERE opportunity_id = $1 AND version = $2', [oppId, restoreVersion]
+    );
+    if (!snapshot) return reply.status(404).send({ error: { code: 'version_not_found', message: 'Versión no encontrada.' } });
+
+    let historicalData: Record<string, any>;
+    try {
+      historicalData = typeof snapshot.data === 'string' ? JSON.parse(snapshot.data) : snapshot.data;
+      if (!historicalData || typeof historicalData !== 'object') throw new Error('Invalid');
+    } catch {
+      return reply.status(422).send({ error: { code: 'invalid_snapshot', message: 'El snapshot histórico no es válido.' } });
+    }
+    if (current.editorial_status === 'published') {
+      return reply.status(409).send({ error: { code: 'cannot_restore_published', message: 'No se puede restaurar directamente una oportunidad publicada.' } });
+    }
+
+    const client = await pool.connect();
+    try {
+      await client.query('BEGIN');
+      const newVersion = current.version + 1;
+      await client.query('INSERT INTO opportunity_versions (opportunity_id, version, data) VALUES ($1,$2,$3)', [oppId, newVersion, JSON.stringify(current)]);
+
+      const { rows: [restored] } = await client.query(
+        `UPDATE opportunities SET title=$1,slug=$2,short_description=$3,description=$4,city=$5,country_code=$6,district=$7,
+         asset_type=$8,strategy=$9,status='coming_soon',visibility='private',editorial_status='draft',
+         currency=$10,target_amount_cents=$11,committed_amount_cents=$12,minimum_investment_cents=$13,
+         estimated_term_months=$14,target_return_type=$15,target_return_bps=$16,risk_level=$17,
+         closing_date=$18,disclaimer=$19,version=$20,updated_at=now(),published_at=NULL WHERE id=$21 RETURNING *`,
+        [
+          historicalData.title || current.title, historicalData.slug || current.slug,
+          historicalData.short_description || current.short_description, historicalData.description || current.description,
+          historicalData.city || current.city, historicalData.country_code || current.country_code,
+          historicalData.district || null, historicalData.asset_type || current.asset_type, historicalData.strategy || current.strategy,
+          historicalData.currency || current.currency, historicalData.target_amount_cents || current.target_amount_cents,
+          historicalData.committed_amount_cents || current.committed_amount_cents, historicalData.minimum_investment_cents || current.minimum_investment_cents,
+          historicalData.estimated_term_months || current.estimated_term_months, historicalData.target_return_type || null,
+          historicalData.target_return_bps || null, historicalData.risk_level || current.risk_level,
+          historicalData.closing_date || null, historicalData.disclaimer || null,
+          newVersion, oppId
+        ]
+      );
+
+      await client.query("INSERT INTO audit_events (actor_id, event_type, entity_type, entity_reference, summary) VALUES ($1,$2,$3,$4,$5)",
+        ['system', 'version_restored', 'opportunity', current.slug, `Restored version ${restoreVersion} as draft (v${newVersion})`]);
+      await client.query('COMMIT');
+      return { data: restored, meta: { restoredFrom: restoreVersion, newVersion } };
     } catch (err) {
       await client.query('ROLLBACK');
       throw err;

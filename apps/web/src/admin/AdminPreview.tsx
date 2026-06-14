@@ -1,5 +1,6 @@
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useParams, Link } from 'react-router';
+import { useState } from 'react';
 import { apiFetch } from '../api/client';
 import { useAuth } from '../auth/context';
 
@@ -35,14 +36,57 @@ interface PreviewResponse {
   meta: { preview: boolean; message: string };
 }
 
+interface VersionEntry {
+  version: number;
+  editorial_status: string;
+  created_at: string;
+  updated_at: string;
+}
+
+interface VersionsResponse {
+  data: VersionEntry[];
+}
+
+type LocalOverrides = Partial<{
+  title: string;
+  slug: string;
+  description: string;
+  shortDescription: string;
+  city: string;
+  countryCode: string;
+  district: string;
+  assetType: string;
+  strategy: string;
+  editorialStatus: string;
+  visibility: string;
+  status: string;
+  currency: string;
+  targetAmountCents: number;
+  committedAmountCents: number;
+  minimumInvestmentCents: number;
+  estimatedTermMonths: number;
+  targetReturnType: string;
+  targetReturnBps: number;
+  riskLevel: string;
+  closingDate: string;
+  disclaimer: string;
+}>;
+
+interface AdminPreviewProps {
+  localOverrides?: LocalOverrides | null;
+}
+
 const CENTS_TO_EUR = (c: number | undefined) => c ? `€${(c / 100).toLocaleString('es-ES', { minimumFractionDigits: 0 })}` : '—';
 const BPS_TO_PCT = (b: number | undefined | null) => b != null ? `${(b / 100).toFixed(1)}%` : '—';
 const RISK_LABELS: Record<string, string> = { low: 'Bajo', medium: 'Medio', high: 'Alto', very_high: 'Muy alto' };
 
-export default function AdminPreview() {
+export default function AdminPreview({ localOverrides }: AdminPreviewProps = {}) {
   const { id } = useParams<{ id: string }>();
   const { user } = useAuth();
+  const queryClient = useQueryClient();
   const isAdminOrOp = user?.roles?.some((r) => ['admin', 'operator'].includes(r));
+
+  const [versionsOpen, setVersionsOpen] = useState(false);
 
   const { data, isLoading, error } = useQuery<PreviewResponse>({
     queryKey: ['admin', 'preview', id],
@@ -50,10 +94,59 @@ export default function AdminPreview() {
     enabled: !!id && !!isAdminOrOp,
   });
 
+  const { data: versionsData } = useQuery<VersionsResponse>({
+    queryKey: ['admin', 'opportunities', id, 'versions'],
+    queryFn: () => apiFetch(`/api/v1/admin/opportunities/${id}/versions`),
+    enabled: !!id && versionsOpen && !!isAdminOrOp,
+  });
+
+  const restoreMutation = useMutation({
+    mutationFn: (version: number) =>
+      apiFetch(`/api/v1/admin/opportunities/${id}/versions/${version}/restore`, {
+        method: 'POST',
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin', 'opportunities', id] });
+      queryClient.invalidateQueries({ queryKey: ['admin', 'preview', id] });
+    },
+  });
+
+  // Apply local overrides to preview data
+  function applyOverrides(opp: PreviewResponse['data']): PreviewResponse['data'] {
+    if (!localOverrides) return opp;
+    return {
+      ...opp,
+      title: localOverrides.title ?? opp.title,
+      slug: localOverrides.slug ?? opp.slug,
+      description: localOverrides.description ?? opp.description,
+      short_description: localOverrides.shortDescription ?? opp.short_description,
+      city: localOverrides.city ?? opp.city,
+      country_code: localOverrides.countryCode ?? opp.country_code,
+      district: localOverrides.district !== undefined ? localOverrides.district : opp.district,
+      asset_type: localOverrides.assetType ?? opp.asset_type,
+      strategy: localOverrides.strategy ?? opp.strategy,
+      editorial_status: localOverrides.editorialStatus ?? opp.editorial_status,
+      visibility: localOverrides.visibility ?? opp.visibility,
+      status: localOverrides.status ?? opp.status,
+      currency: localOverrides.currency ?? opp.currency,
+      target_amount_cents: localOverrides.targetAmountCents ?? opp.target_amount_cents,
+      committed_amount_cents: localOverrides.committedAmountCents ?? opp.committed_amount_cents,
+      minimum_investment_cents: localOverrides.minimumInvestmentCents ?? opp.minimum_investment_cents,
+      estimated_term_months: localOverrides.estimatedTermMonths ?? opp.estimated_term_months,
+      target_return_type: localOverrides.targetReturnType !== undefined ? localOverrides.targetReturnType : opp.target_return_type,
+      target_return_bps: localOverrides.targetReturnBps !== undefined ? localOverrides.targetReturnBps : opp.target_return_bps,
+      risk_level: localOverrides.riskLevel ?? opp.risk_level,
+      closing_date: localOverrides.closingDate !== undefined ? localOverrides.closingDate : opp.closing_date,
+      disclaimer: localOverrides.disclaimer !== undefined ? localOverrides.disclaimer : opp.disclaimer,
+    };
+  }
+
+  const hasOverrides = !!localOverrides && Object.keys(localOverrides).length > 0;
+
   if (isLoading) return <div className="animate-pulse p-8 text-[#9B7E5F]">Cargando vista previa…</div>;
   if (error || !data) return <div className="p-8 text-[#9B7E5F]">No se pudo cargar la vista previa.</div>;
 
-  const opp = data.data;
+  const opp = applyOverrides(data.data);
   const primaryImg = opp.media?.find((m) => m.type === 'primary') || opp.media?.[0];
 
   return (
@@ -64,11 +157,17 @@ export default function AdminPreview() {
         <Link to={`/admin/oportunidades/${id}`} className="ml-4 underline hover:no-underline">Volver al editor</Link>
       </div>
 
+      {/* Local overrides indicator */}
+      {hasOverrides && (
+        <div className="sticky top-10 z-40 bg-amber-500 px-4 py-2 text-center text-sm font-medium text-[#08191C]">
+          ⚡ Cambios sin guardar — esta vista previa incluye modificaciones locales no persistidas
+        </div>
+      )}
+
       {/* Hero */}
       <header className="relative bg-[#08191C]">
         {primaryImg && (
           <div className="absolute inset-0 opacity-40">
-            {/* In a real app, this would render the image */}
             <div className="h-full w-full bg-[#1A3E48]" />
           </div>
         )}
@@ -176,6 +275,68 @@ export default function AdminPreview() {
             <p className="text-sm text-[#08191C]/60">{opp.disclaimer}</p>
           </section>
         )}
+
+        {/* Version history */}
+        <section className="rounded border border-[#08191C]/10 bg-white p-6">
+          <button
+            onClick={() => setVersionsOpen(!versionsOpen)}
+            className="flex w-full items-center justify-between font-serif text-lg text-[#08191C]"
+          >
+            <span>Historial de versiones</span>
+            <span className={`transform transition-transform ${versionsOpen ? 'rotate-180' : ''}`}>▾</span>
+          </button>
+
+          {versionsOpen && (
+            <div className="mt-4">
+              {!versionsData && (
+                <p className="text-sm text-[#9B7E5F] animate-pulse">Cargando versiones…</p>
+              )}
+              {versionsData?.data && versionsData.data.length === 0 && (
+                <p className="text-sm text-[#9B7E5F]">No hay versiones anteriores.</p>
+              )}
+              {versionsData?.data && versionsData.data.length > 0 && (
+                <div className="space-y-2">
+                  {versionsData.data.map((v) => (
+                    <div
+                      key={v.version}
+                      className="flex items-center justify-between rounded border border-[#08191C]/10 p-3"
+                    >
+                      <div>
+                        <p className="text-sm font-medium text-[#08191C]">
+                          Versión {v.version}
+                        </p>
+                        <p className="text-xs text-[#9B7E5F]">
+                          {v.editorial_status} ·{' '}
+                          {new Date(v.updated_at).toLocaleString('es-ES', {
+                            dateStyle: 'medium',
+                            timeStyle: 'short',
+                          })}
+                        </p>
+                      </div>
+                      <button
+                        onClick={() => restoreMutation.mutate(v.version)}
+                        disabled={restoreMutation.isPending}
+                        className="rounded border border-[#7FA88C] px-3 py-1.5 text-xs font-medium text-[#7FA88C] hover:bg-[#7FA88C] hover:text-white disabled:opacity-50 transition-colors"
+                      >
+                        {restoreMutation.isPending ? 'Restaurando…' : 'Restaurar como borrador'}
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+              {restoreMutation.isSuccess && (
+                <p className="mt-3 text-sm text-[#7FA88C]">
+                  ✓ Versión restaurada. Vuelve al editor para continuar.
+                </p>
+              )}
+              {restoreMutation.isError && (
+                <p className="mt-3 text-sm text-red-500">
+                  Error al restaurar: {(restoreMutation.error as Error)?.message || 'Error desconocido'}
+                </p>
+              )}
+            </div>
+          )}
+        </section>
 
         {/* Meta footer */}
         <footer className="border-t border-[#08191C]/10 pt-6 text-xs text-[#9B7E5F]">
