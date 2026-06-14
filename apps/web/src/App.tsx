@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { fetchPublicOpportunities, returnTypeLabel, riskLabel, statusLabel, type PublicOpportunity } from './opportunities/api';
 
 const navigation = [
   { label: 'Firma', href: '#firma' },
@@ -32,48 +33,6 @@ const methodology = [
     eyebrow: '03',
     title: 'Tecnología y análisis',
     text: 'La capa digital prepara datos, estados, hitos y comunicación para una futura zona privada de inversores.'
-  }
-];
-
-const opportunities = [
-  {
-    title: 'Rehabilitación residencial en eje consolidado',
-    area: 'Madrid · zona centro norte',
-    image: '/images/opportunity-rehabilitacion.webp',
-    targetReturn: '8,5% anual',
-    term: '18 meses',
-    minTicket: '25.000 €',
-    targetCapital: '1,2 M€',
-    committedCapital: 'Demo: 34%',
-    status: 'En análisis documental',
-    risk: 'Medio',
-    progress: 34
-  },
-  {
-    title: 'Activo con patio y mejora energética',
-    area: 'Valencia · distrito prime urbano',
-    image: '/images/opportunity-patio.webp',
-    targetReturn: '7,2% anual',
-    term: '14 meses',
-    minTicket: '15.000 €',
-    targetCapital: '780.000 €',
-    committedCapital: 'Demo: 51%',
-    status: 'Pre-reserva abierta',
-    risk: 'Medio-bajo',
-    progress: 51
-  },
-  {
-    title: 'Cambio de uso con demanda contrastable',
-    area: 'Málaga · corredor metropolitano',
-    image: '/images/opportunity-urbano.webp',
-    targetReturn: '9,1% anual',
-    term: '22 meses',
-    minTicket: '30.000 €',
-    targetCapital: '1,6 M€',
-    committedCapital: 'Demo: 18%',
-    status: 'Estructuración inicial',
-    risk: 'Medio-alto',
-    progress: 18
   }
 ];
 
@@ -325,35 +284,78 @@ function Methodology() {
   );
 }
 
-function OpportunityCard({ opportunity }: { opportunity: (typeof opportunities)[number] }) {
+function OpportunityCard({ opportunity }: { opportunity: PublicOpportunity }) {
+  const progress = Math.max(0, Math.min(100, opportunity.fundingProgress));
+  const location = [opportunity.city, opportunity.district].filter(Boolean).join(' · ');
+
   return (
-    <article aria-label={`Oportunidad demo: ${opportunity.title}`} className="overflow-hidden border border-border bg-carbon text-textLight">
-      <img src={opportunity.image} alt={`Imagen arquitectónica generada para ${opportunity.title}`} width="900" height="600" loading="lazy" className="h-52 w-full object-cover opacity-82" />
+    <article aria-label={`Oportunidad pública: ${opportunity.title}`} className="overflow-hidden border border-border bg-carbon text-textLight">
+      {opportunity.primaryImage ? (
+        <img src={opportunity.primaryImage.url} alt={opportunity.primaryImage.altText} width="900" height="600" loading="lazy" className="h-52 w-full object-cover opacity-82" />
+      ) : (
+        <div className="h-52 w-full bg-gradient-to-br from-petroleum to-carbon" role="img" aria-label="Imagen pendiente de publicar" />
+      )}
       <div className="p-5 sm:p-6">
         <div className="flex flex-wrap items-center gap-2">
           <span className="border border-mineral/50 px-2.5 py-1 text-[0.68rem] font-black uppercase tracking-[0.18em] text-mineral">Datos ilustrativos</span>
-          <span className="border border-border px-2.5 py-1 text-[0.68rem] font-bold uppercase tracking-[0.18em] text-muted">{opportunity.status}</span>
+          <span className="border border-border px-2.5 py-1 text-[0.68rem] font-bold uppercase tracking-[0.18em] text-muted">{statusLabel(opportunity.status)}</span>
         </div>
         <h3 className="mt-5 font-serif text-3xl leading-tight tracking-[-0.03em]">{opportunity.title}</h3>
-        <p className="mt-2 text-sm font-semibold uppercase tracking-[0.18em] text-muted">{opportunity.area}</p>
+        <p className="mt-2 text-sm font-semibold uppercase tracking-[0.18em] text-muted">{location}</p>
+        <p className="mt-4 leading-7 text-muted">{opportunity.shortDescription}</p>
         <dl className="mt-6 grid grid-cols-2 gap-px overflow-hidden border border-border bg-petroleum text-sm">
-          <div className="bg-carbon p-3"><dt className="text-muted">Rentabilidad objetivo estimada</dt><dd className="mt-1 font-serif text-2xl text-textLight">{opportunity.targetReturn}</dd></div>
-          <div className="bg-carbon p-3"><dt className="text-muted">Plazo estimado</dt><dd className="mt-1 font-semibold">{opportunity.term}</dd></div>
-          <div className="bg-carbon p-3"><dt className="text-muted">Ticket mínimo</dt><dd className="mt-1 font-semibold">{opportunity.minTicket}</dd></div>
-          <div className="bg-carbon p-3"><dt className="text-muted">Capital objetivo</dt><dd className="mt-1 font-semibold">{opportunity.targetCapital}</dd></div>
-          <div className="bg-carbon p-3"><dt className="text-muted">Capital comprometido</dt><dd className="mt-1 font-semibold">{opportunity.committedCapital}</dd></div>
-          <div className="bg-carbon p-3"><dt className="text-muted">Nivel de riesgo</dt><dd className="mt-1 font-semibold">{opportunity.risk}</dd></div>
+          <div className="bg-carbon p-3"><dt className="text-muted">{returnTypeLabel(opportunity.targetReturnType)}</dt><dd className="mt-1 font-serif text-2xl text-textLight">{opportunity.targetReturn.formatted ?? 'No publicado'}</dd></div>
+          <div className="bg-carbon p-3"><dt className="text-muted">Plazo estimado</dt><dd className="mt-1 font-semibold">{opportunity.estimatedTermMonths} meses</dd></div>
+          <div className="bg-carbon p-3"><dt className="text-muted">Ticket mínimo</dt><dd className="mt-1 font-semibold">{opportunity.minimumInvestment?.formatted ?? 'No publicado'}</dd></div>
+          <div className="bg-carbon p-3"><dt className="text-muted">Capital objetivo</dt><dd className="mt-1 font-semibold">{opportunity.targetAmount?.formatted ?? 'No publicado'}</dd></div>
+          <div className="bg-carbon p-3"><dt className="text-muted">Capital comprometido</dt><dd className="mt-1 font-semibold">{opportunity.committedAmount?.formatted ?? 'No publicado'}</dd></div>
+          <div className="bg-carbon p-3"><dt className="text-muted">Nivel de riesgo</dt><dd className="mt-1 font-semibold">{riskLabel(opportunity.riskLevel)} · no regulatorio</dd></div>
         </dl>
         <div className="mt-6">
-          <div className="mb-2 flex justify-between text-xs font-black uppercase tracking-[0.18em] text-muted"><span>Estado</span><span>{opportunity.progress}% demo</span></div>
-          <div className="h-2 bg-petroleum"><div className="h-2 bg-mineral" style={{ width: `${opportunity.progress}%` }} /></div>
+          <div className="mb-2 flex justify-between text-xs font-black uppercase tracking-[0.18em] text-muted"><span>Financiación</span><span>{progress}% demo</span></div>
+          <div className="h-2 bg-petroleum"><div className="h-2 bg-mineral" style={{ width: `${progress}%` }} /></div>
         </div>
+        <a href={`/api/v1/opportunities/${opportunity.slug}`} className="mt-6 inline-flex border border-border px-4 py-3 text-xs font-black uppercase tracking-[0.16em] text-textLight transition hover:border-mineral hover:text-mineral focus:outline-none focus-visible:ring-2 focus-visible:ring-mineralHover">Ver ficha pública</a>
       </div>
     </article>
   );
 }
 
+type OpportunitiesState =
+  | { status: 'loading'; data: PublicOpportunity[]; disclaimer: string | null }
+  | { status: 'success'; data: PublicOpportunity[]; disclaimer: string }
+  | { status: 'error'; data: PublicOpportunity[]; disclaimer: string | null }
+  | { status: 'empty'; data: PublicOpportunity[]; disclaimer: string | null };
+
+function usePublicOpportunities(): OpportunitiesState {
+  const [state, setState] = useState<OpportunitiesState>({ status: 'loading', data: [], disclaimer: null });
+
+  useEffect(() => {
+    const controller = new AbortController();
+    setState({ status: 'loading', data: [], disclaimer: null });
+
+    fetchPublicOpportunities(controller.signal)
+      .then((response) => {
+        if (response.data.length === 0) {
+          setState({ status: 'empty', data: [], disclaimer: response.meta.disclaimer });
+          return;
+        }
+        setState({ status: 'success', data: response.data, disclaimer: response.meta.disclaimer });
+      })
+      .catch((error: unknown) => {
+        if (error instanceof DOMException && error.name === 'AbortError') return;
+        setState({ status: 'error', data: [], disclaimer: null });
+      });
+
+    return () => controller.abort();
+  }, []);
+
+  return state;
+}
+
 function Opportunities() {
+  const opportunitiesState = usePublicOpportunities();
+
   return (
     <section id="oportunidades" className="bg-carbon py-16 text-textLight sm:py-24">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
@@ -361,16 +363,34 @@ function Opportunities() {
           <div>
             <p className="text-xs font-black uppercase tracking-[0.28em] text-mineral">Oportunidades actuales</p>
             <h2 className="mt-5 font-serif text-4xl leading-tight tracking-[-0.03em] sm:text-6xl">
-              Información pública resumida, sin exponer contenido privado.
+              Información pública resumida desde PostgreSQL, sin exponer contenido privado.
             </h2>
           </div>
           <p className="leading-8 text-muted">
-            Las cifras son demo y sirven para validar la visualización de riesgo, plazo, capital y estado. No representan una oferta pública ni resultados pasados.
+            Las oportunidades proceden de la API pública de Realstate. Los objetivos son estimaciones no garantizadas y no representan una oferta pública ni resultados pasados.
           </p>
         </div>
-        <div className="mt-10 grid gap-5 lg:grid-cols-3">
-          {opportunities.map((opportunity) => <OpportunityCard key={opportunity.title} opportunity={opportunity} />)}
-        </div>
+
+        {opportunitiesState.status === 'loading' ? (
+          <div className="mt-10 border border-border bg-petroleum p-8 text-muted" role="status">Cargando oportunidades públicas…</div>
+        ) : null}
+
+        {opportunitiesState.status === 'error' ? (
+          <div className="mt-10 border border-warning bg-petroleum p-8 text-muted" role="alert">No hemos podido cargar las oportunidades públicas. La API no está disponible temporalmente; no mostramos datos falsos como si fueran reales.</div>
+        ) : null}
+
+        {opportunitiesState.status === 'empty' ? (
+          <div className="mt-10 border border-border bg-petroleum p-8 text-muted">No hay oportunidades públicas disponibles en este momento.</div>
+        ) : null}
+
+        {opportunitiesState.status === 'success' ? (
+          <>
+            <div className="mt-10 grid gap-5 lg:grid-cols-3">
+              {opportunitiesState.data.map((opportunity) => <OpportunityCard key={opportunity.slug} opportunity={opportunity} />)}
+            </div>
+            <p className="mt-6 text-sm leading-7 text-muted">{opportunitiesState.disclaimer}</p>
+          </>
+        ) : null}
       </div>
     </section>
   );

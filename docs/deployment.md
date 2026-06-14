@@ -40,13 +40,15 @@ El script:
 1. exige estar en `main`, limpio y sincronizado con `origin/main`;
 2. valida que exista `/srv/deployments/realstate/shared/.env`;
 3. fija permisos `600` sobre el archivo secreto;
-4. crea un backup lógico de PostgreSQL si `current-postgres-1` está activo;
+4. crea o confirma disponibilidad de PostgreSQL y genera un backup lógico antes de migrar;
 5. copia el workspace a una nueva release excluyendo `.git`, `.env`, dependencias, builds, reportes y temporales;
 6. valida y construye Compose;
-7. actualiza `previous` hacia la release activa anterior;
-8. actualiza `current` hacia la nueva release;
-9. recrea contenedores con `docker compose up -d --force-recreate`;
-10. ejecuta el healthcheck HTTP.
+7. ejecuta migraciones PostgreSQL controladas desde la nueva imagen API usando advisory lock;
+8. ejecuta el seed demo idempotente;
+9. actualiza `previous` hacia la release activa anterior;
+10. actualiza `current` hacia la nueva release;
+11. recrea contenedores con `docker compose up -d --force-recreate`;
+12. ejecuta el healthcheck HTTP.
 
 No usar `docker compose down -v` en producción. No eliminar los volúmenes `current_*`.
 
@@ -121,6 +123,20 @@ Reglas obligatorias:
 - no borrar releases como sustituto de rollback.
 
 ## Migraciones retrocompatibles
+
+Las migraciones viven en `apps/api/src/db/migrations` y se empaquetan en `apps/api/dist/db/migrations` durante `pnpm --filter @realstate/api build`.
+
+Comandos:
+
+```bash
+pnpm --filter @realstate/api db:migrate
+pnpm --filter @realstate/api db:seed
+./scripts/test-database.sh
+```
+
+`deploy.sh` ejecuta `node apps/api/dist/db/migrate.js` y después `node apps/api/dist/db/seed.js` mediante Compose antes de activar la release. Si una migración o seed falla, el despliegue se detiene y no cambia `current`.
+
+El migrador usa `schema_migrations` con checksum SHA-256 y `pg_advisory_lock` para evitar dos migradores simultáneos. No hay migraciones destructivas en Hito 2.
 
 Los despliegues deben poder hacer rollback a la release anterior sin perder datos. Cualquier migración de base de datos debe ser retrocompatible durante al menos una release:
 

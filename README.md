@@ -1,31 +1,32 @@
 # Realstate
 
-Webapp inmobiliaria para presentar oportunidades de real estate con una base pública institucional, responsive y preparada para una futura zona privada de inversores.
+Webapp inmobiliaria para presentar oportunidades de real estate con una base pública institucional, API pública de oportunidades y preparación para una futura zona privada de inversores.
 
 ## Estado actual
 
-La aplicación desplegada incluye una landing pública mobile-first refinada con:
+La aplicación desplegada incluye:
 
-- hero visual con imagen arquitectónica generada específicamente para Realstate, overlay oscuro y CTAs jerarquizados;
-- identidad propia basada en carbón profundo, marfil cálido, verde mineral y cobre oscuro;
-- titulares editoriales con serif contemporánea y UI tecnológica con sans legible;
+- landing pública mobile-first con identidad azul petróleo + verde mineral;
+- hero visual con imagen arquitectónica generada específicamente para Realstate;
 - narrativa corporativa antes de oportunidades;
 - tesis de inversión, metodología, tecnología y análisis;
-- indicadores de proceso sin métricas no verificadas;
-- oportunidades públicas demo con rentabilidad objetivo estimada, plazo, ticket mínimo, capital objetivo, capital comprometido, estado, nivel de riesgo y progreso;
-- menú móvil fullscreen accesible con Escape, foco atrapado, restauración de foco, bloqueo de scroll y selector ES/EN preparado;
-- FAQ, CTA de acceso privado futuro y footer;
+- oportunidades públicas servidas desde PostgreSQL vía `GET /api/v1/opportunities`;
+- fichas públicas JSON vía `GET /api/v1/opportunities/:slug`;
+- estados loading/error/empty en frontend sin mostrar datos falsos si la API falla;
+- rutas informativas honestas de acceso/zona privada futura, sin autenticación simulada;
+- modelo PostgreSQL para oportunidades, media, highlights, riesgos e hitos;
+- migraciones SQL controladas y seed demo idempotente;
+- menú móvil fullscreen accesible;
 - página visual 404 para rutas desconocidas;
-- metadatos SEO básicos y favicon propio;
 - cabeceras de seguridad configuradas en Caddy.
 
-Las oportunidades y cifras visibles son demo y están marcadas como datos ilustrativos. No se publica capital gestionado, rentabilidad histórica, número de proyectos, volumen de análisis, oficinas ni presencia internacional hasta tener datos verificables.
+Las oportunidades y cifras visibles son demo y están marcadas como datos ilustrativos. No se publica capital gestionado, rentabilidad histórica, número de proyectos reales, oficinas ni presencia internacional hasta tener datos verificables.
 
-La base de datos, autenticación, CRUD, panel administrativo, captación persistente, catálogo real y zona privada funcional quedan para hitos posteriores.
+No están implementados todavía: autenticación real, KYC, pagos, cartera, inversión real, panel administrativo funcional ni documentos privados.
 
 ## Stack
 
-React + Vite + TypeScript, React Router, Tailwind CSS, TanStack Query, React Hook Form, Zod, Node.js + Fastify, PostgreSQL, Vitest, Testing Library, Playwright, axe, Docker Compose + Caddy.
+React + Vite + TypeScript, React Router, Tailwind CSS, Zod, Node.js + Fastify, PostgreSQL, `pg`, Vitest, Testing Library, Playwright, axe, Docker Compose + Caddy.
 
 ## Comandos
 
@@ -40,9 +41,56 @@ pnpm build
 pnpm audit --audit-level=low
 bash -n scripts/*.sh
 git diff --check
-./scripts/deploy.sh
-./scripts/healthcheck.sh
-./scripts/rollback.sh
 ```
+
+## Base de datos
+
+```bash
+pnpm --filter @realstate/api db:migrate
+pnpm --filter @realstate/api db:seed
+./scripts/test-database.sh
+```
+
+Representación financiera:
+
+- importes en céntimos enteros;
+- porcentajes en basis points;
+- moneda ISO;
+- tipos de retorno explícitos: anual objetivo, total objetivo, TIR objetivo y ROI objetivo.
+
+## API pública
+
+```bash
+curl http://127.0.0.1:8088/api/v1/opportunities
+curl http://127.0.0.1:8088/api/v1/opportunities/eixample-rehabilitacion-luminosa
+```
+
+Filtros permitidos:
+
+- `status`
+- `city`
+- `assetType`
+- `strategy`
+- `riskLevel`
+- `limit`
+- `offset`
+- `sort`
+- `direction`
+
+## Producción
+
+El único comando autorizado de producción es:
+
+```bash
+./scripts/deploy.sh
+```
+
+Reglas de seguridad operativa:
+
+- no mostrar secretos;
+- no ejecutar `docker compose down -v`;
+- preservar `current_postgres-data`;
+- mantener `COMPOSE_PROJECT_NAME=current`;
+- usar rollback con `./scripts/rollback.sh` si procede.
 
 Ver `AGENTS.md` y `docs/` antes de modificar el proyecto.

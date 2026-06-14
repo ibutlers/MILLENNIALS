@@ -280,7 +280,13 @@ No se permite:
 
 ## Alcance técnico actual
 
-- API mínima con `/health` y `/api/health`.
+- API con `/health`, `/api/health` y `/api/ready`.
+- API pública versionada de oportunidades: `GET /api/v1/opportunities` y `GET /api/v1/opportunities/:slug`.
+- Modelo PostgreSQL inicial para oportunidades, media, highlights, riesgos e hitos.
+- Migraciones SQL reproducibles con ledger `schema_migrations`, checksum y advisory lock.
+- Seed demo idempotente con oportunidades ficticias propias, incluyendo fixtures privadas para validar exclusión pública.
+- Representación financiera con céntimos enteros, basis points, ISO currency y tipos de retorno inequívocos.
+- Landing pública conectada a la API con loading/error/empty y sin fallback falso cuando la API falla.
 - Despliegue con Docker Compose, Caddy y PostgreSQL interno.
 - Pruebas unitarias, documentación verificada, accesibilidad con axe y Playwright.
 - Cabeceras de seguridad básicas en Caddy.

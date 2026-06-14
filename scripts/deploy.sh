@@ -79,15 +79,32 @@ if [[ -L "$CURRENT_LINK" ]]; then
 fi
 
 POSTGRES_CONTAINER="${PROJECT_NAME}-postgres-1"
+BACKUP_CREATED="false"
 
-if docker ps --format '{{.Names}}' |
-  grep -qx "$POSTGRES_CONTAINER"; then
+wait_for_postgres() {
+  local attempts="${REALSTATE_POSTGRES_READY_ATTEMPTS:-60}"
+  local sleep_seconds="${REALSTATE_POSTGRES_READY_SLEEP:-1}"
 
+  for ((attempt = 1; attempt <= attempts; attempt += 1)); do
+    if docker exec "$POSTGRES_CONTAINER" \
+      pg_isready -U "$DB_USER" -d "$DB_NAME" >/dev/null 2>&1; then
+      return 0
+    fi
+    sleep "$sleep_seconds"
+  done
+
+  return 1
+}
+
+create_postgres_backup() {
   [[ -n "$DB_USER" ]] ||
     fail "POSTGRES_USER no está configurado"
 
   [[ -n "$DB_NAME" ]] ||
     fail "POSTGRES_DB no está configurado"
+
+  wait_for_postgres ||
+    fail "PostgreSQL no está listo para crear backup"
 
   TEMP_BACKUP="${BACKUP_ROOT}/.database-${TIMESTAMP}.dump.tmp"
   FINAL_BACKUP="${BACKUP_ROOT}/database-${TIMESTAMP}.dump"
@@ -100,8 +117,15 @@ if docker ps --format '{{.Names}}' |
 
   mv "$TEMP_BACKUP" "$FINAL_BACKUP"
   chmod 600 "$FINAL_BACKUP"
+  BACKUP_CREATED="true"
 
   echo "Backup PostgreSQL creado: $FINAL_BACKUP"
+}
+
+if docker ps --format '{{.Names}}' |
+  grep -qx "$POSTGRES_CONTAINER"; then
+
+  create_postgres_backup
 fi
 
 mkdir -p "$RELEASE_DIR"
@@ -135,6 +159,21 @@ compose_release() {
 
 compose_release "$RELEASE_DIR" config --quiet
 compose_release "$RELEASE_DIR" build
+
+echo "Verificando disponibilidad de PostgreSQL antes de migrar"
+compose_release "$RELEASE_DIR" up -d postgres
+wait_for_postgres ||
+  fail "PostgreSQL no está listo antes de migrar"
+
+if [[ "$BACKUP_CREATED" != "true" ]]; then
+  create_postgres_backup
+fi
+
+echo "Aplicando migraciones PostgreSQL controladas"
+compose_release "$RELEASE_DIR" run --rm api node apps/api/dist/db/migrate.js
+
+echo "Aplicando seed demo idempotente"
+compose_release "$RELEASE_DIR" run --rm api node apps/api/dist/db/seed.js
 
 if [[ -n "$CURRENT_RELEASE" && -d "$CURRENT_RELEASE" ]]; then
   ln -sfn "$CURRENT_RELEASE" "$PREVIOUS_LINK"

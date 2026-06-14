@@ -2,8 +2,10 @@ import { AxeBuilder } from '@axe-core/playwright';
 import { expect, test } from '@playwright/test';
 
 test.describe('public landing', () => {
-  test('loads the refined institutional home page, narrative and opportunity cards', async ({ page }) => {
+  test('loads the home from the real public opportunities API', async ({ page }) => {
+    const apiResponse = page.waitForResponse((response) => response.url().includes('/api/v1/opportunities') && response.status() === 200);
     await page.goto('/');
+    await apiResponse;
 
     await expect(
       page.getByRole('heading', {
@@ -13,9 +15,38 @@ test.describe('public landing', () => {
     await expect(page.getByRole('navigation', { name: /navegación principal/i })).toBeVisible();
     await expect(page.getByRole('heading', { name: /tesis de inversión/i })).toBeVisible();
     await expect(page.getByRole('heading', { name: /tecnología y análisis/i })).toBeVisible();
-    await expect(page.getByRole('article', { name: /oportunidad demo/i })).toHaveCount(3);
+    await expect(page.getByRole('article', { name: /oportunidad pública/i })).toHaveCount(3);
     await expect(page.getByText(/datos ilustrativos/i).first()).toBeVisible();
+    await expect(page.getByText(/objetivos no están garantizados/i)).toBeVisible();
+    await expect(page.getByText(/oportunidad privada demo no pública/i)).toHaveCount(0);
     await expect(page.getByText(/retorno histórico/i)).toHaveCount(0);
+  });
+
+  test('public API health and opportunities endpoints continue to work', async ({ request }) => {
+    await expect((await request.get('/health')).ok()).toBeTruthy();
+    const health = await request.get('/api/health');
+    expect(health.ok()).toBeTruthy();
+    expect(await health.json()).toMatchObject({ status: 'ok', dependencies: { postgres: 'ok' } });
+
+    const list = await request.get('/api/v1/opportunities?limit=2&sort=publishedAt');
+    expect(list.ok()).toBeTruthy();
+    const body = await list.json();
+    expect(body.data).toHaveLength(2);
+    expect(JSON.stringify(body)).not.toMatch(/privada-demo-no-publica/);
+  });
+
+  test('opportunity CTA opens the public API detail without private fields', async ({ page, request }) => {
+    await page.goto('/');
+    const firstLink = page.getByRole('link', { name: /ver ficha pública/i }).first();
+    const href = await firstLink.getAttribute('href');
+    expect(href).toMatch(/^\/api\/v1\/opportunities\//);
+
+    const detail = await request.get(href ?? '');
+    expect(detail.ok()).toBeTruthy();
+    const body = await detail.json();
+    expect(body.data.highlights.length).toBeGreaterThan(0);
+    expect(body.data.risks.length).toBeGreaterThan(0);
+    expect(JSON.stringify(body)).not.toMatch(/kyc|investor|document_private|admin_notes|internal_/i);
   });
 
   test('supports skip link keyboard navigation', async ({ page }) => {
@@ -29,6 +60,7 @@ test.describe('public landing', () => {
 
   test('has no critical or serious accessibility violations on the home page', async ({ page }) => {
     await page.goto('/');
+    await expect(page.getByRole('article', { name: /oportunidad pública/i })).toHaveCount(3);
 
     const results = await new AxeBuilder({ page }).include('main').analyze();
     const blockingViolations = results.violations.filter((violation) =>
