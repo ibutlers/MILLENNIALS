@@ -19,6 +19,7 @@ import {
 import { AuthRepository } from './auth/repository.js';
 import { ConsoleEmailTransport, type EmailTransport } from './auth/email.js';
 import { registerAuthRoutes } from './auth/routes.js';
+import { registerAdminRoutes } from './admin/routes.js';
 
 export type AppDependencies = {
   pool?: Pool;
@@ -225,6 +226,11 @@ export function buildApp(dependencies: AppDependencies = {}): FastifyInstance {
     repo: authRepo,
     config,
     emailTransport,
+  });
+
+  registerAdminRoutes(app, {
+    pool: pool as Pool,
+    config,
   });
 
   return app;

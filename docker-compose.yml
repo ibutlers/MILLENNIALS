@@ -29,6 +29,9 @@ services:
       PASSWORD_RESET_TTL_SECONDS: "${PASSWORD_RESET_TTL_SECONDS:-1800}"
       AUTH_RATE_LIMIT_MAX: "${AUTH_RATE_LIMIT_MAX:-10}"
       AUTH_RATE_LIMIT_WINDOW_MS: "${AUTH_RATE_LIMIT_WINDOW_MS:-900000}"
+      ADMIN_ENABLED: "${ADMIN_ENABLED:-false}"
+      ADMIN_MEDIA_UPLOAD_ENABLED: "${ADMIN_MEDIA_UPLOAD_ENABLED:-false}"
+      DEMO_SEED_ENABLED: "${DEMO_SEED_ENABLED:-false}"
     depends_on: [postgres]
     restart: unless-stopped
   postgres:

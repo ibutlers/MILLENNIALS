@@ -31,6 +31,9 @@ const InvestorSecurity = lazy(() => import('./investors/InvestorSecurity').then(
 // ── Guards (lazy-loaded for code splitting) ──
 const RequireAuth = lazy(() => import('./auth/guards').then((module) => ({ default: module.RequireAuth })));
 
+// ── Admin pages ──
+const AdminLayout = lazy(() => import('./admin/AdminLayout').then((module) => ({ default: module.default })));
+
 const queryClient = new QueryClient();
 function PageLoader() { return <main className="min-h-screen bg-carbon p-8 text-textLight" role="status">Cargando página…</main>; }
 function lazyPage(element: React.ReactNode) { return <Suspense fallback={<PageLoader />}>{element}</Suspense>; }
@@ -76,8 +79,40 @@ const router = createBrowserRouter([
   },
 
   // ── Catch-all ──
-  { path: '*', element: <NotFound /> }
+  { path: '*', element: <NotFound /> },
+
+  // ── Admin routes ──
+  {
+    path: '/admin',
+    element: lazyPage(
+      <Suspense fallback={<PageLoader />}>
+        <RequireAuth>
+          <AdminLayout />
+        </RequireAuth>
+      </Suspense>
+    ),
+    children: [
+      { index: true, element: <AdminDashboardPlaceholder /> },
+      { path: 'oportunidades', element: <AdminDashboardPlaceholder /> },
+      { path: 'oportunidades/nueva', element: <AdminDashboardPlaceholder /> },
+      { path: 'oportunidades/:id', element: <AdminDashboardPlaceholder /> },
+      { path: 'leads', element: <AdminDashboardPlaceholder /> },
+      { path: 'leads/:reference', element: <AdminDashboardPlaceholder /> },
+      { path: 'usuarios', element: <AdminDashboardPlaceholder /> },
+      { path: 'usuarios/:reference', element: <AdminDashboardPlaceholder /> },
+      { path: 'auditoria', element: <AdminDashboardPlaceholder /> },
+    ],
+  },
 ]);
+
+function AdminDashboardPlaceholder() {
+  return (
+    <div className="border border-border bg-petroleum p-6">
+      <h2 className="font-serif text-xl text-mineral">Sección en preparación</h2>
+      <p className="mt-2 text-sm text-muted">Esta funcionalidad estará disponible cuando el panel administrativo esté habilitado.</p>
+    </div>
+  );
+}
 
 ReactDOM.createRoot(document.getElementById('root') as HTMLElement).render(
   <React.StrictMode>

@@ -279,6 +279,13 @@ export async function runSeed(pool: Pool = createPool()) {
 }
 
 if (import.meta.url === `file://${process.argv[1]}`) {
+  const demoSeedEnabled = (process.env.DEMO_SEED_ENABLED ?? 'false').toLowerCase() === 'true';
+
+  if (!demoSeedEnabled) {
+    console.log(JSON.stringify({ status: 'skipped', reason: 'DEMO_SEED_ENABLED is not true — seed only runs in dev/demo environments' }));
+    process.exit(0);
+  }
+
   const pool = createPool();
   runSeed(pool)
     .then((result) => console.log(JSON.stringify({ status: 'ok', ...result })))

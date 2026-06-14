@@ -72,3 +72,12 @@ Cambios de arquitectura, comandos, variables, deploy, healthcheck o rollback deb
 - Las contraseñas usan Argon2id; nunca almacenar ni transmitir contraseñas en texto plano.
 - Usar rate limiting por endpoint de autenticación para prevenir abuso.
 - Mensajes genéricos en login, registro y recuperación para evitar enumeración de cuentas.
+
+## Seguridad del panel administrativo
+- Nunca habilitar `ADMIN_ENABLED` en producción sin HTTPS ni dominio real.
+- `ADMIN_ENABLED=true` requiere `AUTH_ENABLED=*** la API rechazará arrancar si no se cumple.
+- Toda autorización administrativa se valida en backend (RBAC). No confiar en ocultar botones del frontend.
+- El seed demo (`DEMO_SEED_ENABLED`) debe estar desactivado en producción (`false`).
+- No crear administradores automáticamente en migraciones ni seed.
+- Operadores no pueden gestionar roles ni deshabilitar administradores.
+- Impedir que el último admin activo sea deshabilitado o pierda su rol.

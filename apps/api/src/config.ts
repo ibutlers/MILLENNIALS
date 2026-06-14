@@ -17,6 +17,10 @@ export type AppConfig = {
   passwordResetTtlSeconds: number;
   authRateLimitMax: number;
   authRateLimitWindowMs: number;
+  // Admin
+  adminEnabled: boolean;
+  adminMediaUploadEnabled: boolean;
+  demoSeedEnabled: boolean;
 };
 
 function bool(value: string | undefined, defaultValue: boolean): boolean {
@@ -49,6 +53,10 @@ export function getConfig(): AppConfig {
     passwordResetTtlSeconds: num(process.env.PASSWORD_RESET_TTL_SECONDS, 1800),
     authRateLimitMax: num(process.env.AUTH_RATE_LIMIT_MAX, 10),
     authRateLimitWindowMs: num(process.env.AUTH_RATE_LIMIT_WINDOW_MS, 900_000),
+    // Admin
+    adminEnabled: bool(process.env.ADMIN_ENABLED, false),
+    adminMediaUploadEnabled: bool(process.env.ADMIN_MEDIA_UPLOAD_ENABLED, false),
+    demoSeedEnabled: bool(process.env.DEMO_SEED_ENABLED, false),
   };
 }
 
@@ -66,6 +74,18 @@ export function rejectInsecureAuth(config: AppConfig): void {
       'AUTH_ENABLED=true requires APP_BASE_URL to use https://. ' +
       'Authentication is not safe over plain HTTP. ' +
       `Current APP_BASE_URL: ${config.appBaseUrl}`
+    );
+  }
+  if (config.adminEnabled && !config.authEnabled) {
+    throw new Error(
+      'ADMIN_ENABLED=true requires AUTH_ENABLED=true. ' +
+      'The admin panel cannot function without authentication.'
+    );
+  }
+  if (config.adminEnabled && !isSecureConfig(config)) {
+    throw new Error(
+      'ADMIN_ENABLED=true requires APP_BASE_URL to use https://. ' +
+      'The admin panel is not safe over plain HTTP.'
     );
   }
 }
