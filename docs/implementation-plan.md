@@ -1,4 +1,4 @@
-# Plan de implementación — Realstate
+# Plan de implementación — MILLENNIALS CONSTRUYEN | CAPITAL
 
 ## Fase 0
 Reglas, documentación, scripts, scaffold mínimo web/API, pruebas y deploy.

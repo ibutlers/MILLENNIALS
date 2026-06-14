@@ -1,4 +1,4 @@
-# AGENTS.md — Realstate
+# AGENTS.md — MILLENNIALS CONSTRUYEN | CAPITAL
 
 Reglas obligatorias para agentes/personas.
 

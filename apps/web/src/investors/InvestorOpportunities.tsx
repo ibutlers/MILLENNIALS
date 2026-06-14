@@ -13,7 +13,7 @@ export function InvestorOpportunities() {
   const [state, setState] = useState<State>({ status: 'loading' });
 
   useEffect(() => {
-    setPageMetadata('Oportunidades | Realstate', 'Catálogo de oportunidades de inversión disponibles en Realstate.');
+    setPageMetadata('Oportunidades | MILLENNIALS CONSTRUYEN | CAPITAL', 'Catálogo de oportunidades de inversión disponibles en MILLENNIALS CONSTRUYEN | CAPITAL.');
   }, []);
 
   useEffect(() => {
@@ -45,7 +45,7 @@ export function InvestorOpportunities() {
         Oportunidades disponibles
       </h1>
       <p className="mt-4 text-lg leading-8 text-muted">
-        Consulta las oportunidades públicas de Realstate. Todavía no hay funcionalidad de inversión — podrás invertir cuando se habiliten los flujos de inversión en próximos hitos.
+        Consulta las oportunidades públicas de MILLENNIALS CONSTRUYEN | CAPITAL. Todavía no hay funcionalidad de inversión — podrás invertir cuando se habiliten los flujos de inversión en próximos hitos.
       </p>
 
       {/* ── Honest notice ── */}

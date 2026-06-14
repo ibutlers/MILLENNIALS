@@ -15,7 +15,7 @@ export function VerifyEmailPage() {
   const [state, setState] = useState<State>({ status: 'loading' });
 
   useEffect(() => {
-    setPageMetadata('Verificar email | Realstate', 'Verifica tu dirección de correo electrónico en Realstate.');
+    setPageMetadata('Verificar email | MILLENNIALS CONSTRUYEN | CAPITAL', 'Verifica tu dirección de correo electrónico en MILLENNIALS CONSTRUYEN | CAPITAL.');
   }, []);
 
   useEffect(() => {

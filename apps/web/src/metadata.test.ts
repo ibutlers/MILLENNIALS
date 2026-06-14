@@ -8,7 +8,7 @@ describe('document metadata', () => {
   it('declares Spanish language, viewport and professional SEO metadata', () => {
     expect(html).toMatch(/<html\s+lang="es"/);
     expect(html).toContain('name="viewport" content="width=device-width, initial-scale=1"');
-    expect(html).toMatch(/<title>Realstate \| Inversión inmobiliaria con disciplina y datos<\/title>/);
+    expect(html).toMatch(/<title>MILLENNIALS CONSTRUYEN | CAPITAL \| Inversión inmobiliaria con disciplina y datos<\/title>/);
     expect(html).toContain('name="description"');
     expect(html).toContain('property="og:title"');
     expect(html).not.toContain('rel="canonical"');

@@ -3,7 +3,7 @@ import { Link } from 'react-router';
 import { setPageMetadata } from '../metadata';
 
 export function PrivacyPage() {
-  useEffect(() => setPageMetadata('Privacidad provisional | Realstate', 'Información provisional sobre la captación de solicitudes en Realstate pendiente de revisión legal.'), []);
+  useEffect(() => setPageMetadata('Privacidad provisional | MILLENNIALS CONSTRUYEN | CAPITAL', 'Información provisional sobre la captación de solicitudes en MILLENNIALS CONSTRUYEN | CAPITAL pendiente de revisión legal.'), []);
   return (
     <main className="min-h-screen bg-ivory px-4 py-12 text-textDark sm:px-6 lg:px-8">
       <article className="mx-auto max-w-4xl">

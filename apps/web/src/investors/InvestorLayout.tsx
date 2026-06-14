@@ -59,8 +59,8 @@ export function InvestorLayout() {
         </a>
         <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-4 sm:px-6 lg:px-8">
           <Link to="/inversores" className="group inline-flex items-center gap-3 focus:outline-none focus-visible:ring-2 focus-visible:ring-mineralHover focus-visible:ring-offset-4 focus-visible:ring-offset-carbon">
-            <span className="grid h-10 w-10 place-items-center border border-mineral/70 text-lg font-black text-mineral">R</span>
-            <span className="text-lg font-black uppercase tracking-[0.22em] sm:text-xl">Realstate</span>
+            <span className="grid h-10 w-10 place-items-center border border-mineral/70 text-lg font-black text-mineral">MC</span>
+            <span className="text-lg font-black uppercase tracking-[0.12em] sm:text-xl">MILLENNIALS CONSTRUYEN</span>
           </Link>
 
           {isAuthAvailable ? (
@@ -119,7 +119,7 @@ export function InvestorLayout() {
       {isOpen ? (
         <div className="fixed inset-0 z-50 bg-carbon text-textLight lg:hidden" role="dialog" aria-modal="true" aria-label="Menú de inversor" ref={drawerRef}>
           <div className="flex items-center justify-between border-b border-border px-4 py-4">
-            <span className="text-lg font-black uppercase tracking-[0.22em]">Realstate</span>
+            <span className="text-lg font-black uppercase tracking-[0.12em]">MILLENNIALS CONSTRUYEN</span>
             <button ref={closeButtonRef} type="button" aria-label="Cerrar menú" className="border border-border px-4 py-3 text-sm font-black uppercase tracking-[0.18em] focus:outline-none focus-visible:ring-2 focus-visible:ring-mineralHover" onClick={() => setIsOpen(false)}>
               Cerrar
             </button>

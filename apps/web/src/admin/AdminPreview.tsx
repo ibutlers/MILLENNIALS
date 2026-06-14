@@ -340,7 +340,7 @@ export default function AdminPreview({ localOverrides }: AdminPreviewProps = {})
 
         {/* Meta footer */}
         <footer className="border-t border-[#08191C]/10 pt-6 text-xs text-[#9B7E5F]">
-          <p>Esta es una vista previa privada del panel administrativo de Realstate. No indexar. No compartir.</p>
+          <p>Esta es una vista previa privada del panel administrativo de MILLENNIALS CONSTRUYEN | CAPITAL. No indexar. No compartir.</p>
           <p className="mt-1">Editorial: {opp.editorial_status} · Visibilidad: {opp.visibility} · Estado: {opp.status}</p>
         </footer>
       </main>

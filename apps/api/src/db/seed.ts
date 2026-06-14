@@ -36,7 +36,7 @@ export const seedOpportunities: SeedOpportunity[] = [
     slug: 'eixample-rehabilitacion-luminosa',
     title: 'Rehabilitación luminosa en Eixample',
     shortDescription: 'Activo residencial ficticio con mejora de eficiencia y reposicionamiento comercial.',
-    description: 'Oportunidad demo diseñada para validar el catálogo público de Realstate. Incluye hipótesis de rehabilitación, comercialización y seguimiento documental sin constituir oferta de inversión.',
+    description: 'Oportunidad demo diseñada para validar el catálogo público de MILLENNIALS CONSTRUYEN | CAPITAL. Incluye hipótesis de rehabilitación, comercialización y seguimiento documental sin constituir oferta de inversión.',
     city: 'Barcelona',
     countryCode: 'ES',
     district: 'Eixample',

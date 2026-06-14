@@ -51,7 +51,7 @@ function PlannedHeader() {
       <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-4 sm:px-6 lg:px-8">
         <Link to="/" className="inline-flex items-center gap-3 focus:outline-none focus-visible:ring-2 focus-visible:ring-mineralHover focus-visible:ring-offset-4 focus-visible:ring-offset-carbon">
           <span className="grid h-10 w-10 place-items-center border border-mineral/70 text-lg font-black text-mineral">R</span>
-          <span className="text-lg font-black uppercase tracking-[0.22em]">Realstate</span>
+          <span className="text-lg font-black uppercase tracking-[0.22em]">MILLENNIALS CONSTRUYEN | CAPITAL</span>
         </Link>
         <Link to="/" className="border border-border px-4 py-2 text-xs font-black uppercase tracking-[0.18em] hover:border-mineral hover:text-mineral focus:outline-none focus-visible:ring-2 focus-visible:ring-mineralHover focus-visible:ring-offset-4 focus-visible:ring-offset-carbon">
           Volver a la home

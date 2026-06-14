@@ -17,7 +17,7 @@ export function RegisterPage() {
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
-    setPageMetadata('Registro | Realstate', 'Solicita acceso a la plataforma de inversión inmobiliaria Realstate.');
+    setPageMetadata('Registro | MILLENNIALS CONSTRUYEN | CAPITAL', 'Solicita acceso a la plataforma de inversión inmobiliaria MILLENNIALS CONSTRUYEN | CAPITAL.');
   }, []);
 
   useEffect(() => {

@@ -7,7 +7,7 @@ export function InvestorDashboard() {
   const { user, isAuthAvailable, checkedAvailability, isLoading } = useAuth();
 
   useEffect(() => {
-    setPageMetadata('Panel de inversor | Realstate', 'Panel principal de la zona privada de inversores de Realstate.');
+    setPageMetadata('Panel de inversor | MILLENNIALS CONSTRUYEN | CAPITAL', 'Panel principal de la zona privada de inversores de MILLENNIALS CONSTRUYEN | CAPITAL.');
   }, []);
 
   // ── Loading ──
@@ -35,7 +35,7 @@ export function InvestorDashboard() {
 
       {isAuthAvailable ? (
         <p className="mt-4 text-lg leading-8 text-muted">
-          Este es tu espacio privado en Realstate. Desde aquí podrás gestionar tu cartera, revisar documentos y seguir el estado de tus inversiones.
+          Este es tu espacio privado en MILLENNIALS CONSTRUYEN | CAPITAL. Desde aquí podrás gestionar tu cartera, revisar documentos y seguir el estado de tus inversiones.
         </p>
       ) : (
         <p className="mt-4 text-lg leading-8 text-muted">

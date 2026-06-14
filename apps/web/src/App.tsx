@@ -38,7 +38,7 @@ const methodology = [
 
 const faqs = [
   {
-    question: '¿Qué publica Realstate en abierto?',
+    question: '¿Qué publica MILLENNIALS CONSTRUYEN | CAPITAL en abierto?',
     answer: 'Información resumida, naturaleza ilustrativa de oportunidades demo y criterios de análisis. La documentación privada llegará en una zona segura.'
   },
   {
@@ -118,8 +118,8 @@ function Header() {
         </a>
         <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-4 sm:px-6 lg:px-8">
           <a href="/" className="group inline-flex items-center gap-3 focus:outline-none focus-visible:ring-2 focus-visible:ring-mineralHover focus-visible:ring-offset-4 focus-visible:ring-offset-carbon">
-            <span className="grid h-10 w-10 place-items-center border border-mineral/70 text-lg font-black text-mineral">R</span>
-            <span className="text-lg font-black uppercase tracking-[0.22em] sm:text-xl">Realstate</span>
+            <span className="grid h-10 w-10 place-items-center border border-mineral/70 text-lg font-black text-mineral">MC</span>
+            <span className="text-lg font-black uppercase tracking-[0.12em] sm:text-xl">MILLENNIALS CONSTRUYEN</span>
           </a>
           <nav aria-label="Navegación principal" className="hidden items-center gap-7 text-xs font-bold uppercase tracking-[0.18em] text-muted lg:flex">
             {navigation.map((item) => (
@@ -155,7 +155,7 @@ function Header() {
       {isOpen ? (
         <div className="fixed inset-0 z-50 bg-carbon text-textLight lg:hidden" role="dialog" aria-modal="true" aria-label="Menú de navegación" ref={drawerRef}>
           <div className="flex items-center justify-between border-b border-border px-4 py-4">
-            <span className="text-lg font-black uppercase tracking-[0.22em]">Realstate</span>
+            <span className="text-lg font-black uppercase tracking-[0.12em]">MILLENNIALS CONSTRUYEN</span>
             <button ref={closeButtonRef} type="button" aria-label="Cerrar menú" className="border border-border px-4 py-3 text-sm font-black uppercase tracking-[0.18em] focus:outline-none focus-visible:ring-2 focus-visible:ring-mineralHover" onClick={() => setIsOpen(false)}>
               Cerrar
             </button>
@@ -188,12 +188,12 @@ function Hero() {
     <section className="relative min-h-[calc(100svh-73px)] overflow-hidden bg-carbon text-textLight">
       <picture>
         <source srcSet="/images/hero-architecture-640.webp 640w, /images/hero-architecture-1280.webp 1280w, /images/hero-architecture-1920.webp 1920w" sizes="100vw" type="image/webp" />
-        <img src="/images/hero-architecture-1280.webp" alt="Composición arquitectónica urbana generada para Realstate con edificios al atardecer" width="1280" height="921" className="absolute inset-0 h-full w-full object-cover" fetchPriority="high" />
+        <img src="/images/hero-architecture-1280.webp" alt="Composición arquitectónica urbana generada para MILLENNIALS CONSTRUYEN | CAPITAL con edificios al atardecer" width="1280" height="921" className="absolute inset-0 h-full w-full object-cover" fetchPriority="high" />
       </picture>
       <div className="absolute inset-0 bg-gradient-to-b from-carbon/85 via-carbon/80 to-carbon" aria-hidden="true" />
       <div className="relative mx-auto flex min-h-[calc(100svh-73px)] max-w-7xl flex-col justify-end px-4 py-10 sm:px-6 lg:px-8 lg:py-16">
         <p className="mb-5 max-w-max border border-border bg-petroleum/70 px-3 py-2 text-xs font-black uppercase tracking-[0.26em] text-mineral backdrop-blur">
-          Realstate — plataforma inmobiliaria privada
+          MILLENNIALS CONSTRUYEN | CAPITAL — plataforma inmobiliaria privada
         </p>
         <h1 className="max-w-5xl font-serif text-5xl leading-[0.95] tracking-[-0.04em] text-textLight sm:text-6xl md:text-7xl lg:text-8xl">
           Inversión inmobiliaria con disciplina, datos y seguimiento operativo.
@@ -226,7 +226,7 @@ function FirmNarrative() {
         </div>
         <div className="space-y-7 text-lg leading-9 text-textDark/72">
           <p>
-            Realstate se plantea como una plataforma inmobiliaria profesional para explicar una tesis, organizar oportunidades y comunicar avances con transparencia.
+            MILLENNIALS CONSTRUYEN | CAPITAL se plantea como una plataforma inmobiliaria profesional para explicar una tesis, organizar oportunidades y comunicar avances con transparencia.
           </p>
           <p>
             La primera capa pública evita cifras no verificadas y prioriza proceso: revisión técnica, comercial y financiera, documentación estructurada y seguimiento periódico.
@@ -369,7 +369,7 @@ function Opportunities() {
             </h2>
           </div>
           <p className="leading-8 text-muted">
-            Las oportunidades proceden de la API pública de Realstate. Los objetivos son estimaciones no garantizadas y no representan una oferta pública ni resultados pasados.
+            Las oportunidades proceden de la API pública de MILLENNIALS CONSTRUYEN | CAPITAL. Los objetivos son estimaciones no garantizadas y no representan una oferta pública ni resultados pasados.
           </p>
         </div>
 
@@ -444,8 +444,8 @@ function Footer() {
     <footer className="bg-carbon text-textLight" role="contentinfo">
       <div className="mx-auto grid max-w-7xl gap-8 border-t border-border px-4 py-10 text-sm text-muted sm:px-6 md:grid-cols-[1fr_auto] lg:px-8">
         <div>
-          <p className="text-lg font-black uppercase tracking-[0.22em] text-textLight">Realstate</p>
-          <p className="mt-3 max-w-xl">Plataforma inmobiliaria en construcción. Esta página usa datos demo y activos visuales generados específicamente para Realstate.</p>
+          <p className="text-lg font-black uppercase tracking-[0.12em] text-textLight">MILLENNIALS CONSTRUYEN</p>
+          <p className="mt-3 max-w-xl">Plataforma inmobiliaria en construcción. Esta página usa datos demo y activos visuales generados específicamente para MILLENNIALS CONSTRUYEN | CAPITAL.</p>
         </div>
         <nav aria-label="Navegación secundaria" className="flex flex-wrap gap-4 font-semibold">
           {navigation.map((item) => <a key={item.href} className="hover:text-mineral focus:outline-none focus-visible:ring-2 focus-visible:ring-mineralHover" href={item.href}>{item.label}</a>)}

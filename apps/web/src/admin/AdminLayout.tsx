@@ -111,7 +111,7 @@ export default function AdminLayout() {
         >
           <div className="flex h-full flex-col border-r border-[#1A3E48]">
             <div className="border-b border-[#1A3E48] px-6 py-5">
-              <h2 className="font-serif text-xl tracking-tight text-[#7FA88C]">Realstate</h2>
+              <h2 className="font-serif text-xl tracking-tight text-[#7FA88C]">MILLENNIALS CONSTRUYEN | CAPITAL</h2>
               <p className="mt-1 text-xs text-[#5C8D7A]">Panel administrativo</p>
             </div>
             <nav className="flex-1 space-y-1 px-3 py-4" aria-label="Navegación administrativa">

@@ -7,7 +7,7 @@ export function NotFound() {
         </p>
         <h1 className="mt-6 font-serif text-5xl leading-tight tracking-[-0.04em] sm:text-7xl">No encontramos esta página.</h1>
         <p className="mt-5 text-lg leading-8 text-muted">
-          La ruta solicitada no forma parte de la experiencia pública de Realstate. Vuelve al inicio para consultar la tesis, metodología y oportunidades demo.
+          La ruta solicitada no forma parte de la experiencia pública de MILLENNIALS CONSTRUYEN | CAPITAL. Vuelve al inicio para consultar la tesis, metodología y oportunidades demo.
         </p>
         <a
           href="/"

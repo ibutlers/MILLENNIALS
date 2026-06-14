@@ -37,7 +37,7 @@ function mockFetch(body: unknown, ok = true) {
   vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok, json: async () => body }));
 }
 
-describe('Realstate landing', () => {
+describe('MILLENNIALS CONSTRUYEN | CAPITAL landing', () => {
   beforeEach(() => {
     mockFetch(apiResponse);
   });

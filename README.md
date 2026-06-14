@@ -1,4 +1,4 @@
-# Realstate
+# MILLENNIALS CONSTRUYEN | CAPITAL
 
 Webapp inmobiliaria para presentar oportunidades de real estate con una base pública institucional, API pública de oportunidades y preparación para una futura zona privada de inversores.
 
@@ -7,7 +7,7 @@ Webapp inmobiliaria para presentar oportunidades de real estate con una base pú
 La aplicación desplegada incluye:
 
 - landing pública mobile-first con identidad azul petróleo + verde mineral;
-- hero visual con imagen arquitectónica generada específicamente para Realstate;
+- hero visual con imagen arquitectónica generada específicamente para MILLENNIALS CONSTRUYEN | CAPITAL;
 - narrativa corporativa antes de oportunidades;
 - tesis de inversión, metodología, tecnología y análisis;
 - oportunidades públicas servidas desde PostgreSQL vía `GET /api/v1/opportunities`;

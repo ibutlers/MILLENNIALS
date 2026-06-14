@@ -1,10 +1,10 @@
-# Sistema de diseño — Realstate
+# Sistema de diseño — MILLENNIALS CONSTRUYEN | CAPITAL
 
 Principios: sobrio, rápido, mobile-first, accesible, transparente y orientado a confianza institucional.
 
 ## Personalidad visual
 
-Realstate debe sentirse como una plataforma inmobiliaria profesional con criterio inversor, no como una plantilla de portal ni como una copia de referencias externas. La identidad actual se aleja del negro/cobre dominante y se basa en:
+MILLENNIALS CONSTRUYEN | CAPITAL debe sentirse como una plataforma inmobiliaria profesional con criterio inversor, no como una plantilla de portal ni como una copia de referencias externas. La identidad actual se aleja del negro/cobre dominante y se basa en:
 
 - azul petróleo profundo para la base institucional;
 - marfil cálido para lectura editorial;
@@ -76,9 +76,9 @@ Contrastes base comprobados:
 
 ## Componentes actuales
 
-- `Header`: logotipo textual Realstate, navegación desktop, selector ES/EN preparado, acceso inversores y menú móvil.
+- `Header`: logotipo textual MILLENNIALS CONSTRUYEN | CAPITAL, navegación desktop, selector ES/EN preparado, acceso inversores y menú móvil.
 - Menú móvil fullscreen: dialog accesible, cierre visible, Escape, restauración de foco y bloqueo de scroll del fondo.
-- `Hero`: imagen arquitectónica generada específicamente para Realstate en WebP responsive con overlay azul petróleo oscuro, titular editorial y dos CTAs jerarquizados.
+- `Hero`: imagen arquitectónica generada específicamente para MILLENNIALS CONSTRUYEN | CAPITAL en WebP responsive con overlay azul petróleo oscuro, titular editorial y dos CTAs jerarquizados.
 - `FirmNarrative`: narrativa corporativa antes de oportunidades.
 - `ProcessSection`: indicadores de proceso sin cifras no verificadas.
 - `Methodology`: tesis, metodología, tecnología y análisis.
@@ -106,7 +106,7 @@ No usar “retorno histórico” en datos mock. Las tarjetas deben distinguir co
 
 ## Fotografía y assets
 
-Las imágenes actuales son composiciones arquitectónicas generadas específicamente para Realstate, exportadas como WebP y servidas con dimensiones explícitas. El hero usa `srcset` y `sizes`; las imágenes fuera del hero usan `loading="lazy"`.
+Las imágenes actuales son composiciones arquitectónicas generadas específicamente para MILLENNIALS CONSTRUYEN | CAPITAL, exportadas como WebP y servidas con dimensiones explícitas. El hero usa `srcset` y `sizes`; las imágenes fuera del hero usan `loading="lazy"`.
 
 No se deben reutilizar imágenes, logotipos, iconos ni activos de competidores.
 

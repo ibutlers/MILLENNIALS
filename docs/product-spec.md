@@ -1,6 +1,6 @@
-# Especificación de producto — Realstate
+# Especificación de producto — MILLENNIALS CONSTRUYEN | CAPITAL
 
-Realstate será una webapp inmobiliaria para presentar, consultar y gestionar oportunidades de real estate con una capa pública transparente y una futura zona privada de inversores.
+MILLENNIALS CONSTRUYEN | CAPITAL será una webapp inmobiliaria para presentar, consultar y gestionar oportunidades de real estate con una capa pública transparente y una futura zona privada de inversores.
 
 ## Usuarios
 
@@ -14,7 +14,7 @@ Realstate será una webapp inmobiliaria para presentar, consultar y gestionar op
 La aplicación ofrece una fundación pública profesional para validar marca, narrativa y estructura de información antes de conectar datos reales:
 
 - landing responsive y mobile-first;
-- hero visual con imagen arquitectónica generada para Realstate;
+- hero visual con imagen arquitectónica generada para MILLENNIALS CONSTRUYEN | CAPITAL;
 - navegación pública desktop y menú móvil fullscreen accesible;
 - selector ES/EN preparado;
 - CTAs diferenciados para oportunidades demo, firma, solicitud de acceso y acceso inversores;
@@ -249,7 +249,7 @@ Cada proyecto deberá poder ofrecer:
 
 ### 10. Diferenciación respecto a referencias
 
-Realstate debe superar el patrón observado mediante:
+MILLENNIALS CONSTRUYEN | CAPITAL debe superar el patrón observado mediante:
 
 - menos banners repetitivos;
 - mejor uso del espacio móvil;

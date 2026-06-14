@@ -45,7 +45,7 @@ function SelectField({ label, name, value, options, onChange }: { label: string;
 export function OpportunitiesCatalogPage() {
   const [searchParams, setSearchParams] = useSearchParams();
   useEffect(() => {
-    setPageMetadata('Catálogo público de oportunidades | Realstate', 'Oportunidades inmobiliarias demo de Realstate con filtros, métricas públicas y objetivos no garantizados.');
+    setPageMetadata('Catálogo público de oportunidades | MILLENNIALS CONSTRUYEN | CAPITAL', 'Oportunidades inmobiliarias demo de MILLENNIALS CONSTRUYEN | CAPITAL con filtros, métricas públicas y objetivos no garantizados.');
   }, []);
   const params = readParams(searchParams);
   const query = useQuery({

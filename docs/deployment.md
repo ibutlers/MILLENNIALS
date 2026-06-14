@@ -1,6 +1,6 @@
-# Despliegue — Realstate
+# Despliegue — MILLENNIALS CONSTRUYEN | CAPITAL
 
-Realstate se despliega desde un workspace Git limpio hacia releases inmutables y se ejecuta con Docker Compose y Caddy en contenedor. El puerto público por defecto es `8088` para no interferir con servicios existentes.
+MILLENNIALS CONSTRUYEN | CAPITAL se despliega desde un workspace Git limpio hacia releases inmutables y se ejecuta con Docker Compose y Caddy en contenedor. El puerto público por defecto es `8088` para no interferir con servicios existentes.
 
 ## Directorios y enlaces
 
