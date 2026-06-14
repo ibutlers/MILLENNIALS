@@ -108,48 +108,50 @@ function Header() {
   const { isOpen, setIsOpen, openButtonRef, closeButtonRef, drawerRef } = useMobileMenu();
 
   return (
-    <header className="sticky top-0 z-40 border-b border-border bg-carbon/95 text-textLight shadow-2xl shadow-petroleum/30 backdrop-blur-xl">
-      <a
-        href="#contenido"
-        className="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-50 focus:bg-mineral focus:px-4 focus:py-2 focus:text-sm focus:font-bold focus:text-textDark"
-      >
-        Saltar al contenido
-      </a>
-      <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-4 sm:px-6 lg:px-8">
-        <a href="/" className="group inline-flex items-center gap-3 focus:outline-none focus-visible:ring-2 focus-visible:ring-mineralHover focus-visible:ring-offset-4 focus-visible:ring-offset-carbon">
-          <span className="grid h-10 w-10 place-items-center border border-mineral/70 text-lg font-black text-mineral">R</span>
-          <span className="text-lg font-black uppercase tracking-[0.22em] sm:text-xl">Realstate</span>
-        </a>
-        <nav aria-label="Navegación principal" className="hidden items-center gap-7 text-xs font-bold uppercase tracking-[0.18em] text-muted lg:flex">
-          {navigation.map((item) => (
-            <a key={item.href} href={item.href} className="transition hover:text-mineral focus:outline-none focus-visible:ring-2 focus-visible:ring-mineralHover focus-visible:ring-offset-4 focus-visible:ring-offset-carbon">
-              {item.label}
-            </a>
-          ))}
-        </nav>
-        <div className="hidden items-center gap-3 lg:flex">
-          <button type="button" aria-label="Idioma español seleccionado" className="border border-border px-3 py-2 text-xs font-black uppercase tracking-[0.18em] text-muted">
-            ES / EN
-          </button>
-          <a href="/inversores" className="border border-border px-4 py-2 text-xs font-black uppercase tracking-[0.16em] transition hover:border-mineral hover:text-mineral focus:outline-none focus-visible:ring-2 focus-visible:ring-mineralHover focus-visible:ring-offset-4 focus-visible:ring-offset-carbon">
-            Acceso inversores
-          </a>
-        </div>
-        <button
-          ref={openButtonRef}
-          type="button"
-          aria-label="Abrir menú"
-          aria-expanded={isOpen}
-          className="grid h-11 w-11 place-items-center border border-border text-textLight transition hover:border-mineral hover:text-mineral focus:outline-none focus-visible:ring-2 focus-visible:ring-mineralHover focus-visible:ring-offset-4 focus-visible:ring-offset-carbon lg:hidden"
-          onClick={() => setIsOpen(true)}
+    <>
+      <header className="sticky top-0 z-40 border-b border-border bg-carbon/95 text-textLight shadow-2xl shadow-petroleum/30 backdrop-blur-xl">
+        <a
+          href="#contenido"
+          className="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-50 focus:bg-mineral focus:px-4 focus:py-2 focus:text-sm focus:font-bold focus:text-textDark"
         >
-          <span aria-hidden="true" className="space-y-1.5">
-            <span className="block h-0.5 w-6 bg-current" />
-            <span className="block h-0.5 w-6 bg-current" />
-            <span className="block h-0.5 w-6 bg-current" />
-          </span>
-        </button>
-      </div>
+          Saltar al contenido
+        </a>
+        <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-4 sm:px-6 lg:px-8">
+          <a href="/" className="group inline-flex items-center gap-3 focus:outline-none focus-visible:ring-2 focus-visible:ring-mineralHover focus-visible:ring-offset-4 focus-visible:ring-offset-carbon">
+            <span className="grid h-10 w-10 place-items-center border border-mineral/70 text-lg font-black text-mineral">R</span>
+            <span className="text-lg font-black uppercase tracking-[0.22em] sm:text-xl">Realstate</span>
+          </a>
+          <nav aria-label="Navegación principal" className="hidden items-center gap-7 text-xs font-bold uppercase tracking-[0.18em] text-muted lg:flex">
+            {navigation.map((item) => (
+              <a key={item.href} href={item.href} className="transition hover:text-mineral focus:outline-none focus-visible:ring-2 focus-visible:ring-mineralHover focus-visible:ring-offset-4 focus-visible:ring-offset-carbon">
+                {item.label}
+              </a>
+            ))}
+          </nav>
+          <div className="hidden items-center gap-3 lg:flex">
+            <button type="button" aria-label="Idioma español seleccionado" className="border border-border px-3 py-2 text-xs font-black uppercase tracking-[0.18em] text-muted">
+              ES / EN
+            </button>
+            <a href="/inversores" className="border border-border px-4 py-2 text-xs font-black uppercase tracking-[0.16em] transition hover:border-mineral hover:text-mineral focus:outline-none focus-visible:ring-2 focus-visible:ring-mineralHover focus-visible:ring-offset-4 focus-visible:ring-offset-carbon">
+              Acceso inversores
+            </a>
+          </div>
+          <button
+            ref={openButtonRef}
+            type="button"
+            aria-label="Abrir menú"
+            aria-expanded={isOpen}
+            className="grid h-11 w-11 place-items-center border border-border text-textLight transition hover:border-mineral hover:text-mineral focus:outline-none focus-visible:ring-2 focus-visible:ring-mineralHover focus-visible:ring-offset-4 focus-visible:ring-offset-carbon lg:hidden"
+            onClick={() => setIsOpen(true)}
+          >
+            <span aria-hidden="true" className="space-y-1.5">
+              <span className="block h-0.5 w-6 bg-current" />
+              <span className="block h-0.5 w-6 bg-current" />
+              <span className="block h-0.5 w-6 bg-current" />
+            </span>
+          </button>
+        </div>
+      </header>
       {isOpen ? (
         <div className="fixed inset-0 z-50 bg-carbon text-textLight lg:hidden" role="dialog" aria-modal="true" aria-label="Menú de navegación" ref={drawerRef}>
           <div className="flex items-center justify-between border-b border-border px-4 py-4">
@@ -177,7 +179,7 @@ function Header() {
           </div>
         </div>
       ) : null}
-    </header>
+    </>
   );
 }
 

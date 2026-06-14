@@ -115,45 +115,44 @@ export function InvestorLayout() {
             </span>
           </button>
         </div>
-
-        {isOpen ? (
-          <div className="fixed inset-0 z-50 bg-carbon text-textLight lg:hidden" role="dialog" aria-modal="true" aria-label="Menú de inversor" ref={drawerRef}>
-            <div className="flex items-center justify-between border-b border-border px-4 py-4">
-              <span className="text-lg font-black uppercase tracking-[0.22em]">Realstate</span>
-              <button ref={closeButtonRef} type="button" aria-label="Cerrar menú" className="border border-border px-4 py-3 text-sm font-black uppercase tracking-[0.18em] focus:outline-none focus-visible:ring-2 focus-visible:ring-mineralHover" onClick={() => setIsOpen(false)}>
-                Cerrar
-              </button>
-            </div>
-            <div className="grid min-h-[calc(100dvh-73px)] content-between px-6 py-8">
-              <nav aria-label="Navegación móvil" className="grid gap-5 text-3xl font-serif text-textLight">
-                {navItems.map((item) => (
-                  <Link key={item.href} to={item.href} onClick={() => setIsOpen(false)} className={`border-b border-border pb-4 focus:outline-none focus-visible:ring-2 focus-visible:ring-mineralHover ${isActive(item.href) ? 'text-mineral' : ''}`}>
-                    {item.label}
-                  </Link>
-                ))}
-              </nav>
-              <div className="grid gap-4">
-                {isAuthAvailable && user ? (
-                  <>
-                    <p className="text-sm text-muted">{user.email}</p>
-                    <button
-                      type="button"
-                      onClick={() => { setIsOpen(false); handleLogout(); }}
-                      className="border border-border px-5 py-4 text-center text-sm font-black uppercase tracking-[0.18em] text-textLight hover:border-danger hover:text-danger focus:outline-none focus-visible:ring-2 focus-visible:ring-mineralHover"
-                    >
-                      Cerrar sesión
-                    </button>
-                  </>
-                ) : (
-                  <Link to="/" onClick={() => setIsOpen(false)} className="border border-border px-5 py-4 text-center text-sm font-black uppercase tracking-[0.18em] text-textLight hover:border-mineral hover:text-mineral focus:outline-none focus-visible:ring-2 focus-visible:ring-mineralHover">
-                    Volver a la home
-                  </Link>
-                )}
-              </div>
+      </header>
+      {isOpen ? (
+        <div className="fixed inset-0 z-50 bg-carbon text-textLight lg:hidden" role="dialog" aria-modal="true" aria-label="Menú de inversor" ref={drawerRef}>
+          <div className="flex items-center justify-between border-b border-border px-4 py-4">
+            <span className="text-lg font-black uppercase tracking-[0.22em]">Realstate</span>
+            <button ref={closeButtonRef} type="button" aria-label="Cerrar menú" className="border border-border px-4 py-3 text-sm font-black uppercase tracking-[0.18em] focus:outline-none focus-visible:ring-2 focus-visible:ring-mineralHover" onClick={() => setIsOpen(false)}>
+              Cerrar
+            </button>
+          </div>
+          <div className="grid min-h-[calc(100dvh-73px)] content-between px-6 py-8">
+            <nav aria-label="Navegación móvil" className="grid gap-5 text-3xl font-serif text-textLight">
+              {navItems.map((item) => (
+                <Link key={item.href} to={item.href} onClick={() => setIsOpen(false)} className={`border-b border-border pb-4 focus:outline-none focus-visible:ring-2 focus-visible:ring-mineralHover ${isActive(item.href) ? 'text-mineral' : ''}`}>
+                  {item.label}
+                </Link>
+              ))}
+            </nav>
+            <div className="grid gap-4">
+              {isAuthAvailable && user ? (
+                <>
+                  <p className="text-sm text-muted">{user.email}</p>
+                  <button
+                    type="button"
+                    onClick={() => { setIsOpen(false); handleLogout(); }}
+                    className="border border-border px-5 py-4 text-center text-sm font-black uppercase tracking-[0.18em] text-textLight hover:border-danger hover:text-danger focus:outline-none focus-visible:ring-2 focus-visible:ring-mineralHover"
+                  >
+                    Cerrar sesión
+                  </button>
+                </>
+              ) : (
+                <Link to="/" onClick={() => setIsOpen(false)} className="border border-border px-5 py-4 text-center text-sm font-black uppercase tracking-[0.18em] text-textLight hover:border-mineral hover:text-mineral focus:outline-none focus-visible:ring-2 focus-visible:ring-mineralHover">
+                  Volver a la home
+                </Link>
+              )}
             </div>
           </div>
-        ) : null}
-      </header>
+        </div>
+      ) : null}
       <main id="contenido" tabIndex={-1} className="focus:outline-none">
         <Outlet />
       </main>
