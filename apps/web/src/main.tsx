@@ -33,6 +33,14 @@ const RequireAuth = lazy(() => import('./auth/guards').then((module) => ({ defau
 
 // ── Admin pages ──
 const AdminLayout = lazy(() => import('./admin/AdminLayout').then((module) => ({ default: module.default })));
+const AdminDashboard = lazy(() => import('./admin/AdminDashboard').then((module) => ({ default: module.default })));
+const AdminOpportunityList = lazy(() => import('./admin/AdminOpportunityList').then((module) => ({ default: module.default })));
+const AdminOpportunityEditor = lazy(() => import('./admin/AdminOpportunityEditor').then((module) => ({ default: module.default })));
+const AdminLeadList = lazy(() => import('./admin/AdminLeadList').then((module) => ({ default: module.default })));
+const AdminLeadDetail = lazy(() => import('./admin/AdminLeadDetail').then((module) => ({ default: module.default })));
+const AdminUserList = lazy(() => import('./admin/AdminUserList').then((module) => ({ default: module.default })));
+const AdminUserDetail = lazy(() => import('./admin/AdminUserDetail').then((module) => ({ default: module.default })));
+const AdminAuditLog = lazy(() => import('./admin/AdminAuditLog').then((module) => ({ default: module.default })));
 
 const queryClient = new QueryClient();
 function PageLoader() { return <main className="min-h-screen bg-carbon p-8 text-textLight" role="status">Cargando página…</main>; }
@@ -86,33 +94,22 @@ const router = createBrowserRouter([
     path: '/admin',
     element: lazyPage(
       <Suspense fallback={<PageLoader />}>
-        <RequireAuth>
-          <AdminLayout />
-        </RequireAuth>
+        <AdminLayout />
       </Suspense>
     ),
     children: [
-      { index: true, element: <AdminDashboardPlaceholder /> },
-      { path: 'oportunidades', element: <AdminDashboardPlaceholder /> },
-      { path: 'oportunidades/nueva', element: <AdminDashboardPlaceholder /> },
-      { path: 'oportunidades/:id', element: <AdminDashboardPlaceholder /> },
-      { path: 'leads', element: <AdminDashboardPlaceholder /> },
-      { path: 'leads/:reference', element: <AdminDashboardPlaceholder /> },
-      { path: 'usuarios', element: <AdminDashboardPlaceholder /> },
-      { path: 'usuarios/:reference', element: <AdminDashboardPlaceholder /> },
-      { path: 'auditoria', element: <AdminDashboardPlaceholder /> },
+      { index: true, element: lazyPage(<AdminDashboard />) },
+      { path: 'oportunidades', element: lazyPage(<AdminOpportunityList />) },
+      { path: 'oportunidades/nueva', element: lazyPage(<AdminOpportunityEditor />) },
+      { path: 'oportunidades/:id', element: lazyPage(<AdminOpportunityEditor />) },
+      { path: 'leads', element: lazyPage(<AdminLeadList />) },
+      { path: 'leads/:reference', element: lazyPage(<AdminLeadDetail />) },
+      { path: 'usuarios', element: lazyPage(<AdminUserList />) },
+      { path: 'usuarios/:reference', element: lazyPage(<AdminUserDetail />) },
+      { path: 'auditoria', element: lazyPage(<AdminAuditLog />) },
     ],
   },
 ]);
-
-function AdminDashboardPlaceholder() {
-  return (
-    <div className="border border-border bg-petroleum p-6">
-      <h2 className="font-serif text-xl text-mineral">Sección en preparación</h2>
-      <p className="mt-2 text-sm text-muted">Esta funcionalidad estará disponible cuando el panel administrativo esté habilitado.</p>
-    </div>
-  );
-}
 
 ReactDOM.createRoot(document.getElementById('root') as HTMLElement).render(
   <React.StrictMode>
