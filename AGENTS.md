@@ -37,6 +37,18 @@ Reglas obligatorias para agentes/personas.
 - Mantener `COMPOSE_PROJECT_NAME=current` para producción.
 - Las migraciones deben ser retrocompatibles con rollback a la release anterior.
 
+## Migraciones
+
+- La migración `0001_baseline_definitive.sql` es **inmutable**. No modificarla después de aplicada.
+- La tabla `schema_migrations` es propiedad exclusiva del runner. No insertar manualmente.
+- El runner adquiere advisory lock, ejecuta en transacción, y valida checksum SHA-256.
+- Checksum diferente en migración ya aplicada = error. No reparar automáticamente.
+- Usar `CREATE TABLE` (sin `IF NOT EXISTS`), `CREATE TYPE` determinístico, sin `ON CONFLICT DO NOTHING`.
+- Solo `CREATE EXTENSION IF NOT EXISTS` para pgcrypto.
+- No usar `DROP TRIGGER IF EXISTS` para ocultar estados parciales.
+- Cualquier cambio de esquema futuro debe ser `0002_*.sql`, `0003_*.sql`, etc.
+- La reinicialización de producción requiere: backup → rename DB → create DB → runner → seed → verificar.
+
 ## Verificaciones obligatorias antes del push
 ```bash
 pnpm install --frozen-lockfile
