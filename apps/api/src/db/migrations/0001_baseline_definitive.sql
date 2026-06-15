@@ -128,6 +128,7 @@ CREATE TABLE IF NOT EXISTS users (
   updated_at      timestamptz NOT NULL DEFAULT now()
 );
 CREATE INDEX IF NOT EXISTS users_status_idx ON users (status);
+DROP TRIGGER IF EXISTS users_set_updated_at ON users;
 CREATE TRIGGER users_set_updated_at BEFORE UPDATE ON users
   FOR EACH ROW EXECUTE FUNCTION set_updated_at();
 
@@ -208,6 +209,7 @@ CREATE TABLE IF NOT EXISTS opportunities (
 );
 CREATE UNIQUE INDEX IF NOT EXISTS opportunities_slug_idx ON opportunities (slug);
 CREATE INDEX IF NOT EXISTS opportunities_public_catalog_idx ON opportunities (visibility, published_at DESC, status, city, asset_type, strategy, risk_level);
+DROP TRIGGER IF EXISTS opportunities_set_updated_at ON opportunities;
 CREATE TRIGGER opportunities_set_updated_at BEFORE UPDATE ON opportunities
   FOR EACH ROW EXECUTE FUNCTION set_updated_at();
 
@@ -264,6 +266,7 @@ CREATE TABLE IF NOT EXISTS opportunity_updates (
   updated_at     timestamptz NOT NULL DEFAULT now()
 );
 CREATE INDEX IF NOT EXISTS opportunity_updates_opportunity_id_idx ON opportunity_updates (opportunity_id, published_at DESC);
+DROP TRIGGER IF EXISTS opportunity_updates_set_updated_at ON opportunity_updates;
 CREATE TRIGGER opportunity_updates_set_updated_at BEFORE UPDATE ON opportunity_updates
   FOR EACH ROW EXECUTE FUNCTION set_updated_at();
 
@@ -296,6 +299,7 @@ CREATE TABLE IF NOT EXISTS investor_profiles (
   created_at      timestamptz NOT NULL DEFAULT now(),
   updated_at      timestamptz NOT NULL DEFAULT now()
 );
+DROP TRIGGER IF EXISTS investor_profiles_set_updated_at ON investor_profiles;
 CREATE TRIGGER investor_profiles_set_updated_at BEFORE UPDATE ON investor_profiles
   FOR EACH ROW EXECUTE FUNCTION set_updated_at();
 
@@ -334,6 +338,7 @@ CREATE TABLE IF NOT EXISTS leads (
 CREATE INDEX IF NOT EXISTS leads_kind_status_idx ON leads (kind, status);
 CREATE INDEX IF NOT EXISTS leads_assigned_user_id_idx ON leads (assigned_user_id);
 CREATE INDEX IF NOT EXISTS leads_opportunity_id_idx ON leads (opportunity_id);
+DROP TRIGGER IF EXISTS leads_set_updated_at ON leads;
 CREATE TRIGGER leads_set_updated_at BEFORE UPDATE ON leads
   FOR EACH ROW EXECUTE FUNCTION set_updated_at();
 
@@ -369,6 +374,7 @@ CREATE TABLE IF NOT EXISTS documents (
   updated_at      timestamptz NOT NULL DEFAULT now()
 );
 CREATE INDEX IF NOT EXISTS documents_owner_idx ON documents (owner_type, owner_id);
+DROP TRIGGER IF EXISTS documents_set_updated_at ON documents;
 CREATE TRIGGER documents_set_updated_at BEFORE UPDATE ON documents
   FOR EACH ROW EXECUTE FUNCTION set_updated_at();
 
@@ -394,6 +400,7 @@ CREATE TABLE IF NOT EXISTS investment_intents (
 );
 CREATE INDEX IF NOT EXISTS investment_intents_opportunity_id_idx ON investment_intents (opportunity_id);
 CREATE INDEX IF NOT EXISTS investment_intents_user_id_idx ON investment_intents (user_id);
+DROP TRIGGER IF EXISTS investment_intents_set_updated_at ON investment_intents;
 CREATE TRIGGER investment_intents_set_updated_at BEFORE UPDATE ON investment_intents
   FOR EACH ROW EXECUTE FUNCTION set_updated_at();
 
