@@ -1,6 +1,8 @@
-import { readFileSync } from 'node:fs';
-import { resolve } from 'node:path';
-import { describe, expect, it } from 'vitest';
+import { mkdtempSync, readdirSync, readFileSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join, resolve } from 'node:path';
+import { afterEach, describe, expect, it } from 'vitest';
+import { canonicalMigrationsDir, listMigrationFiles, resolveMigrationsDir } from './db/migrate.js';
 
 describe('database baseline migration', () => {
   const sql = readFileSync(resolve(__dirname, 'db/migrations/0001_baseline_definitive.sql'), 'utf8');
@@ -77,5 +79,128 @@ describe('database baseline migration', () => {
     const extMatches = (sql.match(/CREATE EXTENSION IF NOT EXISTS/g) || []);
     expect(extMatches.length).toBe(1);
     expect(sql).toContain('CREATE EXTENSION IF NOT EXISTS "pgcrypto"');
+  });
+});
+
+
+describe('restore lineage migration', () => {
+  const sql = readFileSync(resolve(__dirname, 'db/migrations/0004_add_opportunity_restore_lineage.sql'), 'utf8');
+  const migrationNames = readdirSync(resolve(__dirname, 'db/migrations'))
+    .filter((name) => name.endsWith('.sql'))
+    .sort();
+
+  it('keeps the canonical migration prefix order and unique numeric prefixes', () => {
+    expect(migrationNames.slice(0, 4)).toEqual([
+      '0001_baseline_definitive.sql',
+      '0002_add_lead_columns.sql',
+      '0003_align_auth_schema.sql',
+      '0004_add_opportunity_restore_lineage.sql',
+    ]);
+
+    expect(new Set(migrationNames).size).toBe(migrationNames.length);
+    const numericPrefixes = migrationNames.map((name) => name.slice(0, 4));
+    expect(new Set(numericPrefixes).size).toBe(numericPrefixes.length);
+  });
+
+  it('alters opportunities with nullable lineage columns using the expected types', () => {
+    expect(sql).toMatch(/ALTER\s+TABLE\s+opportunities[\s\S]*ADD\s+COLUMN\s+restored_from_opportunity_id\s+uuid[\s\S]*ADD\s+COLUMN\s+restored_from_version\s+integer/i);
+  });
+
+  it('requires lineage to be fully null or fully populated', () => {
+    expect(sql).toMatch(/restored_from_opportunity_id\s+IS\s+NULL\s+AND\s+restored_from_version\s+IS\s+NULL[\s\S]*OR[\s\S]*restored_from_opportunity_id\s+IS\s+NOT\s+NULL\s+AND\s+restored_from_version\s+IS\s+NOT\s+NULL/i);
+  });
+
+  it('enforces positive restored version values', () => {
+    expect(sql).toMatch(/restored_from_version\s+IS\s+NULL\s+OR\s+restored_from_version\s+>\s+0/i);
+  });
+
+  it('adds FK and an ordered lineage index', () => {
+    expect(sql).toMatch(/FOREIGN\s+KEY\s*\(\s*restored_from_opportunity_id\s*\)\s+REFERENCES\s+opportunities\s*\(\s*id\s*\)/i);
+    expect(sql).toMatch(/CREATE\s+INDEX\s+opportunities_restore_lineage_idx\s+ON\s+opportunities\s*\(\s*restored_from_opportunity_id\s*,\s*restored_from_version\s*\)/i);
+  });
+
+  it('is deterministic and does not manipulate runner-owned migration state', () => {
+    expect(sql).not.toMatch(/IF NOT EXISTS/i);
+    expect(sql).not.toMatch(/\bschema_migrations\b/i);
+    expect(sql).not.toMatch(/ON CONFLICT/i);
+  });
+});
+
+
+describe('migration directory resolution', () => {
+  const originalNodeEnv = process.env.NODE_ENV;
+  const originalMigrationsDir = process.env.MIGRATIONS_DIR;
+  const createdDirs: string[] = [];
+
+  afterEach(() => {
+    process.env.NODE_ENV = originalNodeEnv;
+    if (originalMigrationsDir === undefined) {
+      delete process.env.MIGRATIONS_DIR;
+    } else {
+      process.env.MIGRATIONS_DIR = originalMigrationsDir;
+    }
+    for (const dir of createdDirs.splice(0)) {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  function tempMigrationDir() {
+    const dir = mkdtempSync(join(tmpdir(), 'realstate-migrations-test-'));
+    createdDirs.push(dir);
+    return dir;
+  }
+
+  it('uses the canonical built migrations directory by default', () => {
+    delete process.env.MIGRATIONS_DIR;
+    process.env.NODE_ENV = 'production';
+
+    expect(resolveMigrationsDir()).toBe(canonicalMigrationsDir());
+  });
+
+  it('allows an absolute MIGRATIONS_DIR override only in e2e/test environments', () => {
+    const dir = tempMigrationDir();
+    writeFileSync(join(dir, '0001_example.sql'), 'SELECT 1;');
+    process.env.NODE_ENV = 'e2e';
+    process.env.MIGRATIONS_DIR = dir;
+
+    expect(resolveMigrationsDir()).toBe(resolve(dir));
+  });
+
+  it('rejects MIGRATIONS_DIR override outside test/e2e environments', () => {
+    const dir = tempMigrationDir();
+    process.env.NODE_ENV = 'production';
+    process.env.MIGRATIONS_DIR = dir;
+
+    expect(() => resolveMigrationsDir()).toThrow(/only allowed/);
+  });
+
+  it('rejects a non-existing MIGRATIONS_DIR override', () => {
+    process.env.NODE_ENV = 'test';
+    process.env.MIGRATIONS_DIR = join(tmpdir(), 'realstate-missing-migrations-dir');
+
+    expect(() => resolveMigrationsDir()).toThrow(/existing directory/);
+  });
+
+  it('loads only local .sql files in deterministic order', async () => {
+    const dir = tempMigrationDir();
+    const outside = tempMigrationDir();
+    writeFileSync(join(dir, '0002_second.sql'), 'SELECT 2;');
+    writeFileSync(join(dir, '0001_first.sql'), 'SELECT 1;');
+    writeFileSync(join(dir, 'notes.txt'), 'ignored');
+    writeFileSync(join(outside, '0003_outside.sql'), 'SELECT 3;');
+    symlinkSync(join(outside, '0003_outside.sql'), join(dir, '0003_link.sql'));
+
+    await expect(listMigrationFiles(dir)).resolves.toEqual([
+      '0001_first.sql',
+      '0002_second.sql',
+    ]);
+  });
+
+  it('rejects duplicate numeric migration prefixes', async () => {
+    const dir = tempMigrationDir();
+    writeFileSync(join(dir, '0001_first.sql'), 'SELECT 1;');
+    writeFileSync(join(dir, '0001_second.sql'), 'SELECT 2;');
+
+    await expect(listMigrationFiles(dir)).rejects.toThrow(/Duplicate migration prefix/);
   });
 });

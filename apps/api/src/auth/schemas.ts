@@ -51,9 +51,9 @@ export const resetPasswordSchema = z
 
 export const sessionResponseSchema = z.object({
   id: z.string(),
-  createdAt: z.date(),
-  expiresAt: z.date(),
-  lastSeenAt: z.date(),
+  createdAt: z.string().datetime(),
+  expiresAt: z.string().datetime(),
+  lastSeenAt: z.string().datetime().nullable(),
   isCurrent: z.boolean(),
 });
 
@@ -64,7 +64,7 @@ export const userResponseSchema = z.object({
   roles: z.array(z.string()),
   status: z.string(),
   emailVerified: z.boolean(),
-  createdAt: z.date(),
+  createdAt: z.string().datetime(),
 });
 
 // ---------------------------------------------------------------------------

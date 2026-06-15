@@ -3,7 +3,7 @@ services:
     image: postgres:16-alpine
     environment:
       POSTGRES_USER: realstate_e2e
-      POSTGRES_PASSWORD: e2e_test_password
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-e2e_test_password}
       POSTGRES_DB: realstate_e2e
     ports:
       - "127.0.0.1:5433:5432"
@@ -20,7 +20,7 @@ services:
       context: ..
       dockerfile: apps/api/Dockerfile
     environment:
-      DATABASE_URL: postgres://realstate_e2e:e2e_test_password@postgres:5432/realstate_e2e
+      DATABASE_URL: postgres://realstate_e2e:${POSTGRES_PASSWORD:-e2e_test_password}@postgres:5432/realstate_e2e
       AUTH_ENABLED: "true"
       REGISTRATION_ENABLED: "true"
       EMAIL_DELIVERY_ENABLED: "false"
@@ -28,8 +28,9 @@ services:
       ADMIN_MEDIA_UPLOAD_ENABLED: "false"
       DEMO_SEED_ENABLED: "true"
       LEADS_ENABLED: "true"
-      E2E_TEST_MODE: "true"
       NODE_ENV: "e2e"
+      E2E_TEST_MODE: "true"
+      E2E_INTERNAL_SECRET: "${E2E_INTERNAL_SECRET:?E2E_INTERNAL_SECRET is required}"
       AUTH_RATE_LIMIT_MAX: "100"
       APP_BASE_URL: http://127.0.0.1:8089
       SESSION_COOKIE_SECURE: "false"

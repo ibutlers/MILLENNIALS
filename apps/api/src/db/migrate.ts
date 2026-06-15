@@ -1,6 +1,7 @@
 import { createHash } from 'node:crypto';
+import { existsSync, realpathSync, statSync } from 'node:fs';
 import { readdir, readFile } from 'node:fs/promises';
-import { dirname, join } from 'node:path';
+import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import type { Pool } from 'pg';
 import { createPool } from './pool.js';
@@ -12,8 +13,51 @@ export interface MigrationResult {
   skipped: string[];
 }
 
-function migrationsDir() {
-  return join(dirname(fileURLToPath(import.meta.url)), 'migrations');
+export function canonicalMigrationsDir() {
+  return resolve(dirname(fileURLToPath(import.meta.url)), 'migrations');
+}
+
+export function resolveMigrationsDir() {
+  const override = process.env.MIGRATIONS_DIR;
+  if (!override) {
+    return canonicalMigrationsDir();
+  }
+
+  const env = process.env.NODE_ENV;
+  if (env !== 'test' && env !== 'e2e') {
+    throw new Error('MIGRATIONS_DIR override is only allowed when NODE_ENV=test or NODE_ENV=e2e');
+  }
+
+  const absolute = resolve(override);
+  if (!existsSync(absolute) || !statSync(absolute).isDirectory()) {
+    throw new Error('MIGRATIONS_DIR does not point to an existing directory');
+  }
+  return realpathSync(absolute);
+}
+
+export async function listMigrationFiles(dir = resolveMigrationsDir()) {
+  const entries = await readdir(dir, { withFileTypes: true });
+  const files = entries
+    .filter((entry) => entry.isFile() && entry.name.endsWith('.sql'))
+    .map((entry) => entry.name)
+    .sort();
+
+  const names = new Set<string>();
+  const prefixes = new Set<string>();
+  for (const file of files) {
+    if (names.has(file)) {
+      throw new Error(`Duplicate migration name: ${file}`);
+    }
+    names.add(file);
+
+    const prefix = file.slice(0, 4);
+    if (prefixes.has(prefix)) {
+      throw new Error(`Duplicate migration prefix: ${prefix}`);
+    }
+    prefixes.add(prefix);
+  }
+
+  return files;
 }
 
 function checksum(sql: string) {
@@ -33,10 +77,11 @@ export async function runMigrations(pool: Pool = createPool()): Promise<Migratio
     }
     await client.query('CREATE TABLE IF NOT EXISTS schema_migrations (id text PRIMARY KEY, checksum text NOT NULL, applied_at timestamptz NOT NULL DEFAULT now())');
 
-    const files = (await readdir(migrationsDir())).filter((file) => file.endsWith('.sql')).sort();
+    const dir = resolveMigrationsDir();
+    const files = await listMigrationFiles(dir);
 
     for (const file of files) {
-      const sql = await readFile(join(migrationsDir(), file), 'utf8');
+      const sql = await readFile(join(dir, file), 'utf8');
       const hash = checksum(sql);
       const existing = await client.query<{ checksum: string }>('SELECT checksum FROM schema_migrations WHERE id = $1', [file]);
 

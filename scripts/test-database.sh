@@ -1,51 +1,37 @@
 #!/usr/bin/env bash
+# ── Canonical database test wrapper ──────────────────────────────────
+# Entry point for all database migration/seed/SCRAM verification.
+# Delegates to scripts/test-database.py for implementation.
+#
+# Safety: fails immediately if xtrace (set -x) is active, to prevent
+# ephemeral credentials from appearing in stdout.
+# ──────────────────────────────────────────────────────────────────────
+
+# ── Anti-xtrace guard ────────────────────────────────────────────────
+if [[ "${-}" == *x* ]]; then
+  echo "ERROR: xtrace (set -x) activo. Ejecute 'set +x' antes de lanzar este script." >&2
+  exit 1
+fi
+set +x 2>/dev/null || true
+
 set -Eeuo pipefail
 
-ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-CONTAINER_NAME="realstate-test-postgres"
-DB_PORT="${REALSTATE_TEST_POSTGRES_PORT:-55432}"
+# ── Resolve repo root ────────────────────────────────────────────────
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+cd "$ROOT"
 
-cleanup() {
-  docker rm -f "$CONTAINER_NAME" >/dev/null 2>&1 || true
-}
-trap cleanup EXIT INT TERM
-
-cleanup
-
-docker run --rm -d \
-  --name "$CONTAINER_NAME" \
-  -e POSTGRES_USER=realstate \
-  -e POSTGRES_HOST_AUTH_METHOD=trust \
-  -e POSTGRES_DB=realstate_test \
-  -p "127.0.0.1:${DB_PORT}:5432" \
-  postgres:16-alpine >/dev/null
-
-for _ in {1..60}; do
-  if docker exec "$CONTAINER_NAME" pg_isready -U realstate -d realstate_test >/dev/null 2>&1; then
-    break
+# ── Prerequisite checks ──────────────────────────────────────────────
+for cmd in docker pnpm node python3; do
+  if ! command -v "$cmd" &>/dev/null; then
+    echo "ERROR: '$cmd' no encontrado en PATH" >&2
+    exit 1
   fi
-  sleep 1
 done
 
-docker exec "$CONTAINER_NAME" pg_isready -U realstate -d realstate_test >/dev/null
+if [[ ! -f scripts/test-database.py ]]; then
+  echo "ERROR: scripts/test-database.py no encontrado" >&2
+  exit 1
+fi
 
-cd "$ROOT_DIR"
-pnpm --filter @realstate/api build >/dev/null
-DB_URL="postgresql://realstate@127.0.0.1:${DB_PORT}/realstate_test"
-DATABASE_URL="$DB_URL" node apps/api/dist/db/migrate.js
-DATABASE_URL="$DB_URL" node apps/api/dist/db/seed.js
-DATABASE_URL="$DB_URL" node apps/api/dist/db/seed.js
-
-count="$(docker exec "$CONTAINER_NAME" psql -U realstate -d realstate_test -tAc "SELECT count(*) FROM opportunities")"
-public_count="$(docker exec "$CONTAINER_NAME" psql -U realstate -d realstate_test -tAc "SELECT count(*) FROM opportunities WHERE visibility='public'")"
-private_count="$(docker exec "$CONTAINER_NAME" psql -U realstate -d realstate_test -tAc "SELECT count(*) FROM opportunities WHERE visibility='private'")"
-migrations="$(docker exec "$CONTAINER_NAME" psql -U realstate -d realstate_test -tAc "SELECT count(*) FROM schema_migrations")"
-relations="$(docker exec "$CONTAINER_NAME" psql -U realstate -d realstate_test -tAc "SELECT count(*) FROM opportunity_media m JOIN opportunities o ON o.id=m.opportunity_id")"
-
-printf 'database_test count=%s public=%s private=%s migrations=%s media_relations=%s\n' "$count" "$public_count" "$private_count" "$migrations" "$relations"
-
-[[ "$count" == "5" ]]
-[[ "$public_count" == "4" ]]
-[[ "$private_count" == "1" ]]
-[[ "$migrations" == "1" ]]
-[[ "$relations" == "5" ]]
+# ── Run canonical Python implementation ──────────────────────────────
+exec python3 scripts/test-database.py

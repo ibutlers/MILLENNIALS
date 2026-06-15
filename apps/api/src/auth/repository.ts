@@ -60,6 +60,10 @@ export interface AuditEventInput {
   eventType: string;
   userId?: string;
   sessionId?: string;
+  entityType?: string;
+  entityId?: string;
+  entityReference?: string;
+  summary?: string;
   metadata?: Record<string, unknown>;
 }
 
@@ -240,8 +244,8 @@ export class AuthRepository {
 
   async createSession(input: CreateSessionInput): Promise<CreateSessionResult> {
     const result = await this.pool.query(
-      `INSERT INTO sessions (user_id, token_hash, expires_at, user_agent_hash)
-       VALUES ($1, $2, $3, $4)
+      `INSERT INTO sessions (user_id, token_hash, expires_at, user_agent_hash, last_seen_at)
+       VALUES ($1, $2, $3, $4, now())
        RETURNING id, created_at, expires_at`,
       [input.userId, input.tokenHash, input.expiresAt.toISOString(), input.userAgentHash ?? null],
     );
@@ -426,10 +430,21 @@ export class AuthRepository {
   // ---- Audit --------------------------------------------------------------
 
   async recordAuditEvent(input: AuditEventInput): Promise<void> {
+    const entityType = input.entityType ?? (input.sessionId ? 'session' : null);
+    const entityId = input.entityId ?? input.sessionId ?? null;
+    const summary = input.summary ?? input.eventType.replaceAll('_', ' ');
     await this.pool.query(
-      `INSERT INTO audit_events (event_type, user_id, session_id, metadata)
-       VALUES ($1, $2, $3, $4)`,
-      [input.eventType, input.userId ?? null, input.sessionId ?? null, input.metadata ? JSON.stringify(input.metadata) : null],
+      `INSERT INTO audit_events (event_type, user_id, entity_type, entity_id, entity_reference, summary, metadata)
+       VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+      [
+        input.eventType,
+        input.userId ?? null,
+        entityType,
+        entityId,
+        input.entityReference ?? null,
+        summary,
+        input.metadata ? JSON.stringify(input.metadata) : '{}',
+      ],
     );
   }
 }

@@ -57,6 +57,27 @@ export interface SessionData {
   isCurrent: boolean;
 }
 
+export class AuthResponseError extends Error {
+  constructor(public readonly code: 'invalid_auth_response', message: string) {
+    super(message);
+    this.name = 'AuthResponseError';
+  }
+}
+
+function isUserResponse(value: unknown): value is UserResponse {
+  if (!value || typeof value !== 'object') return false;
+  const candidate = value as Record<string, unknown>;
+  return (
+    typeof candidate.id === 'string' &&
+    typeof candidate.email === 'string' &&
+    typeof candidate.name === 'string' &&
+    Array.isArray(candidate.roles) && candidate.roles.every((role) => typeof role === 'string') &&
+    typeof candidate.status === 'string' &&
+    typeof candidate.emailVerified === 'boolean' &&
+    typeof candidate.createdAt === 'string'
+  );
+}
+
 async function jsonOrNull(res: Response) {
   try { return await res.json(); } catch { return null; }
 }
@@ -92,8 +113,18 @@ export async function fetchMe(signal?: AbortSignal): Promise<UserResponse | null
   if (res.status === 503 || res.status === 401) return null;
   if (!res.ok) return null;
 
-  const body = await res.json();
-  return body.data ?? null;
+  let body: unknown;
+  try {
+    body = await res.json();
+  } catch {
+    throw new AuthResponseError('invalid_auth_response', 'La respuesta de autenticación no es JSON válido.');
+  }
+
+  if (!isUserResponse(body)) {
+    throw new AuthResponseError('invalid_auth_response', 'La respuesta de autenticación no cumple el contrato esperado.');
+  }
+
+  return body;
 }
 
 /** POST /api/v1/auth/login */

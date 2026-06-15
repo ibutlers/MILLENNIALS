@@ -59,6 +59,176 @@ const paginationSchema = z.object({
 });
 
 const VALID_SORT_COLS = new Set(['created_at','updated_at','title','status','editorial_status','risk_level','city']);
+const VALID_MEDIA_TYPES = ['image','document','floorplan','video','other'] as const;
+const highlightSchema = z.object({
+  label: z.string().min(1),
+  value: z.string(),
+  position: z.number().int().min(0).optional(),
+});
+const riskSchema = z.object({
+  title: z.string().min(1),
+  description: z.string().nullable().optional(),
+  position: z.number().int().min(0).optional(),
+});
+const milestoneSchema = z.object({
+  title: z.string().min(1),
+  description: z.string().nullable().optional(),
+  planned_date: z.string().datetime({ offset: true }).nullable().optional(),
+  completed_at: z.string().datetime({ offset: true }).nullable().optional(),
+  position: z.number().int().min(0).optional(),
+});
+const mediaSchema = z.object({
+  type: z.enum(VALID_MEDIA_TYPES),
+  url: z.string().min(1),
+  alt_text: z.string().nullable().optional(),
+  position: z.number().int().min(0).optional(),
+});
+const updateSchema = z.object({
+  title: z.string().min(1),
+  body: z.string(),
+  published_at: z.string().datetime({ offset: true }).nullable().optional(),
+});
+function SECTION_OR_NULL_ARRAY(schema: z.ZodTypeAny) {
+  return z.union([z.null(), z.undefined(), z.array(schema)]);
+}
+
+const snapshotSectionsSchema = z.object({
+  highlights: SECTION_OR_NULL_ARRAY(highlightSchema),
+  risks: SECTION_OR_NULL_ARRAY(riskSchema),
+  milestones: SECTION_OR_NULL_ARRAY(milestoneSchema),
+  media: SECTION_OR_NULL_ARRAY(mediaSchema),
+  updates: SECTION_OR_NULL_ARRAY(updateSchema),
+});
+
+
+type Queryable = { query: (sql: string, params?: any[]) => Promise<{ rows: any[]; rowCount?: number | null }> };
+
+type OpportunitySnapshot = {
+  opportunity: Record<string, any>;
+  highlights: any[];
+  risks: any[];
+  milestones: any[];
+  media: any[];
+  updates: any[];
+};
+
+const OPPORTUNITY_INSERT_COLUMNS = [
+  'slug', 'title', 'short_description', 'description', 'city', 'country_code', 'district',
+  'asset_type', 'strategy', 'status', 'visibility', 'currency', 'target_amount_cents',
+  'committed_amount_cents', 'minimum_investment_cents', 'estimated_term_months',
+  'target_return_type', 'target_return_bps', 'risk_level', 'closing_date', 'published_at',
+  'version', 'editorial_status', 'restored_from_opportunity_id', 'restored_from_version',
+] as const;
+
+async function buildOpportunitySnapshot(db: Queryable, opportunity: Record<string, any>): Promise<OpportunitySnapshot> {
+  const opportunityId = opportunity.id;
+  const { rows: highlights } = await db.query('SELECT label, value, position FROM opportunity_highlights WHERE opportunity_id = $1 ORDER BY position', [opportunityId]);
+  const { rows: risks } = await db.query('SELECT title, description, position FROM opportunity_risks WHERE opportunity_id = $1 ORDER BY position', [opportunityId]);
+  const { rows: milestones } = await db.query('SELECT title, description, planned_date, completed_at, position FROM opportunity_milestones WHERE opportunity_id = $1 ORDER BY position', [opportunityId]);
+  const { rows: media } = await db.query('SELECT type, url, alt_text, position FROM opportunity_media WHERE opportunity_id = $1 ORDER BY position', [opportunityId]);
+  const { rows: updates } = await db.query('SELECT title, body, published_at FROM opportunity_updates WHERE opportunity_id = $1 ORDER BY created_at', [opportunityId]);
+
+  return {
+    opportunity: { ...opportunity },
+    highlights,
+    risks,
+    milestones,
+    media,
+    updates,
+  };
+}
+
+function parseOpportunitySnapshot(raw: unknown): OpportunitySnapshot | null {
+  const data = typeof raw === 'string' ? JSON.parse(raw) : raw;
+  if (!data || typeof data !== 'object') return null;
+  const record = data as Record<string, any>;
+  const opportunity = record.opportunity && typeof record.opportunity === 'object' ? record.opportunity : record;
+  if (!opportunity || typeof opportunity !== 'object') return null;
+  // Check each section separately to catch corrupt sections
+  const highlightsRaw = 'highlights' in record ? record.highlights : undefined;
+  const risksRaw = 'risks' in record ? record.risks : undefined;
+  const milestonesRaw = 'milestones' in record ? record.milestones : undefined;
+  const mediaRaw = 'media' in record ? record.media : undefined;
+  const updatesRaw = 'updates' in record ? record.updates : undefined;
+
+  // Reject non-array (present but corrupt) sections
+  if (highlightsRaw !== undefined && !Array.isArray(highlightsRaw)) return null;
+  if (risksRaw !== undefined && !Array.isArray(risksRaw)) return null;
+  if (milestonesRaw !== undefined && !Array.isArray(milestonesRaw)) return null;
+  if (mediaRaw !== undefined && !Array.isArray(mediaRaw)) return null;
+  if (updatesRaw !== undefined && !Array.isArray(updatesRaw)) return null;
+
+  const sections = snapshotSectionsSchema.safeParse({
+    highlights: highlightsRaw,
+    risks: risksRaw,
+    milestones: milestonesRaw,
+    media: mediaRaw,
+    updates: updatesRaw,
+  });
+  if (!sections.success) return null;
+
+  return {
+    opportunity,
+    highlights: sections.data.highlights ?? [],
+    risks: sections.data.risks ?? [],
+    milestones: sections.data.milestones ?? [],
+    media: sections.data.media ?? [],
+    updates: sections.data.updates ?? [],
+  };
+}
+
+function slugifyForRestore(value: string): string {
+  return value
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9-]+/g, '-')
+    .replace(/-{2,}/g, '-')
+    .replace(/^-+|-+$/g, '') || 'opportunity';
+}
+
+async function generateRestoreSlug(client: Queryable, sourceSlug: string, restoreVersion: number): Promise<string> {
+  const base = `${slugifyForRestore(sourceSlug)}-restored-v${restoreVersion}`;
+  await client.query('SELECT pg_advisory_xact_lock(hashtext($1))', [base]);
+  for (let suffix = 0; suffix < 100; suffix += 1) {
+    const candidate = suffix === 0 ? base : `${base}-${suffix + 1}`;
+    const { rows } = await client.query('SELECT id FROM opportunities WHERE slug = $1 LIMIT 1', [candidate]);
+    if (rows.length === 0) return candidate;
+  }
+  throw new Error('Unable to generate unique restore slug');
+}
+
+async function copySnapshotSubentities(client: Queryable, restoredOpportunityId: string, snapshot: OpportunitySnapshot): Promise<void> {
+  for (const h of snapshot.highlights) {
+    await client.query(
+      'INSERT INTO opportunity_highlights (opportunity_id, label, value, position) VALUES ($1,$2,$3,$4)',
+      [restoredOpportunityId, h.label, h.value, h.position ?? 0],
+    );
+  }
+  for (const r of snapshot.risks) {
+    await client.query(
+      'INSERT INTO opportunity_risks (opportunity_id, title, description, position) VALUES ($1,$2,$3,$4)',
+      [restoredOpportunityId, r.title, r.description ?? '', r.position ?? 0],
+    );
+  }
+  for (const m of snapshot.milestones) {
+    await client.query(
+      'INSERT INTO opportunity_milestones (opportunity_id, title, description, planned_date, completed_at, position) VALUES ($1,$2,$3,$4,$5,$6)',
+      [restoredOpportunityId, m.title, m.description ?? '', m.planned_date ?? null, m.completed_at ?? null, m.position ?? 0],
+    );
+  }
+  for (const md of snapshot.media) {
+    await client.query(
+      'INSERT INTO opportunity_media (opportunity_id, type, url, alt_text, position) VALUES ($1,$2,$3,$4,$5)',
+      [restoredOpportunityId, md.type ?? 'image', md.url, md.alt_text ?? null, md.position ?? 0],
+    );
+  }
+  for (const u of snapshot.updates) {
+    await client.query(
+      'INSERT INTO opportunity_updates (opportunity_id, title, body, published_at) VALUES ($1,$2,$3,$4)',
+      [restoredOpportunityId, u.title, u.body, u.published_at ?? null],
+    );
+  }
+}
 
 // ── Gate preHandler ──
 
@@ -170,13 +340,6 @@ export function registerAdminRoutes(app: FastifyInstance, options: { pool: Pool;
   }, async (req, reply) => {
     const oppId = (req.params as any).id;
     const patch = opportunityPatchSchema.parse(req.body);
-    const { rows: [current] } = await pool.query('SELECT id, version FROM opportunities WHERE id = $1', [oppId]);
-    if (!current) return reply.status(404).send({ error: { code: 'not_found', message: 'Oportunidad no encontrada.' } });
-    if (patch.version !== current.version) {
-      return reply.status(409).send({
-        error: { code: 'version_conflict', message: 'La oportunidad fue modificada por otro usuario. Recarga la p\u00e1gina e int\u00e9ntalo de nuevo.', currentVersion: current.version, providedVersion: patch.version }
-      });
-    }
     const ALLOWED: string[] = [
       'title','slug','shortDescription','description','city','countryCode','district',
       'assetType','strategy','status','visibility','editorialStatus','currency',
@@ -200,19 +363,41 @@ export function registerAdminRoutes(app: FastifyInstance, options: { pool: Pool;
         sets.push(`${col}=$${vals.length}`);
       }
     }
-    const newVersion = current.version + 1;
-    if (sets.length > 0) {
-      const { rows: [opp] } = await pool.query(
-        `UPDATE opportunities SET ${sets.join(',')}, version=$1, updated_at=now() WHERE id=$2 RETURNING *`,
-        [newVersion, oppId]
-      );
-      if (opp) {
-        await pool.query('INSERT INTO opportunity_versions (opportunity_id, version, data) VALUES ($1,$2,$3)', [oppId, newVersion, JSON.stringify(opp)]).catch(() => {});
-        await pool.query("INSERT INTO audit_events (user_id, event_type, entity_type, entity_reference, summary) VALUES ($1,$2,$3,$4,$5)", ['system', 'opportunity_updated', 'opportunity', opp.slug, `Updated, version ${newVersion}`]).catch(() => {});
-      }
-      return { data: opp };
+    if (sets.length === 0) {
+      return reply.status(400).send({ error: { code: 'invalid_request', message: 'No se indicaron campos para actualizar.' } });
     }
-    return { data: current, _note: 'No changes detected' };
+
+    const newVersion = patch.version + 1;
+    const versionParam = vals.length + 1;
+    const idParam = vals.length + 2;
+    const expectedVersionParam = vals.length + 3;
+    const client = await pool.connect();
+    try {
+      await client.query('BEGIN');
+      const { rows: [opp] } = await client.query(
+        `UPDATE opportunities SET ${sets.join(', ')}, version=$${versionParam}, updated_at=now()
+         WHERE id=$${idParam} AND version=$${expectedVersionParam}
+         RETURNING *`,
+        [...vals, newVersion, oppId, patch.version]
+      );
+      if (!opp) {
+        await client.query('ROLLBACK');
+        const { rows: [current] } = await pool.query('SELECT id, version FROM opportunities WHERE id = $1', [oppId]);
+        if (!current) return reply.status(404).send({ error: { code: 'not_found', message: 'Oportunidad no encontrada.' } });
+        return reply.status(409).send({
+          error: { code: 'version_conflict', message: 'La oportunidad fue modificada por otro usuario. Recarga la p\u00e1gina e int\u00e9ntalo de nuevo.', currentVersion: current.version, providedVersion: patch.version }
+        });
+      }
+      await client.query('INSERT INTO opportunity_versions (opportunity_id, version, snapshot) VALUES ($1,$2,$3)', [oppId, newVersion, JSON.stringify(await buildOpportunitySnapshot(client, opp))]);
+      await client.query("INSERT INTO audit_events (user_id, event_type, entity_type, entity_reference, summary) VALUES ($1,$2,$3,$4,$5)", [null, 'opportunity_updated', 'opportunity', opp.slug, `Updated, version ${newVersion}`]);
+      await client.query('COMMIT');
+      return { data: opp };
+    } catch (err) {
+      await client.query('ROLLBACK').catch(() => {});
+      throw err;
+    } finally {
+      client.release();
+    }
   });
 
   // ═══ Publish ═══
@@ -226,7 +411,7 @@ export function registerAdminRoutes(app: FastifyInstance, options: { pool: Pool;
       [oppId]
     );
     if (!rows[0]) return reply.status(400).send({ error: { code: 'invalid_state', message: 'No se puede publicar esta oportunidad.' } });
-    await pool.query("INSERT INTO audit_events (user_id, event_type, entity_type, entity_reference, summary) VALUES ($1,$2,$3,$4,$5)", ['system', 'opportunity_published', 'opportunity', rows[0].slug, 'Published']).catch(() => {});
+    await pool.query("INSERT INTO audit_events (user_id, event_type, entity_type, entity_reference, summary) VALUES ($1,$2,$3,$4,$5)", [null, 'opportunity_published', 'opportunity', rows[0].slug, 'Published']).catch(() => {});
     return { data: rows[0] };
   });
 
@@ -240,7 +425,7 @@ export function registerAdminRoutes(app: FastifyInstance, options: { pool: Pool;
       [oppId]
     );
     if (!opp) return reply.status(404).send({ error: { code: 'not_found', message: 'Oportunidad no encontrada.' } });
-    await pool.query("INSERT INTO audit_events (user_id, event_type, entity_type, entity_reference, summary) VALUES ($1,$2,$3,$4,$5)", ['system', 'opportunity_unpublished', 'opportunity', opp.slug, 'Unpublished']).catch(() => {});
+    await pool.query("INSERT INTO audit_events (user_id, event_type, entity_type, entity_reference, summary) VALUES ($1,$2,$3,$4,$5)", [null, 'opportunity_unpublished', 'opportunity', opp.slug, 'Unpublished']).catch(() => {});
     return { data: opp };
   });
 
@@ -254,7 +439,7 @@ export function registerAdminRoutes(app: FastifyInstance, options: { pool: Pool;
       [oppId]
     );
     if (!opp) return reply.status(404).send({ error: { code: 'not_found', message: 'Oportunidad no encontrada.' } });
-    await pool.query("INSERT INTO audit_events (user_id, event_type, entity_type, entity_reference, summary) VALUES ($1,$2,$3,$4,$5)", ['system', 'opportunity_archived', 'opportunity', opp.slug, 'Archived']).catch(() => {});
+    await pool.query("INSERT INTO audit_events (user_id, event_type, entity_type, entity_reference, summary) VALUES ($1,$2,$3,$4,$5)", [null, 'opportunity_archived', 'opportunity', opp.slug, 'Archived']).catch(() => {});
     return { data: opp };
   });
 
@@ -314,7 +499,7 @@ export function registerAdminRoutes(app: FastifyInstance, options: { pool: Pool;
     const { rows: [lead] } = await pool.query('SELECT id FROM leads WHERE public_reference=$1', [(req.params as any).reference]);
     if (!lead) return reply.status(404).send({ error: { code: 'not_found', message: 'Lead no encontrado.' } });
     await pool.query('INSERT INTO lead_notes (lead_id, author_id, content) VALUES ($1,$2,$3)', [lead.id, '00000000-0000-0000-0000-000000000000', body.content]);
-    await pool.query("INSERT INTO audit_events (user_id, event_type, entity_type, entity_reference, summary) VALUES ($1,$2,$3,$4,$5)", ['system', 'lead_note_added', 'lead', (req.params as any).reference, 'Note added']).catch(() => {});
+    await pool.query("INSERT INTO audit_events (user_id, event_type, entity_type, entity_reference, summary) VALUES ($1,$2,$3,$4,$5)", [null, 'lead_note_added', 'lead', (req.params as any).reference, 'Note added']).catch(() => {});
     return reply.status(201).send({ data: { created: true } });
   });
 
@@ -548,7 +733,7 @@ export function registerAdminRoutes(app: FastifyInstance, options: { pool: Pool;
       // Media
       if (body.media !== undefined) {
         const mediaRows = body.media.map((md: any) => ({
-          type: md.isPrimary ? 'primary' : 'secondary',
+          type: 'image',
           url: `/assets/${md.assetId}`,
           alt_text: md.altText || '',
           position: md.position,
@@ -572,14 +757,14 @@ export function registerAdminRoutes(app: FastifyInstance, options: { pool: Pool;
 
       // Snapshot
       await client.query(
-        'INSERT INTO opportunity_versions (opportunity_id, version, data) VALUES ($1,$2,$3)',
-        [oppId, newVersion, JSON.stringify(opp)]
+        'INSERT INTO opportunity_versions (opportunity_id, version, snapshot) VALUES ($1,$2,$3)',
+        [oppId, newVersion, JSON.stringify(await buildOpportunitySnapshot(client, opp))]
       );
 
       // Audit
       await client.query(
         "INSERT INTO audit_events (user_id, event_type, entity_type, entity_reference, summary) VALUES ($1,$2,$3,$4,$5)",
-        ['system', 'opportunity_subentities_updated', 'opportunity', opp.slug, `Sub-entities updated, version ${newVersion}`]
+        [null, 'opportunity_updated', 'opportunity', opp.slug, `Sub-entities updated, version ${newVersion}`]
       );
 
       await client.query('COMMIT');
@@ -621,56 +806,87 @@ export function registerAdminRoutes(app: FastifyInstance, options: { pool: Pool;
     if (!Number.isInteger(restoreVersion) || restoreVersion < 1) {
       return reply.status(400).send({ error: { code: 'invalid_version', message: 'Versión inválida.' } });
     }
-    const { rows: [current] } = await pool.query('SELECT * FROM opportunities WHERE id = $1', [oppId]);
-    if (!current) return reply.status(404).send({ error: { code: 'not_found', message: 'Oportunidad no encontrada.' } });
-    const { rows: [snapshot] } = await pool.query(
-      'SELECT version, data FROM opportunity_versions WHERE opportunity_id = $1 AND version = $2', [oppId, restoreVersion]
-    );
-    if (!snapshot) return reply.status(404).send({ error: { code: 'version_not_found', message: 'Versión no encontrada.' } });
-
-    let historicalData: Record<string, any>;
-    try {
-      historicalData = typeof snapshot.data === 'string' ? JSON.parse(snapshot.data) : snapshot.data;
-      if (!historicalData || typeof historicalData !== 'object') throw new Error('Invalid');
-    } catch {
-      return reply.status(422).send({ error: { code: 'invalid_snapshot', message: 'El snapshot histórico no es válido.' } });
-    }
-    if (current.editorial_status === 'published') {
-      return reply.status(409).send({ error: { code: 'cannot_restore_published', message: 'No se puede restaurar directamente una oportunidad publicada.' } });
-    }
 
     const client = await pool.connect();
     try {
       await client.query('BEGIN');
-      const newVersion = current.version + 1;
-      await client.query('INSERT INTO opportunity_versions (opportunity_id, version, data) VALUES ($1,$2,$3)', [oppId, newVersion, JSON.stringify(current)]);
 
+      const { rows: [current] } = await client.query('SELECT * FROM opportunities WHERE id = $1 FOR UPDATE', [oppId]);
+      if (!current) {
+        await client.query('ROLLBACK');
+        return reply.status(404).send({ error: { code: 'not_found', message: 'Oportunidad no encontrada.' } });
+      }
+
+      const { rows: [snapshotRow] } = await client.query(
+        'SELECT version, snapshot AS data FROM opportunity_versions WHERE opportunity_id = $1 AND version = $2 FOR SHARE',
+        [oppId, restoreVersion],
+      );
+      if (!snapshotRow) {
+        await client.query('ROLLBACK');
+        return reply.status(404).send({ error: { code: 'version_not_found', message: 'Versión no encontrada.' } });
+      }
+
+      let snapshot: OpportunitySnapshot | null = null;
+      try {
+        snapshot = parseOpportunitySnapshot(snapshotRow.data);
+      } catch {
+        snapshot = null;
+      }
+      if (!snapshot) {
+        await client.query('ROLLBACK');
+        return reply.status(422).send({ error: { code: 'invalid_snapshot', message: 'El snapshot histórico no es válido.' } });
+      }
+
+      const historicalData = snapshot.opportunity;
+      const restoredSlug = await generateRestoreSlug(client, historicalData.slug || current.slug, restoreVersion);
+      const values = [
+        restoredSlug,
+        historicalData.title || current.title,
+        historicalData.short_description || current.short_description,
+        historicalData.description ?? current.description,
+        historicalData.city || current.city,
+        historicalData.country_code || current.country_code,
+        historicalData.district ?? null,
+        historicalData.asset_type || current.asset_type,
+        historicalData.strategy || current.strategy,
+        'coming_soon',
+        'private',
+        historicalData.currency || current.currency,
+        historicalData.target_amount_cents ?? current.target_amount_cents,
+        0,
+        historicalData.minimum_investment_cents ?? current.minimum_investment_cents,
+        historicalData.estimated_term_months ?? current.estimated_term_months,
+        historicalData.target_return_type || current.target_return_type,
+        historicalData.target_return_bps ?? null,
+        historicalData.risk_level || current.risk_level,
+        historicalData.closing_date ?? null,
+        null,
+        1,
+        'draft',
+        current.id,
+        restoreVersion,
+      ];
+      const placeholders = OPPORTUNITY_INSERT_COLUMNS.map((_, i) => `$${i + 1}`).join(',');
       const { rows: [restored] } = await client.query(
-        `UPDATE opportunities SET title=$1,slug=$2,short_description=$3,description=$4,city=$5,country_code=$6,district=$7,
-         asset_type=$8,strategy=$9,status='coming_soon',visibility='private',editorial_status='draft',
-         currency=$10,target_amount_cents=$11,committed_amount_cents=$12,minimum_investment_cents=$13,
-         estimated_term_months=$14,target_return_type=$15,target_return_bps=$16,risk_level=$17,
-         closing_date=$18,disclaimer=$19,version=$20,updated_at=now(),published_at=NULL WHERE id=$21 RETURNING *`,
-        [
-          historicalData.title || current.title, historicalData.slug || current.slug,
-          historicalData.short_description || current.short_description, historicalData.description || current.description,
-          historicalData.city || current.city, historicalData.country_code || current.country_code,
-          historicalData.district || null, historicalData.asset_type || current.asset_type, historicalData.strategy || current.strategy,
-          historicalData.currency || current.currency, historicalData.target_amount_cents || current.target_amount_cents,
-          historicalData.committed_amount_cents || current.committed_amount_cents, historicalData.minimum_investment_cents || current.minimum_investment_cents,
-          historicalData.estimated_term_months || current.estimated_term_months, historicalData.target_return_type || null,
-          historicalData.target_return_bps || null, historicalData.risk_level || current.risk_level,
-          historicalData.closing_date || null, historicalData.disclaimer || null,
-          newVersion, oppId
-        ]
+        `INSERT INTO opportunities (${OPPORTUNITY_INSERT_COLUMNS.join(',')}) VALUES (${placeholders}) RETURNING *`,
+        values,
       );
 
-      await client.query("INSERT INTO audit_events (user_id, event_type, entity_type, entity_reference, summary) VALUES ($1,$2,$3,$4,$5)",
-        ['system', 'version_restored', 'opportunity', current.slug, `Restored version ${restoreVersion} as draft (v${newVersion})`]);
+      await copySnapshotSubentities(client, restored.id, snapshot);
+
+      await client.query(
+        'INSERT INTO opportunity_versions (opportunity_id, version, snapshot) VALUES ($1,$2,$3)',
+        [restored.id, 1, JSON.stringify(await buildOpportunitySnapshot(client, restored))],
+      );
+      await client.query(
+        "INSERT INTO audit_events (user_id, event_type, entity_type, entity_reference, summary) VALUES ($1,$2,$3,$4,$5)",
+        [null, 'opportunity_updated', 'opportunity', restored.slug, `Restored ${current.slug} version ${restoreVersion} as new draft`],
+      );
+
       await client.query('COMMIT');
-      return { data: restored, meta: { restoredFrom: restoreVersion, newVersion } };
+      return { data: restored, meta: { restoredFromOpportunityId: current.id, restoredFromVersion: restoreVersion } };
     } catch (err) {
-      await client.query('ROLLBACK');
+      await client.query('ROLLBACK').catch(() => {});
       throw err;
     } finally {
       client.release();
@@ -720,12 +936,20 @@ export function registerAdminRoutes(app: FastifyInstance, options: { pool: Pool;
     if (!opp) return reply.status(404).send({ error: { code: 'not_found', message: 'Oportunidad no encontrada.' } });
 
     const { rows } = await pool.query(
-      'SELECT version, created_at, summary FROM audit_events WHERE entity_type = $1 AND entity_reference = (SELECT slug FROM opportunities WHERE id = $2) ORDER BY created_at DESC LIMIT $3 OFFSET $4',
+      `SELECT ov.version, ov.created_at, ae.summary
+       FROM opportunity_versions ov
+       LEFT JOIN audit_events ae
+         ON ae.entity_type = $1
+        AND ae.entity_reference = (SELECT slug FROM opportunities WHERE id = $2)
+        AND ae.summary ILIKE '%' || ov.version::text || '%'
+       WHERE ov.opportunity_id = $2
+       ORDER BY ov.version DESC
+       LIMIT $3 OFFSET $4`,
       ['opportunity', oppId, q.limit, q.offset]
     );
     const { rows: [{ count }] } = await pool.query(
-      'SELECT count(*)::int FROM audit_events WHERE entity_type = $1 AND entity_reference = (SELECT slug FROM opportunities WHERE id = $2)',
-      ['opportunity', oppId]
+      'SELECT count(*)::int FROM opportunity_versions WHERE opportunity_id = $1',
+      [oppId]
     );
     return buildPaginatedResponse(rows, Number(count), q.limit, q.offset);
   });
@@ -736,6 +960,7 @@ export function registerAdminRoutes(app: FastifyInstance, options: { pool: Pool;
   const VALID_TRANSITIONS: Record<string, string[]> = {
     draft: ['review'],
     review: ['draft', 'published'],
+    draft_admin: ['review', 'archived'],
     published: ['unlisted', 'private', 'archived'],
     unlisted: ['published', 'private', 'archived'],
     private: ['draft', 'review', 'archived'],
@@ -744,8 +969,9 @@ export function registerAdminRoutes(app: FastifyInstance, options: { pool: Pool;
 
   function validateTransition(from: string, to: string, role: string): boolean {
     if (role === 'admin') {
-      // Admin can do any defined transition
-      return (VALID_TRANSITIONS[from] || []).includes(to);
+      // Admin can do any defined transition; draft has one admin-only extension.
+      const allowed = from === 'draft' ? VALID_TRANSITIONS.draft_admin : VALID_TRANSITIONS[from];
+      return (allowed || []).includes(to);
     }
     // Operator can only: draft → review, review → draft
     if (role === 'operator') {
@@ -769,7 +995,7 @@ export function registerAdminRoutes(app: FastifyInstance, options: { pool: Pool;
     const oppId = (req.params as any).id;
     const { to } = transitionSchema.parse(req.body);
 
-    const { rows: [current] } = await pool.query('SELECT id, slug, editorial_status FROM opportunities WHERE id = $1', [oppId]);
+    const { rows: [current] } = await pool.query('SELECT id, slug, editorial_status, version FROM opportunities WHERE id = $1', [oppId]);
     if (!current) return reply.status(404).send({ error: { code: 'not_found', message: 'Oportunidad no encontrada.' } });
 
     // Get user role from auth context
@@ -811,8 +1037,8 @@ export function registerAdminRoutes(app: FastifyInstance, options: { pool: Pool;
     };
     const newVersion = current.version + 1;
     const { rows: [updated] } = await pool.query(
-      `UPDATE opportunities SET editorial_status = $1, visibility = $2, version = $3, updated_at = now(),
-       published_at = CASE WHEN $1 = 'published' THEN COALESCE(published_at, now()) ELSE published_at END
+      `UPDATE opportunities SET editorial_status = $1::editorial_status, visibility = $2::opportunity_visibility, version = $3, updated_at = now(),
+       published_at = CASE WHEN $1::text = 'published' THEN COALESCE(published_at, now()) ELSE published_at END
        WHERE id = $4 RETURNING *`,
       [to, visibilityMap[to] || 'private', current.version + 1, oppId]
     );
@@ -820,13 +1046,13 @@ export function registerAdminRoutes(app: FastifyInstance, options: { pool: Pool;
     // Audit
     await pool.query(
       "INSERT INTO audit_events (user_id, event_type, entity_type, entity_reference, summary) VALUES ($1,$2,$3,$4,$5)",
-      ['system', `opportunity_${to}`, 'opportunity', current.slug, `Transitioned from ${current.editorial_status} to ${to}`]
+      [null, 'opportunity_status_changed', 'opportunity', current.slug, `Transitioned from ${current.editorial_status} to ${to}`]
     ).catch(() => {});
 
     // Snapshot
     await pool.query(
-      'INSERT INTO opportunity_versions (opportunity_id, version, data) VALUES ($1,$2,$3)',
-      [oppId, newVersion, JSON.stringify(updated)]
+      'INSERT INTO opportunity_versions (opportunity_id, version, snapshot) VALUES ($1,$2,$3)',
+      [oppId, newVersion, JSON.stringify(await buildOpportunitySnapshot(pool as any, updated))]
     ).catch(() => {});
 
     return { data: updated };

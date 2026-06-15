@@ -82,12 +82,12 @@ done
 # ═══════════════════════════════════════
 echo ""
 echo "=== Migraciones ==="
-docker compose -f "$E2E_COMPOSE" -p "$E2E_PROJECT" exec -T api node dist/db/migrate.js 2>/dev/null || true
+docker compose -f "$E2E_COMPOSE" -p "$E2E_PROJECT" exec -T api node apps/api/dist/db/migrate.js 2>/dev/null || true
 sleep 2
 
 echo ""
 echo "=== Creando usuarios E2E (CLI fixtures, sin registro) ==="
-docker compose -f "$E2E_COMPOSE" -p "$E2E_PROJECT" exec -T api node dist/fixtures/create-e2e-users.js --credentials-file=/tmp/e2e-creds.json 2>&1 | grep -v "^$" || true
+docker compose -f "$E2E_COMPOSE" -p "$E2E_PROJECT" exec -T api node apps/api/dist/fixtures/create-e2e-users.js --credentials-file=/tmp/e2e-creds.json 2>&1 | grep -v "^$" || true
 
 # Copy creds from container to host for Playwright
 docker compose -f "$E2E_COMPOSE" -p "$E2E_PROJECT" cp api:/tmp/e2e-creds.json "$CREDS_FILE" 2>/dev/null && chmod 600 "$CREDS_FILE" || true

@@ -93,8 +93,8 @@ async function main() {
 
     // Audit
     await pool.query(
-      "INSERT INTO audit_events (actor_id, event_type, entity_type, entity_reference, summary) VALUES ($1, $2, $3, $4, $5)",
-      ['system', 'e2e_user_created', 'user', publicReference, `E2E fixture user: ${user.email}`]
+      "INSERT INTO audit_events (user_id, event_type, entity_type, entity_reference, summary) VALUES ($1, $2, $3, $4, $5)",
+      [null, 'account_created', 'user', publicReference, `E2E fixture user: ${user.email}`]
     ).catch(() => {});
 
     created.push({ reference: publicReference, email: user.email, roles: user.roles });

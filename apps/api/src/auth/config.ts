@@ -2,6 +2,8 @@ export type AuthConfig = {
   authEnabled: boolean;
   registrationEnabled: boolean;
   emailDeliveryEnabled: boolean;
+  e2eTestMode: boolean;
+  e2eInternalSecret?: string;
   appBaseUrl: string;
   sessionCookieSecure: boolean;
   sessionTtlSeconds: number;
@@ -27,6 +29,8 @@ export function getAuthConfig(): AuthConfig {
     authEnabled: bool(process.env.AUTH_ENABLED, false),
     registrationEnabled: bool(process.env.REGISTRATION_ENABLED, false),
     emailDeliveryEnabled: bool(process.env.EMAIL_DELIVERY_ENABLED, false),
+    e2eTestMode: bool(process.env.E2E_TEST_MODE, false),
+    e2eInternalSecret: process.env.E2E_INTERNAL_SECRET?.trim() || undefined,
     appBaseUrl: (process.env.APP_BASE_URL ?? 'http://65.108.251.196:8088').replace(/\/+$/, ''),
     sessionCookieSecure: bool(process.env.SESSION_COOKIE_SECURE, true),
     sessionTtlSeconds: num(process.env.SESSION_TTL_SECONDS, 86400),
@@ -43,7 +47,17 @@ export function isSecureConfig(config: AuthConfig): boolean {
 }
 
 export function rejectInsecureAuth(config: AuthConfig): void {
-  if (config.authEnabled && !isSecureConfig(config)) {
+  const isE2E = config.e2eTestMode && (process.env.NODE_ENV === 'test' || process.env.NODE_ENV === 'e2e');
+  const isLocalhost = config.appBaseUrl.includes('127.0.0.1') || config.appBaseUrl.includes('localhost');
+
+  if (config.e2eTestMode && !(isE2E && isLocalhost)) {
+    throw new Error('E2E_TEST_MODE=true is only allowed in isolated localhost test environments.');
+  }
+  if (config.e2eTestMode && (!config.e2eInternalSecret || config.e2eInternalSecret.length < 64)) {
+    throw new Error('E2E_INTERNAL_SECRET is required for isolated E2E test mode and must be at least 64 characters.');
+  }
+
+  if (config.authEnabled && !isSecureConfig(config) && !(isE2E && isLocalhost)) {
     throw new Error(
       'AUTH_ENABLED=true requires APP_BASE_URL to use https://. ' +
       'Authentication is not safe over plain HTTP. ' +

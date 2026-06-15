@@ -18,7 +18,7 @@
     "users:create-admin": "pnpm --filter @realstate/api users:create-admin",
     "users:disable": "pnpm --filter @realstate/api users:disable",
     "users:revoke-sessions": "pnpm --filter @realstate/api users:revoke-sessions",
-    "test:e2e:admin": "playwright test --config apps/web/playwright.config.ts apps/web/e2e/admin.spec.ts",
+    "test:e2e:admin": "pnpm --filter @realstate/web test:e2e:admin",
     "test:e2e:admin:setup": "bash scripts/e2e-admin-setup.sh",
     "test:e2e:admin:teardown": "bash scripts/e2e-admin-teardown.sh"
   },

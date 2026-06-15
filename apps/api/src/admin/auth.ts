@@ -34,6 +34,7 @@ export function requireRole(pool: Pool, ...roles: string[]) {
       void reply.status(403).send({ error: { code: 'forbidden', message: 'No tienes permisos para esta acción.' } });
       return;
     }
+    (request as FastifyRequest & { _authUser?: { userId: string; roles: string[] } })._authUser = user;
   };
 }
 

@@ -1,3 +1,4 @@
+import { createHash, timingSafeEqual } from 'node:crypto';
 import type { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import type { Pool } from 'pg';
 import type { AuthConfig } from './config.js';
@@ -41,6 +42,35 @@ function clearSessionCookie(reply: FastifyReply): void {
   reply.clearCookie(SESSION_COOKIE, { path: '/api' });
 }
 
+function hashUserAgent(value: string | undefined): string | undefined {
+  if (!value) return undefined;
+  return createHash('sha256').update(value).digest('hex');
+}
+
+function e2eNotFound() {
+  return publicError('not_found', 'No hay token pendiente para este email.');
+}
+
+function safeSecretMatches(provided: string | undefined, expected: string | undefined): boolean {
+  if (!provided || !expected) return false;
+  const providedBuffer = Buffer.from(provided, 'utf8');
+  const expectedBuffer = Buffer.from(expected, 'utf8');
+  if (providedBuffer.length !== expectedBuffer.length) return false;
+  return timingSafeEqual(providedBuffer, expectedBuffer);
+}
+
+function requireE2ESecret(request: FastifyRequest, config: AuthConfig): boolean {
+  const header = request.headers['x-e2e-secret'];
+  const provided = Array.isArray(header) ? header[0] : header;
+  return safeSecretMatches(provided, config.e2eInternalSecret);
+}
+
+function pruneExpiredOutboxEntries(outbox: Map<string, { token: string; expiresAt: number }>, now = Date.now()): void {
+  for (const [email, entry] of outbox.entries()) {
+    if (now > entry.expiresAt) outbox.delete(email);
+  }
+}
+
 /** Get userId from session cookie, or null if invalid. */
 async function getUserIdFromSession(
   request: FastifyRequest,
@@ -52,6 +82,7 @@ async function getUserIdFromSession(
   const session = await repo.findSessionByTokenHash(tokenHash);
   if (!session || session.revokedAt) return null;
   if (new Date(session.expiresAt) < new Date()) return null;
+  await repo.touchSession(session.id);
   return session.userId;
 }
 
@@ -66,6 +97,10 @@ export function registerAuthRoutes(app: FastifyInstance, options: AuthRoutesOpti
   const { repo, config, emailTransport } = options;
   const loginLimiter = new AuthRateLimiter(config.authRateLimitMax, config.authRateLimitWindowMs);
   const forgotLimiter = new AuthRateLimiter(config.authRateLimitMax, config.authRateLimitWindowMs);
+
+  // ── E2E test token outbox (in-memory, accessible only via test endpoint) ──
+  const testTokens = new Map<string, { token: string; expiresAt: number }>();
+  const testPasswordResetTokens = new Map<string, { token: string; expiresAt: number }>();
 
   // ── Auth disabled guard ──
   const authEnabled = (reply: FastifyReply) => {
@@ -110,6 +145,10 @@ export function registerAuthRoutes(app: FastifyInstance, options: AuthRoutesOpti
     if (config.emailDeliveryEnabled) {
       const content = createEmailContent({ type: 'verification', token }, config.appBaseUrl);
       await emailTransport.send({ to: body.email, ...content });
+    } else if (config.e2eTestMode) {
+      pruneExpiredOutboxEntries(testTokens);
+      testTokens.set(emailNormalized, { token, expiresAt: expiresAt.getTime() });
+      request.log.info({ emailNormalized }, 'verification token stored in E2E outbox');
     }
 
     await repo.recordAuditEvent({
@@ -173,7 +212,12 @@ export function registerAuthRoutes(app: FastifyInstance, options: AuthRoutesOpti
     const token = createSessionToken();
     const tokenHash = hashToken(token);
     const expiresAt = new Date(Date.now() + config.sessionTtlSeconds * 1000);
-    await repo.createSession({ userId: user.id, tokenHash, expiresAt });
+    await repo.createSession({
+      userId: user.id,
+      tokenHash,
+      expiresAt,
+      userAgentHash: hashUserAgent(request.headers['user-agent']),
+    });
     await repo.updateLastLogin(user.id);
 
     await repo.recordAuditEvent({
@@ -311,6 +355,10 @@ export function registerAuthRoutes(app: FastifyInstance, options: AuthRoutesOpti
       if (config.emailDeliveryEnabled) {
         const content = createEmailContent({ type: 'password-reset', token }, config.appBaseUrl);
         await emailTransport.send({ to: body.email, ...content });
+      } else if (config.e2eTestMode) {
+        pruneExpiredOutboxEntries(testPasswordResetTokens);
+        testPasswordResetTokens.set(emailNormalized, { token, expiresAt: expiresAt.getTime() });
+        request.log.info({ emailNormalized }, 'password reset token stored in E2E outbox');
       }
 
       await repo.recordAuditEvent({
@@ -432,4 +480,69 @@ export function registerAuthRoutes(app: FastifyInstance, options: AuthRoutesOpti
     clearSessionCookie(reply);
     return { data: { message: 'Todas las sesiones han sido cerradas.' } };
   });
+
+  if (config.e2eTestMode) {
+    // ── E2E TEST ONLY: GET /api/v1/e2e/verification-token/:email ──
+    app.get('/api/v1/e2e/verification-token/:email', async (request, reply) => {
+      if (!authEnabled(reply)) return;
+      if (!requireE2ESecret(request, config)) {
+        return reply.status(404).send(e2eNotFound());
+      }
+
+      const email = (request.params as { email: string }).email.toLowerCase().trim();
+      const entry = testTokens.get(email);
+
+      if (!entry) {
+        return reply.status(404).send(publicError('not_found', 'No hay token pendiente para este email.'));
+      }
+
+      if (Date.now() > entry.expiresAt) {
+        testTokens.delete(email);
+        return reply.status(410).send(publicError('expired', 'El token ha caducado.'));
+      }
+
+      // Consume the token (single use)
+      testTokens.delete(email);
+
+      return {
+        data: {
+          token: entry.token,
+          email,
+          expiresAt: new Date(entry.expiresAt).toISOString(),
+        },
+      };
+    });
+  }
+
+  if (config.e2eTestMode) {
+    // ── E2E TEST ONLY: GET /api/v1/e2e/password-reset-token/:email ──
+    app.get('/api/v1/e2e/password-reset-token/:email', async (request, reply) => {
+      if (!authEnabled(reply)) return;
+      if (!requireE2ESecret(request, config)) {
+        return reply.status(404).send(e2eNotFound());
+      }
+
+      const email = (request.params as { email: string }).email.toLowerCase().trim();
+      const entry = testPasswordResetTokens.get(email);
+
+      if (!entry) {
+        return reply.status(404).send(publicError('not_found', 'No hay token pendiente para este email.'));
+      }
+
+      if (Date.now() > entry.expiresAt) {
+        testPasswordResetTokens.delete(email);
+        return reply.status(410).send(publicError('expired', 'El token ha caducado.'));
+      }
+
+      testPasswordResetTokens.delete(email);
+
+      return {
+        data: {
+          token: entry.token,
+          email,
+          expiresAt: new Date(entry.expiresAt).toISOString(),
+        },
+      };
+    });
+  }
 }

@@ -1,5 +1,6 @@
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { buildApp } from './app.js';
+import { getConfig, rejectInsecureAuth as rejectInsecureAppConfig } from './config.js';
 import { registerSchema } from './auth/schemas.js';
 import { hashPassword, verifyPassword } from './auth/password.js';
 import { createSessionToken, hashToken } from './auth/sessions.js';
@@ -34,6 +35,7 @@ function mockAuthRepo() {
     updatePassword: vi.fn(async () => {}),
     revokeUserSessions: vi.fn(async () => {}),
     revokeSession: vi.fn(async () => {}),
+    touchSession: vi.fn(async () => {}),
     listUserSessions: vi.fn(async () => []),
     recordAuditEvent: vi.fn(async () => {}),
     findUserById: vi.fn(async () => null),
@@ -48,11 +50,18 @@ const pool = {
 } as never;
 
 const emailTransport = new TestEmailTransport();
+const originalEnv = { ...process.env };
+
+afterEach(() => {
+  process.env = { ...originalEnv };
+  vi.clearAllMocks();
+});
 
 const baseAuthConfig = {
   authEnabled: true,
   registrationEnabled: true,
   emailDeliveryEnabled: false,
+  e2eTestMode: false,
   appBaseUrl: 'https://localhost:8088',
   sessionCookieSecure: false,
   sessionTtlSeconds: 86400,
@@ -123,10 +132,77 @@ describe('session tokens', () => {
 // ---------------------------------------------------------------------------
 
 describe('config validation', () => {
+  it('getConfig defaults e2eTestMode to false when E2E_TEST_MODE is absent', () => {
+    delete process.env.E2E_TEST_MODE;
+    expect(getConfig().e2eTestMode).toBe(false);
+  });
+
+  it('getConfig keeps e2eTestMode false when E2E_TEST_MODE=false', () => {
+    process.env.E2E_TEST_MODE = 'false';
+    expect(getConfig().e2eTestMode).toBe(false);
+  });
+
+  it('allows explicit E2E mode only in isolated localhost test environments', () => {
+    process.env.NODE_ENV = 'e2e';
+    expect(() =>
+      rejectInsecureAppConfig({
+        ...getConfig(),
+        authEnabled: true,
+        adminEnabled: true,
+        e2eTestMode: true,
+        e2eInternalSecret: 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
+        appBaseUrl: 'http://127.0.0.1:8089',
+      }),
+    ).not.toThrow();
+  });
+
+  it('rejects E2E_TEST_MODE=true in production startup config', () => {
+    process.env.NODE_ENV = 'production';
+    expect(() =>
+      rejectInsecureAppConfig({
+        ...getConfig(),
+        e2eTestMode: true,
+        appBaseUrl: 'https://realstate.example',
+      }),
+    ).toThrow(/E2E_TEST_MODE/);
+  });
+
+  it('rejects E2E mode without an internal secret', () => {
+    process.env.NODE_ENV = 'e2e';
+    expect(() =>
+      rejectInsecureAppConfig({
+        ...getConfig(),
+        e2eTestMode: true,
+        e2eInternalSecret: undefined,
+        appBaseUrl: 'http://127.0.0.1:8089',
+      }),
+    ).toThrow(/E2E_INTERNAL_SECRET/);
+  });
+
+  it('rejects E2E mode with a short internal secret', () => {
+    process.env.NODE_ENV = 'e2e';
+    expect(() =>
+      rejectInsecureAppConfig({
+        ...getConfig(),
+        e2eTestMode: true,
+        e2eInternalSecret: 'short',
+        appBaseUrl: 'http://127.0.0.1:8089',
+      }),
+    ).toThrow(/E2E_INTERNAL_SECRET/);
+  });
+
   it('rejectInsecureAuth throws with http baseUrl + authEnabled', () => {
     expect(() =>
       rejectInsecureAuth({ ...baseAuthConfig, appBaseUrl: 'http://localhost:8088' }),
     ).toThrow(/https/);
+  });
+
+  it('does not register internal E2E token endpoints when e2eTestMode is disabled', async () => {
+    const app = buildTestApp({}, { e2eTestMode: false });
+    const verification = await app.inject({ method: 'GET', url: '/api/v1/e2e/verification-token/test@example.com' });
+    const reset = await app.inject({ method: 'GET', url: '/api/v1/e2e/password-reset-token/test@example.com' });
+    expect(verification.statusCode).toBe(404);
+    expect(reset.statusCode).toBe(404);
   });
 });
 
@@ -254,5 +330,77 @@ describe('auth disabled globally', () => {
       const r = await app.inject({ method: path === '/me' ? 'GET' : 'POST', url: `/api/v1/auth${path}`, payload: path !== '/me' ? { email: 'a@b.com', password: 'Abc1234!' } : undefined, headers: path === '/me' ? {} : undefined });
       expect(r.statusCode, `${path} should be 503`).toBe(503);
     }
+  });
+});
+
+
+describe('E2E token outbox protection', () => {
+  const e2eSecret = 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa';
+
+  it('requires x-e2e-secret before exposing verification tokens', async () => {
+    const app = buildTestApp({}, { e2eTestMode: true, e2eInternalSecret: e2eSecret });
+    const register = await app.inject({ method: 'POST', url: '/api/v1/auth/register', payload: { email: 'ada@example.com', password: 'CorrectHorseBatteryStaple!', name: 'Ada' } });
+    expect(register.statusCode).toBe(201);
+
+    const missing = await app.inject({ method: 'GET', url: '/api/v1/e2e/verification-token/ada@example.com' });
+    const wrong = await app.inject({ method: 'GET', url: '/api/v1/e2e/verification-token/ada@example.com', headers: { 'x-e2e-secret': 'wrong' } });
+    expect(missing.statusCode).toBe(404);
+    expect(wrong.statusCode).toBe(404);
+
+    const otherEmail = await app.inject({ method: 'GET', url: '/api/v1/e2e/verification-token/other@example.com', headers: { 'x-e2e-secret': e2eSecret } });
+    expect(otherEmail.statusCode).toBe(404);
+
+    const ok = await app.inject({ method: 'GET', url: '/api/v1/e2e/verification-token/ada@example.com', headers: { 'x-e2e-secret': e2eSecret } });
+    expect(ok.statusCode).toBe(200);
+    const body = ok.json();
+    expect(body.data.token).toBeTruthy();
+    expect(JSON.stringify(body)).not.toContain(e2eSecret);
+
+    const reused = await app.inject({ method: 'GET', url: '/api/v1/e2e/verification-token/ada@example.com', headers: { 'x-e2e-secret': e2eSecret } });
+    expect(reused.statusCode).toBe(404);
+  });
+
+  it('expires verification tokens after successful E2E authentication', async () => {
+    const app = buildTestApp({}, { e2eTestMode: true, e2eInternalSecret: e2eSecret, emailVerificationTtlSeconds: -1 });
+    const register = await app.inject({ method: 'POST', url: '/api/v1/auth/register', payload: { email: 'expired@example.com', password: 'CorrectHorseBatteryStaple!', name: 'Expired' } });
+    expect(register.statusCode).toBe(201);
+
+    const expired = await app.inject({ method: 'GET', url: '/api/v1/e2e/verification-token/expired@example.com', headers: { 'x-e2e-secret': e2eSecret } });
+    expect(expired.statusCode).toBe(410);
+  });
+
+  it('protects password reset tokens with the same E2E secret and one-use semantics', async () => {
+    const app = buildTestApp({
+      findUserByEmail: vi.fn(async () => ({ id: 'user-1', email: 'ada@example.com', emailNormalized: 'ada@example.com', passwordHash: 'hash', status: 'active' })),
+    }, { e2eTestMode: true, e2eInternalSecret: e2eSecret });
+
+    const request = await app.inject({ method: 'POST', url: '/api/v1/auth/forgot-password', payload: { email: 'ada@example.com' } });
+    expect(request.statusCode).toBe(200);
+
+    const missing = await app.inject({ method: 'GET', url: '/api/v1/e2e/password-reset-token/ada@example.com' });
+    const wrong = await app.inject({ method: 'GET', url: '/api/v1/e2e/password-reset-token/ada@example.com', headers: { 'x-e2e-secret': 'wrong' } });
+    expect(missing.statusCode).toBe(404);
+    expect(wrong.statusCode).toBe(404);
+
+    const ok = await app.inject({ method: 'GET', url: '/api/v1/e2e/password-reset-token/ada@example.com', headers: { 'x-e2e-secret': e2eSecret } });
+    expect(ok.statusCode).toBe(200);
+    const body = ok.json();
+    expect(body.data.token).toBeTruthy();
+    expect(JSON.stringify(body)).not.toContain(e2eSecret);
+
+    const reused = await app.inject({ method: 'GET', url: '/api/v1/e2e/password-reset-token/ada@example.com', headers: { 'x-e2e-secret': e2eSecret } });
+    expect(reused.statusCode).toBe(404);
+  });
+
+  it('expires password reset tokens after successful E2E authentication', async () => {
+    const app = buildTestApp({
+      findUserByEmail: vi.fn(async () => ({ id: 'user-1', email: 'ada@example.com', emailNormalized: 'ada@example.com', passwordHash: 'hash', status: 'active' })),
+    }, { e2eTestMode: true, e2eInternalSecret: e2eSecret, passwordResetTtlSeconds: -1 });
+
+    const request = await app.inject({ method: 'POST', url: '/api/v1/auth/forgot-password', payload: { email: 'ada@example.com' } });
+    expect(request.statusCode).toBe(200);
+
+    const expired = await app.inject({ method: 'GET', url: '/api/v1/e2e/password-reset-token/ada@example.com', headers: { 'x-e2e-secret': e2eSecret } });
+    expect(expired.statusCode).toBe(410);
   });
 });

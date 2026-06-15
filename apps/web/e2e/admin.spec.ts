@@ -7,6 +7,11 @@ import { test, expect, type Page, type BrowserContext, type APIRequestContext } 
 
 const WEB = 'http://127.0.0.1:8090';
 const API = 'http://127.0.0.1:8089';
+const E2E_INTERNAL_SECRET = process.env.E2E_INTERNAL_SECRET;
+
+if (!E2E_INTERNAL_SECRET) {
+  throw new Error('E2E_INTERNAL_SECRET is required for admin E2E token retrieval.');
+}
 
 const CREDS = {
   admin:    { email: 'admin@e2e.realstate.test',    password: 'AdminE2E-Pass123!' },
@@ -14,6 +19,10 @@ const CREDS = {
   investor: { email: 'investor@e2e.realstate.test', password: 'InvestorE2E-Pass123!' },
   newUser:  { email: `e2e-new-${Date.now()}@e2e.realstate.test`, password: 'NewUser-Pass123!', name: 'New E2E User' },
 };
+
+function cookieHeaderFromSetCookie(value: string | undefined) {
+  return (value ?? '').split(';')[0];
+}
 
 async function loginViaUI(page: Page, email: string, password: string) {
   await page.goto(`${WEB}/acceso`, { waitUntil: 'domcontentloaded' });
@@ -72,15 +81,25 @@ test.describe('Visitor Flow', () => {
     }
   });
 
-  test('5. Request info (lead: info_request)', async ({ request }) => {
+  test('5. Request info (lead: opportunity_inquiry)', async ({ request }) => {
     const resp = await request.post(`${API}/api/v1/leads`, {
-      data: { kind: 'opportunity_inquiry', email: 'visitor@e2e.test', firstName: 'Visitor', lastName: 'E2E', message: 'Info please', sourcePath: '/oportunidades', submittedAfterMs: 2000, privacyAccepted: true },
+      data: {
+        kind: 'opportunity_inquiry',
+        opportunitySlug: 'eixample-rehabilitacion-luminosa',
+        email: 'visitor@e2e.test',
+        firstName: 'Visitor',
+        lastName: 'E2E',
+        message: 'Info please',
+        sourcePath: '/oportunidades/eixample-rehabilitacion-luminosa',
+        submittedAfterMs: 2000,
+        privacyAccepted: true,
+      },
       headers: { 'Content-Type': 'application/json' },
     });
     expect(resp.status()).toBe(201);
     const body = await resp.json();
     expect(body.data.publicReference).toBeTruthy();
-    console.log('[visitor] lead info_request ref:', body.data.publicReference);
+    console.log('[visitor] lead opportunity_inquiry ref:', body.data.publicReference);
   });
 
   test('6. Send general contact (lead: general_inquiry)', async ({ request }) => {
@@ -104,7 +123,7 @@ test.describe('Visitor Flow', () => {
   test('8. Verify leads created in admin', async ({ request }) => {
     // Login as admin first
     const loginResp = await loginViaAPI(request, CREDS.admin.email, CREDS.admin.password);
-    const cookies = loginResp.headers()['set-cookie'] || '';
+    const cookies = cookieHeaderFromSetCookie(loginResp.headers()['set-cookie']);
     const resp = await request.get(`${API}/api/v1/admin/leads?limit=10`, {
       headers: { Cookie: cookies },
     });
@@ -135,28 +154,38 @@ test.describe('Registration & Identity', () => {
     console.log('[auth] registered:', body.data.id);
   });
 
-  test('10. Capture verification email from console transport', async ({ request }) => {
-    // In E2E, email is logged to console. Get it from API logs.
-    // For now, we extract the token directly from DB since ConsoleEmailTransport logs it
-    const loginResp = await loginViaAPI(request, CREDS.admin.email, CREDS.admin.password);
-    const cookies = loginResp.headers()['set-cookie'] || '';
-    // Get the verification token from admin/audit or direct DB query via API
-    // Actually, ConsoleEmailTransport logs the token — we can find it in the API container logs
-    // For E2E, we'll use a workaround: get token via admin endpoint
-    const resp = await request.get(`${API}/api/v1/admin/audit?limit=5&eventType=account_created`, {
-      headers: { Cookie: cookies },
+  test('10. Retrieve verification token from E2E outbox', async ({ request }) => {
+    const resp = await request.get(`${API}/api/v1/e2e/verification-token/${encodeURIComponent(CREDS.newUser.email)}`, {
+      headers: { 'x-e2e-secret': E2E_INTERNAL_SECRET },
     });
     expect(resp.status()).toBe(200);
-    console.log('[auth] verification email logged to console transport (check API logs)');
-    // In real flow, we'd extract the token from the email body
-    // For this E2E, we fetch it from DB
+    const body = await resp.json();
+    expect(body.data.token).toBeTruthy();
+    expect(body.data.email).toBe(CREDS.newUser.email.toLowerCase());
+    // Store token for next step
+    (globalThis as any).__e2eVerificationToken = body.data.token;
+    console.log('[auth] verification token retrieved from E2E outbox');
   });
 
-  test('11. Verify email (via API — token from DB)', async ({ request }) => {
-    // In a full E2E we'd parse the email. Here we confirm the endpoint works
-    // For now, skip real verification since we need to extract token from console
-    console.log('[auth] email verification — would parse token from console transport');
-    // We'll mark this as covered via the API test that verified the endpoint
+  test('11. Verify email and reject reuse/expiration', async ({ request }) => {
+    const token = (globalThis as any).__e2eVerificationToken;
+    expect(token).toBeTruthy();
+
+    // Verify email with valid token
+    const vResp = await request.post(`${API}/api/v1/auth/verify-email`, {
+      data: { token },
+      headers: { 'Content-Type': 'application/json' },
+    });
+    expect(vResp.status()).toBe(200);
+    console.log('[auth] email verified');
+
+    // Reuse: same token should be rejected
+    const reuseResp = await request.post(`${API}/api/v1/auth/verify-email`, {
+      data: { token },
+      headers: { 'Content-Type': 'application/json' },
+    });
+    expect(reuseResp.status()).toBe(400);
+    console.log('[auth] token reuse rejected');
   });
 
   test('12. Login with new user via API', async ({ request }) => {
@@ -171,35 +200,66 @@ test.describe('Registration & Identity', () => {
   test('13. Login as admin and check /me', async ({ request }) => {
     const resp = await loginViaAPI(request, CREDS.admin.email, CREDS.admin.password);
     expect(resp.status()).toBe(200);
-    const cookies = resp.headers()['set-cookie'] || '';
+    const cookies = cookieHeaderFromSetCookie(resp.headers()['set-cookie']);
     const meResp = await request.get(`${API}/api/v1/auth/me`, {
       headers: { Cookie: cookies },
     });
-    expect([200, 401]).toContain(meResp.status());
+    expect(meResp.status()).toBe(200);
     const me = await meResp.json();
-    expect(me.data.email).toBe(CREDS.admin.email);
-    expect(me.data.roles).toContain('admin');
-    console.log('[auth] /me:', me.data.email, me.data.roles);
+    expect(me.email).toBe(CREDS.admin.email);
+    expect(me.roles).toContain('admin');
+    console.log('[auth] /me:', me.email, me.roles);
   });
 
-  test('14. Access investor area via browser', async ({ page }) => {
+  test('14a. Anonymous browser context sees investor login gate', async ({ browser }) => {
+    const context = await browser.newContext();
+    const page = await context.newPage();
+
+    await page.goto(`${WEB}/inversores`, { waitUntil: 'domcontentloaded' });
+
+    await expect(page).toHaveURL(/\/acceso\?retorno=%2Finversores/);
+    await expect(page.getByRole('heading', { name: /acceso inversores/i })).toBeVisible({ timeout: 5000 });
+    await expect(page.getByLabel('Email')).toBeVisible();
+    await expect(page.getByLabel('Contraseña')).toBeVisible();
+    await expect(page.getByText(/Panel de inversor/i)).toHaveCount(0);
+    await expect(page.getByRole('button', { name: /invertir/i })).toHaveCount(0);
+
+    await context.close();
+    console.log('[auth] anonymous investor route shows login gate');
+  });
+
+  test('14b. Authenticated browser context accesses investor area with HTTP-only cookie', async ({ browser }) => {
+    const context = await browser.newContext();
+    const page = await context.newPage();
+
     await page.goto(`${WEB}/acceso`, { waitUntil: 'domcontentloaded' });
-    // Already logged in from previous browser session? If not, login
-    const emailInput = page.getByLabel('Email');
-    if (await emailInput.isVisible({ timeout: 2000 }).catch(() => false)) {
-      await emailInput.fill(CREDS.admin.email);
-      await page.getByLabel('Contraseña').fill(CREDS.admin.password);
-      await page.getByRole('button', { name: /ACCEDER/i }).click();
-      await page.waitForTimeout(2000);
-    }
-    await page.goto(`${WEB}/inversiones`, { waitUntil: 'domcontentloaded' });
-    await expect(page.getByRole('heading', { name: /Bienvenido|Próximamente/i })).toBeVisible({ timeout: 5000 });
-    console.log('[auth] investor area accessed');
+    await page.getByLabel('Email').fill(CREDS.admin.email);
+    await page.getByLabel('Contraseña').fill(CREDS.admin.password);
+    await page.getByRole('button', { name: /ACCEDER/i }).click();
+    await expect(page).toHaveURL(/\/inversores/, { timeout: 10_000 });
+
+    const me = await page.evaluate(async () => {
+      const response = await fetch('/api/v1/auth/me', { headers: { Accept: 'application/json' } });
+      return { status: response.status, body: await response.json() };
+    });
+    expect(me.status).toBe(200);
+    expect(me.body.email).toBe(CREDS.admin.email);
+    expect(me.body.roles).toContain('admin');
+
+    await page.goto(`${WEB}/inversores`, { waitUntil: 'domcontentloaded' });
+    await expect(page.getByRole('heading', { name: /bienvenido/i })).toBeVisible({ timeout: 10_000 });
+    await expect(page.getByText(/Panel de inversor/i)).toBeVisible();
+    await expect(page.getByLabel('Email')).toHaveCount(0);
+    await expect(page.getByLabel('Contraseña')).toHaveCount(0);
+    await expect(page.getByRole('button', { name: /invertir/i })).toHaveCount(0);
+
+    await context.close();
+    console.log('[auth] authenticated browser accesses investor area');
   });
 
   test('15. List sessions via API', async ({ request }) => {
     const resp = await loginViaAPI(request, CREDS.admin.email, CREDS.admin.password);
-    const cookies = resp.headers()['set-cookie'] || '';
+    const cookies = cookieHeaderFromSetCookie(resp.headers()['set-cookie']);
     const sessResp = await request.get(`${API}/api/v1/auth/sessions`, {
       headers: { Cookie: cookies },
     });
@@ -211,7 +271,7 @@ test.describe('Registration & Identity', () => {
 
   test('16. Revoke a session via API', async ({ request }) => {
     const resp = await loginViaAPI(request, CREDS.admin.email, CREDS.admin.password);
-    const cookies = resp.headers()['set-cookie'] || '';
+    const cookies = cookieHeaderFromSetCookie(resp.headers()['set-cookie']);
     // Revoke all sessions except current
     const delResp = await request.delete(`${API}/api/v1/auth/sessions`, {
       headers: { Cookie: cookies },
@@ -229,14 +289,39 @@ test.describe('Registration & Identity', () => {
     console.log('[auth] password recovery requested');
   });
 
-  test.skip('18-21. Full password reset flow', async () => {
-    // Skipped: requires parsing token from console email transport
-    // The endpoints are tested in API unit tests
+  test('18-21. Full password reset flow', async ({ request }) => {
+    const nextPassword = 'NewUser-Reset-Pass123!';
+    const requestResp = await request.post(`${API}/api/v1/auth/forgot-password`, {
+      data: { email: CREDS.newUser.email },
+      headers: { 'Content-Type': 'application/json' },
+    });
+    expect(requestResp.status()).toBe(200);
+
+    const tokenResp = await request.get(`${API}/api/v1/e2e/password-reset-token/${encodeURIComponent(CREDS.newUser.email)}`, {
+      headers: { 'x-e2e-secret': E2E_INTERNAL_SECRET },
+    });
+    expect(tokenResp.status()).toBe(200);
+    const tokenBody = await tokenResp.json();
+    expect(tokenBody.data?.token).toBeTruthy();
+    console.log('[auth] password reset token retrieved from E2E outbox');
+
+    const resetResp = await request.post(`${API}/api/v1/auth/reset-password`, {
+      data: { token: tokenBody.data.token, password: nextPassword },
+      headers: { 'Content-Type': 'application/json' },
+    });
+    expect(resetResp.status()).toBe(200);
+
+    const oldLogin = await loginViaAPI(request, CREDS.newUser.email, CREDS.newUser.password);
+    expect(oldLogin.status()).toBe(401);
+    const newLogin = await loginViaAPI(request, CREDS.newUser.email, nextPassword);
+    expect(newLogin.status()).toBe(200);
+    CREDS.newUser.password = nextPassword;
+    console.log('[auth] password reset completed and old password rejected');
   });
 
   test('22. Logout via API', async ({ request }) => {
     const resp = await loginViaAPI(request, CREDS.admin.email, CREDS.admin.password);
-    const cookies = resp.headers()['set-cookie'] || '';
+    const cookies = cookieHeaderFromSetCookie(resp.headers()['set-cookie']);
     const logoutResp = await request.post(`${API}/api/v1/auth/logout`, {
       headers: { Cookie: cookies },
     });
@@ -261,7 +346,7 @@ test.describe('Operator Role Restrictions', () => {
   test('23. Login operator via API', async ({ request }) => {
     const resp = await loginViaAPI(request, CREDS.operator.email, CREDS.operator.password);
     expect(resp.status()).toBe(200);
-    operatorCookies = resp.headers()['set-cookie'] || '';
+    operatorCookies = cookieHeaderFromSetCookie(resp.headers()['set-cookie']);
     console.log('[operator] logged in');
   });
 
@@ -320,14 +405,16 @@ test.describe('Admin Full Workflow', () => {
   let adminCookies2 = '';
   let createdSlug = '';
   let createdId = '';
+  let restoredSlug = '';
+  let restoredId = '';
 
   test('31. Login admin', async ({ request }) => {
     const resp = await loginViaAPI(request, CREDS.admin.email, CREDS.admin.password);
     expect(resp.status()).toBe(200);
-    adminCookies = resp.headers()['set-cookie'] || '';
+    adminCookies = cookieHeaderFromSetCookie(resp.headers()['set-cookie']);
     // Second session for conflict test
     const resp2 = await loginViaAPI(request, CREDS.admin.email, CREDS.admin.password);
-    adminCookies2 = resp2.headers()['set-cookie'] || '';
+    adminCookies2 = cookieHeaderFromSetCookie(resp2.headers()['set-cookie']);
     console.log('[admin] logged in (2 sessions)');
   });
 
@@ -375,7 +462,7 @@ test.describe('Admin Full Workflow', () => {
   test('34. Complete all 11 editor sections', async ({ request }) => {
     const resp = await request.patch(`${API}/api/v1/admin/opportunities/${createdId}`, {
       data: {
-        version: 0,
+        version: 1,
         title: 'E2E Complete Opportunity — Updated',
         description: '## Overview\n\nFull description with markdown.\n\n### Strategy\nValue-add rehabilitation.',
         shortDescription: 'Updated short description for E2E test',
@@ -384,7 +471,7 @@ test.describe('Admin Full Workflow', () => {
         district: 'Gràcia',
         assetType: 'Residencial urbano',
         strategy: 'Rehabilitación energética',
-        status: 'draft',
+        status: 'coming_soon',
         visibility: 'draft',
         currency: 'EUR',
         targetAmountCents: 120000000,
@@ -402,20 +489,28 @@ test.describe('Admin Full Workflow', () => {
     console.log('[admin] editor updated, status:', resp.status());
   });
 
+  async function getCurrentOpportunityVersion(request: APIRequestContext) {
+    const resp = await request.get(`${API}/api/v1/admin/opportunities/${createdId}`, {
+      headers: { Cookie: adminCookies },
+    });
+    expect(resp.status()).toBe(200);
+    return (await resp.json()).data.version as number;
+  }
+
   test('35-36. Add highlights and risks via subentities', async ({ request }) => {
+    const version = await getCurrentOpportunityVersion(request);
     // Add highlights
     const hResp = await request.patch(`${API}/api/v1/admin/opportunities/${createdId}/subentities`, {
       data: {
+        version,
         highlights: [
-          { id: null, label: 'Rentabilidad esperada', value: '13% TIR objetivo' },
-          { id: null, label: 'Plazo estimado', value: '24 meses' },
+          { label: 'Rentabilidad esperada', value: '13% TIR objetivo', position: 0 },
+          { label: 'Plazo estimado', value: '24 meses', position: 1 },
         ],
         risks: [
-          { id: null, title: 'Riesgo de mercado', description: 'El mercado puede fluctuar.' },
-          { id: null, title: 'Riesgo regulatorio', description: 'Cambios normativos pueden afectar.' },
+          { title: 'Riesgo de mercado', description: 'El mercado puede fluctuar.', position: 0 },
+          { title: 'Riesgo regulatorio', description: 'Cambios normativos pueden afectar.', position: 1 },
         ],
-        milestones: [],
-        media: [],
       },
       headers: { 'Content-Type': 'application/json', Cookie: adminCookies },
     });
@@ -424,16 +519,15 @@ test.describe('Admin Full Workflow', () => {
   });
 
   test('37. Add milestones', async ({ request }) => {
+    const version = await getCurrentOpportunityVersion(request);
     const resp = await request.patch(`${API}/api/v1/admin/opportunities/${createdId}/subentities`, {
       data: {
-        highlights: [],
-        risks: [],
+        version,
         milestones: [
-          { id: null, title: 'Due diligence', description: 'Legal y técnica', plannedDate: '2026-09-01' },
-          { id: null, title: 'Cierre de financiación', description: 'Ronda principal', plannedDate: '2026-12-01' },
-          { id: null, title: 'Inicio de obra', description: 'Rehabilitación', plannedDate: '2027-03-01' },
+          { title: 'Due diligence', description: 'Legal y técnica', plannedDate: '2026-09-01', position: 0 },
+          { title: 'Cierre de financiación', description: 'Ronda principal', plannedDate: '2026-12-01', position: 1 },
+          { title: 'Inicio de obra', description: 'Rehabilitación', plannedDate: '2027-03-01', position: 2 },
         ],
-        media: [],
       },
       headers: { 'Content-Type': 'application/json', Cookie: adminCookies },
     });
@@ -442,14 +536,13 @@ test.describe('Admin Full Workflow', () => {
   });
 
   test('38. Add media', async ({ request }) => {
+    const version = await getCurrentOpportunityVersion(request);
     const resp = await request.patch(`${API}/api/v1/admin/opportunities/${createdId}/subentities`, {
       data: {
-        highlights: [],
-        risks: [],
-        milestones: [],
+        version,
         media: [
-          { id: null, type: 'image', url: '/assets/hero-01.webp', altText: 'Main image', position: 1 },
-          { id: null, type: 'image', url: '/assets/card-02.webp', altText: 'Secondary', position: 2 },
+          { assetId: 'hero-01.webp', altText: 'Main image', isPrimary: true, position: 0 },
+          { assetId: 'card-02.webp', altText: 'Secondary', isPrimary: false, position: 1 },
         ],
       },
       headers: { 'Content-Type': 'application/json', Cookie: adminCookies },
@@ -464,8 +557,8 @@ test.describe('Admin Full Workflow', () => {
     });
     expect(resp.status()).toBe(200);
     const body = await resp.json();
-    expect(body.version).toBeGreaterThan(0);
-    console.log('[admin] version verified:', body.version);
+    expect(body.data.version).toBeGreaterThan(0);
+    console.log('[admin] version verified:', body.data.version);
   });
 
   test('40-41. Preview and submit for review', async ({ request }) => {
@@ -478,7 +571,7 @@ test.describe('Admin Full Workflow', () => {
 
     // Transition to review
     const transResp = await request.post(`${API}/api/v1/admin/opportunities/${createdId}/transition`, {
-      data: { transition: 'submit_for_review' },
+      data: { to: 'review' },
       headers: { 'Content-Type': 'application/json', Cookie: adminCookies },
     });
     expect(transResp.status()).toBe(200);
@@ -487,7 +580,7 @@ test.describe('Admin Full Workflow', () => {
 
   test('42. Publish as admin', async ({ request }) => {
     const resp = await request.post(`${API}/api/v1/admin/opportunities/${createdId}/transition`, {
-      data: { transition: 'publish' },
+      data: { to: 'published' },
       headers: { 'Content-Type': 'application/json', Cookie: adminCookies },
     });
     expect(resp.status()).toBe(200);
@@ -516,28 +609,27 @@ test.describe('Admin Full Workflow', () => {
     const getResp = await request.get(`${API}/api/v1/admin/opportunities/${createdId}`, {
       headers: { Cookie: adminCookies },
     });
-    const currentVersion = (await getResp.json()).version;
+    const currentVersion = (await getResp.json()).data.version;
 
     // Session 1 modifies (uses adminCookies)
     const mod1 = await request.patch(`${API}/api/v1/admin/opportunities/${createdId}`, {
       data: { version: currentVersion, title: 'Modified by session 1' },
       headers: { 'Content-Type': 'application/json', Cookie: adminCookies },
     });
-    expect([200, 409]).toContain(mod1.status());
+    expect(mod1.status()).toBe(200);
 
-    // Session 2 tries with stale version → should get 409
+    // Session 2 tries with stale version → must get 409
     const mod2 = await request.patch(`${API}/api/v1/admin/opportunities/${createdId}`, {
       data: { version: currentVersion, title: 'Modified by session 2 (stale)' },
       headers: { 'Content-Type': 'application/json', Cookie: adminCookies2 },
     });
     console.log('[admin] version conflict result:', mod2.status());
-    // Session 2 should be rejected (409) or succeed (200) if session 1 hasn't incremented
-    expect([200, 409]).toContain(mod2.status());
+    expect(mod2.status()).toBe(409);
   });
 
   test('47-48. Unpublish and confirm disappearance', async ({ request }) => {
     const resp = await request.post(`${API}/api/v1/admin/opportunities/${createdId}/transition`, {
-      data: { transition: 'unpublish' },
+      data: { to: 'unlisted' },
       headers: { 'Content-Type': 'application/json', Cookie: adminCookies },
     });
     expect(resp.status()).toBe(200);
@@ -567,15 +659,46 @@ test.describe('Admin Full Workflow', () => {
         { headers: { Cookie: adminCookies } }
       );
       console.log('[admin] restore status:', restoreResp.status());
-    }
+      expect(restoreResp.status()).toBe(200);
+      const restoreBody = await restoreResp.json();
+      const restored = restoreBody.data;
+      restoredId = restored.id;
+      restoredSlug = restored.slug;
+      expect(restoredId).toBeTruthy();
+      expect(restoredId).not.toBe(createdId);
+      expect(restoredSlug).toBeTruthy();
+      expect(restoredSlug).not.toBe(createdSlug);
+      expect(restored.editorial_status ?? restored.editorialStatus).toBe('draft');
+      expect(restored.visibility).not.toBe('public');
+      expect(restored.version).toBe(1);
+      expect(restored.restored_from_opportunity_id ?? restored.restoredFromOpportunityId).toBe(createdId);
+      expect(restored.restored_from_version ?? restored.restoredFromVersion).toBe(oldVersion.version);
 
-    // Archive
-    const archiveResp = await request.post(`${API}/api/v1/admin/opportunities/${createdId}/transition`, {
-      data: { transition: 'archive' },
-      headers: { 'Content-Type': 'application/json', Cookie: adminCookies },
-    });
-    expect(archiveResp.status()).toBe(200);
-    console.log('[admin] archived');
+      const originalResp = await request.get(`${API}/api/v1/admin/opportunities/${createdId}`, {
+        headers: { Cookie: adminCookies },
+      });
+      expect(originalResp.status()).toBe(200);
+      const original = (await originalResp.json()).data;
+      expect(original.id).toBe(createdId);
+      expect(original.slug).toBe(createdSlug);
+      expect(original.editorial_status ?? original.editorialStatus).toBe('unlisted');
+
+      // Archive: restored draft should be archivable with unique slug
+      const archiveResp = await request.post(`${API}/api/v1/admin/opportunities/${restoredId}/transition`, {
+        data: { to: 'archived' },
+        headers: { 'Content-Type': 'application/json', Cookie: adminCookies },
+      });
+      expect(archiveResp.status()).toBe(200);
+      const archived = (await archiveResp.json()).data;
+      expect(archived.id).toBe(restoredId);
+      expect(archived.editorial_status ?? archived.editorialStatus).toBe('archived');
+      expect(archived.visibility).not.toBe('public');
+
+      const publicResp = await request.get(`${API}/api/v1/opportunities?limit=50`);
+      const publicBody = await publicResp.json();
+      expect(publicBody.data.some((o: any) => o.slug === restoredSlug)).toBe(false);
+      console.log('[admin] restored draft archived:', restoredSlug, restoredId);
+    }
   });
 
   test('52. Manage users and roles', async ({ request }) => {
@@ -591,7 +714,7 @@ test.describe('Admin Full Workflow', () => {
   test('53-54. Revoke another user session', async ({ request }) => {
     // Login as investor to create a session
     const invResp = await loginViaAPI(request, CREDS.investor.email, CREDS.investor.password);
-    const invCookies = invResp.headers()['set-cookie'] || '';
+    const invCookies = cookieHeaderFromSetCookie(invResp.headers()['set-cookie']);
 
     // Admin revokes investor's sessions
     // Get investor user reference first
@@ -623,7 +746,7 @@ test.describe('Admin Full Workflow', () => {
     const body = await resp.json();
     const events = body.data || [];
     expect(events.length).toBeGreaterThan(0);
-    const eventTypes = events.map((e: any) => e.eventType).filter(Boolean);
+    const eventTypes = events.map((e: any) => e.eventType ?? e.event_type).filter(Boolean);
     console.log('[admin] audit events:', eventTypes.length, 'types:', [...new Set(eventTypes)].slice(0, 10));
     // Verify key events
     const hasLoginEvent = eventTypes.some((t: string) => t === 'login_success');

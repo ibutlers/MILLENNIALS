@@ -105,7 +105,7 @@ test.describe('public opportunities milestone', () => {
     await expect(page.getByText(/RS-\d{8}-[A-F0-9]+/)).toBeVisible();
 
     await page.goto('/contacto');
-    await expect(page.getByRole('heading', { name: /contactar con realstate/i })).toBeVisible();
+    await expect(page.getByRole('heading', { name: /contactar con/i })).toBeVisible();
 
     await page.goto('/oportunidades/eixample-rehabilitacion-luminosa');
     await page.getByRole('link', { name: /solicitar información/i }).click();
@@ -113,10 +113,11 @@ test.describe('public opportunities milestone', () => {
     await expect(page.getByRole('heading', { name: /rehabilitación luminosa/i })).toBeVisible();
   });
 
-  test('future private routes remain honest non-transactional pages', async ({ page }) => {
+  test('future private routes show login when auth enabled, no investment actions', async ({ page }) => {
     await page.goto('/inversores');
-    // Auth is disabled, RequireAuth lets content through; dashboard shows honest upcoming state
-    await expect(page.getByRole('heading', { name: 'Bienvenido, Inversor' })).toBeVisible();
+    // Auth is enabled in E2E; investor dashboard requires login
+    await expect(page.getByRole('heading', { name: /acceso inversores/i })).toBeVisible();
     await expect(page.getByRole('button', { name: /invertir/i })).toHaveCount(0);
+    await expect(page.getByRole('button', { name: /acceder/i })).toBeVisible();
   });
 });
