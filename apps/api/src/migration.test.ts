@@ -5,7 +5,7 @@ import { describe, expect, it } from 'vitest';
 describe('database baseline migration', () => {
   const sql = readFileSync(resolve(__dirname, 'db/migrations/0001_baseline_definitive.sql'), 'utf8');
 
-  it('creates all 23 tables', () => {
+  it('creates all 27 domain tables (schema_migrations is runner-owned)', () => {
     const expected = [
       'users','user_roles','sessions','email_verification_tokens','password_reset_tokens',
       'opportunities','opportunity_media','opportunity_highlights','opportunity_risks',
@@ -38,9 +38,9 @@ describe('database baseline migration', () => {
   });
 
   it('enforces cents-based money and basis-point percentages', () => {
-    expect(sql).toContain('target_amount_cents bigint NOT NULL CHECK');
-    expect(sql).toContain('target_return_bps integer CHECK');
-    expect(sql).toContain('amount_cents bigint NOT NULL CHECK');
+    expect(sql).toMatch(/target_amount_cents\s+bigint\s+NOT NULL/);
+    expect(sql).toMatch(/target_return_bps\s+integer\s+CHECK/);
+    expect(sql).toMatch(/amount_cents\s+bigint\s+NOT NULL\s+CHECK/);
     expect(sql).toMatch(/\.*_cents/); // all money fields use _cents suffix
   });
 
@@ -61,12 +61,21 @@ describe('database baseline migration', () => {
   });
 
   it('has unique slugs and email constraints', () => {
-    expect(sql).toContain('slug text NOT NULL UNIQUE');
-    expect(sql).toContain('email text NOT NULL UNIQUE');
+    expect(sql).toMatch(/slug\s+text\s+NOT NULL UNIQUE/);
+    expect(sql).toMatch(/email\s+text\s+NOT NULL UNIQUE/);
   });
 
-  it('records the baseline in schema_migrations', () => {
-    expect(sql).toContain("INSERT INTO schema_migrations");
-    expect(sql).toContain("0001_baseline_definitive");
+  it('does NOT contain INSERT INTO schema_migrations (runner handles it)', () => {
+    expect(sql).not.toContain("INSERT INTO schema_migrations");
+  });
+
+  it('does NOT use IF NOT EXISTS on tables (deterministic, run once)', () => {
+    expect(sql).not.toMatch(/CREATE TABLE IF NOT EXISTS/);
+  });
+
+  it('uses CREATE EXTENSION IF NOT EXISTS only for pgcrypto bootstrap', () => {
+    const extMatches = (sql.match(/CREATE EXTENSION IF NOT EXISTS/g) || []);
+    expect(extMatches.length).toBe(1);
+    expect(sql).toContain('CREATE EXTENSION IF NOT EXISTS "pgcrypto"');
   });
 });
