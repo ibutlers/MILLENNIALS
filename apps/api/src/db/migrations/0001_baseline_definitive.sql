@@ -111,7 +111,7 @@ DO $$ BEGIN CREATE TYPE editorial_status AS ENUM (
 -- ============================================================================
 
 -- ── Users ──────────────────────────────────────────────────────────────────
-CREATE TABLE users (
+CREATE TABLE IF NOT EXISTS users (
   id              uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   public_reference text NOT NULL UNIQUE,
   email           text NOT NULL UNIQUE
@@ -127,12 +127,12 @@ CREATE TABLE users (
   created_at      timestamptz NOT NULL DEFAULT now(),
   updated_at      timestamptz NOT NULL DEFAULT now()
 );
-CREATE INDEX users_status_idx ON users (status);
+CREATE INDEX IF NOT EXISTS users_status_idx ON users (status);
 CREATE TRIGGER users_set_updated_at BEFORE UPDATE ON users
   FOR EACH ROW EXECUTE FUNCTION set_updated_at();
 
 -- ── User roles ─────────────────────────────────────────────────────────────
-CREATE TABLE user_roles (
+CREATE TABLE IF NOT EXISTS user_roles (
   user_id   uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   role      user_role NOT NULL,
   granted_by uuid REFERENCES users(id),
@@ -141,7 +141,7 @@ CREATE TABLE user_roles (
 );
 
 -- ── Sessions ───────────────────────────────────────────────────────────────
-CREATE TABLE sessions (
+CREATE TABLE IF NOT EXISTS sessions (
   id            uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id       uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   token_hash    text NOT NULL UNIQUE,
@@ -151,21 +151,21 @@ CREATE TABLE sessions (
   user_agent    text,
   created_at    timestamptz NOT NULL DEFAULT now()
 );
-CREATE INDEX sessions_user_id_idx ON sessions (user_id);
-CREATE INDEX sessions_expires_at_idx ON sessions (expires_at) WHERE revoked_at IS NULL;
+CREATE INDEX IF NOT EXISTS sessions_user_id_idx ON sessions (user_id);
+CREATE INDEX IF NOT EXISTS sessions_expires_at_idx ON sessions (expires_at) WHERE revoked_at IS NULL;
 
 -- ── Email verification tokens ──────────────────────────────────────────────
-CREATE TABLE email_verification_tokens (
+CREATE TABLE IF NOT EXISTS email_verification_tokens (
   id         uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id    uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   token      text NOT NULL UNIQUE,
   expires_at timestamptz NOT NULL,
   created_at timestamptz NOT NULL DEFAULT now()
 );
-CREATE INDEX email_verification_tokens_user_id_idx ON email_verification_tokens (user_id);
+CREATE INDEX IF NOT EXISTS email_verification_tokens_user_id_idx ON email_verification_tokens (user_id);
 
 -- ── Password reset tokens ──────────────────────────────────────────────────
-CREATE TABLE password_reset_tokens (
+CREATE TABLE IF NOT EXISTS password_reset_tokens (
   id         uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id    uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   token      text NOT NULL UNIQUE,
@@ -173,10 +173,10 @@ CREATE TABLE password_reset_tokens (
   used_at    timestamptz,
   created_at timestamptz NOT NULL DEFAULT now()
 );
-CREATE INDEX password_reset_tokens_user_id_idx ON password_reset_tokens (user_id);
+CREATE INDEX IF NOT EXISTS password_reset_tokens_user_id_idx ON password_reset_tokens (user_id);
 
 -- ── Opportunities ──────────────────────────────────────────────────────────
-CREATE TABLE opportunities (
+CREATE TABLE IF NOT EXISTS opportunities (
   id                       uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   slug                     text NOT NULL UNIQUE,
   title                    text NOT NULL,
@@ -206,13 +206,13 @@ CREATE TABLE opportunities (
   updated_at               timestamptz NOT NULL DEFAULT now(),
   CONSTRAINT opportunities_committed_not_extreme CHECK (committed_amount_cents <= target_amount_cents * 2)
 );
-CREATE UNIQUE INDEX opportunities_slug_idx ON opportunities (slug);
-CREATE INDEX opportunities_public_catalog_idx ON opportunities (visibility, published_at DESC, status, city, asset_type, strategy, risk_level);
+CREATE UNIQUE INDEX IF NOT EXISTS opportunities_slug_idx ON opportunities (slug);
+CREATE INDEX IF NOT EXISTS opportunities_public_catalog_idx ON opportunities (visibility, published_at DESC, status, city, asset_type, strategy, risk_level);
 CREATE TRIGGER opportunities_set_updated_at BEFORE UPDATE ON opportunities
   FOR EACH ROW EXECUTE FUNCTION set_updated_at();
 
 -- ── Opportunity sub-entities ───────────────────────────────────────────────
-CREATE TABLE opportunity_media (
+CREATE TABLE IF NOT EXISTS opportunity_media (
   id             uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   opportunity_id uuid NOT NULL REFERENCES opportunities(id) ON DELETE CASCADE,
   type           opportunity_media_type NOT NULL,
@@ -221,27 +221,27 @@ CREATE TABLE opportunity_media (
   position       integer NOT NULL DEFAULT 0,
   created_at     timestamptz NOT NULL DEFAULT now()
 );
-CREATE INDEX opportunity_media_opportunity_id_idx ON opportunity_media (opportunity_id, position);
+CREATE INDEX IF NOT EXISTS opportunity_media_opportunity_id_idx ON opportunity_media (opportunity_id, position);
 
-CREATE TABLE opportunity_highlights (
+CREATE TABLE IF NOT EXISTS opportunity_highlights (
   id             uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   opportunity_id uuid NOT NULL REFERENCES opportunities(id) ON DELETE CASCADE,
   label          text NOT NULL,
   value          text NOT NULL,
   position       integer NOT NULL DEFAULT 0
 );
-CREATE INDEX opportunity_highlights_opportunity_id_idx ON opportunity_highlights (opportunity_id, position);
+CREATE INDEX IF NOT EXISTS opportunity_highlights_opportunity_id_idx ON opportunity_highlights (opportunity_id, position);
 
-CREATE TABLE opportunity_risks (
+CREATE TABLE IF NOT EXISTS opportunity_risks (
   id             uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   opportunity_id uuid NOT NULL REFERENCES opportunities(id) ON DELETE CASCADE,
   title          text NOT NULL,
   description    text NOT NULL DEFAULT '',
   position       integer NOT NULL DEFAULT 0
 );
-CREATE INDEX opportunity_risks_opportunity_id_idx ON opportunity_risks (opportunity_id, position);
+CREATE INDEX IF NOT EXISTS opportunity_risks_opportunity_id_idx ON opportunity_risks (opportunity_id, position);
 
-CREATE TABLE opportunity_milestones (
+CREATE TABLE IF NOT EXISTS opportunity_milestones (
   id             uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   opportunity_id uuid NOT NULL REFERENCES opportunities(id) ON DELETE CASCADE,
   title          text NOT NULL,
@@ -250,10 +250,10 @@ CREATE TABLE opportunity_milestones (
   completed_at   timestamptz,
   position       integer NOT NULL DEFAULT 0
 );
-CREATE INDEX opportunity_milestones_opportunity_id_idx ON opportunity_milestones (opportunity_id, position);
+CREATE INDEX IF NOT EXISTS opportunity_milestones_opportunity_id_idx ON opportunity_milestones (opportunity_id, position);
 
 -- ── Opportunity updates (project updates / news) ───────────────────────────
-CREATE TABLE opportunity_updates (
+CREATE TABLE IF NOT EXISTS opportunity_updates (
   id             uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   opportunity_id uuid NOT NULL REFERENCES opportunities(id) ON DELETE CASCADE,
   title          text NOT NULL,
@@ -263,12 +263,12 @@ CREATE TABLE opportunity_updates (
   created_at     timestamptz NOT NULL DEFAULT now(),
   updated_at     timestamptz NOT NULL DEFAULT now()
 );
-CREATE INDEX opportunity_updates_opportunity_id_idx ON opportunity_updates (opportunity_id, published_at DESC);
+CREATE INDEX IF NOT EXISTS opportunity_updates_opportunity_id_idx ON opportunity_updates (opportunity_id, published_at DESC);
 CREATE TRIGGER opportunity_updates_set_updated_at BEFORE UPDATE ON opportunity_updates
   FOR EACH ROW EXECUTE FUNCTION set_updated_at();
 
 -- ── Opportunity versions (edit history) ────────────────────────────────────
-CREATE TABLE opportunity_versions (
+CREATE TABLE IF NOT EXISTS opportunity_versions (
   id             uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   opportunity_id uuid NOT NULL REFERENCES opportunities(id) ON DELETE CASCADE,
   version        integer NOT NULL,
@@ -276,14 +276,14 @@ CREATE TABLE opportunity_versions (
   changed_by     uuid REFERENCES users(id),
   created_at     timestamptz NOT NULL DEFAULT now()
 );
-CREATE UNIQUE INDEX opportunity_versions_opp_version_idx ON opportunity_versions (opportunity_id, version);
+CREATE UNIQUE INDEX IF NOT EXISTS opportunity_versions_opp_version_idx ON opportunity_versions (opportunity_id, version);
 
 -- ============================================================================
 -- TABLES — Investor
 -- ============================================================================
 
 -- ── Investor profiles ──────────────────────────────────────────────────────
-CREATE TABLE investor_profiles (
+CREATE TABLE IF NOT EXISTS investor_profiles (
   id              uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id         uuid NOT NULL UNIQUE REFERENCES users(id) ON DELETE CASCADE,
   status          investor_status NOT NULL DEFAULT 'onboarding',
@@ -300,7 +300,7 @@ CREATE TRIGGER investor_profiles_set_updated_at BEFORE UPDATE ON investor_profil
   FOR EACH ROW EXECUTE FUNCTION set_updated_at();
 
 -- ── Consents (versioned) ───────────────────────────────────────────────────
-CREATE TABLE consents (
+CREATE TABLE IF NOT EXISTS consents (
   id              uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id         uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   type            consent_type NOT NULL,
@@ -310,13 +310,13 @@ CREATE TABLE consents (
   user_agent      text,
   UNIQUE (user_id, type, version)
 );
-CREATE INDEX consents_user_id_idx ON consents (user_id);
+CREATE INDEX IF NOT EXISTS consents_user_id_idx ON consents (user_id);
 
 -- ============================================================================
 -- TABLES — Leads
 -- ============================================================================
 
-CREATE TABLE leads (
+CREATE TABLE IF NOT EXISTS leads (
   id               uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   public_reference text NOT NULL UNIQUE,
   kind             lead_kind NOT NULL,
@@ -331,27 +331,27 @@ CREATE TABLE leads (
   created_at       timestamptz NOT NULL DEFAULT now(),
   updated_at       timestamptz NOT NULL DEFAULT now()
 );
-CREATE INDEX leads_kind_status_idx ON leads (kind, status);
-CREATE INDEX leads_assigned_user_id_idx ON leads (assigned_user_id);
-CREATE INDEX leads_opportunity_id_idx ON leads (opportunity_id);
+CREATE INDEX IF NOT EXISTS leads_kind_status_idx ON leads (kind, status);
+CREATE INDEX IF NOT EXISTS leads_assigned_user_id_idx ON leads (assigned_user_id);
+CREATE INDEX IF NOT EXISTS leads_opportunity_id_idx ON leads (opportunity_id);
 CREATE TRIGGER leads_set_updated_at BEFORE UPDATE ON leads
   FOR EACH ROW EXECUTE FUNCTION set_updated_at();
 
-CREATE TABLE lead_notes (
+CREATE TABLE IF NOT EXISTS lead_notes (
   id         uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   lead_id    uuid NOT NULL REFERENCES leads(id) ON DELETE CASCADE,
   author_id  uuid REFERENCES users(id),
   body       text NOT NULL,
   created_at timestamptz NOT NULL DEFAULT now()
 );
-CREATE INDEX lead_notes_lead_id_idx ON lead_notes (lead_id);
-CREATE INDEX lead_notes_author_id_idx ON lead_notes (author_id);
+CREATE INDEX IF NOT EXISTS lead_notes_lead_id_idx ON lead_notes (lead_id);
+CREATE INDEX IF NOT EXISTS lead_notes_author_id_idx ON lead_notes (author_id);
 
 -- ============================================================================
 -- TABLES — Documents
 -- ============================================================================
 
-CREATE TABLE documents (
+CREATE TABLE IF NOT EXISTS documents (
   id              uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   owner_type      text NOT NULL CHECK (owner_type IN ('opportunity','investor','general')),
   owner_id        uuid,
@@ -368,7 +368,7 @@ CREATE TABLE documents (
   created_at      timestamptz NOT NULL DEFAULT now(),
   updated_at      timestamptz NOT NULL DEFAULT now()
 );
-CREATE INDEX documents_owner_idx ON documents (owner_type, owner_id);
+CREATE INDEX IF NOT EXISTS documents_owner_idx ON documents (owner_type, owner_id);
 CREATE TRIGGER documents_set_updated_at BEFORE UPDATE ON documents
   FOR EACH ROW EXECUTE FUNCTION set_updated_at();
 
@@ -376,7 +376,7 @@ CREATE TRIGGER documents_set_updated_at BEFORE UPDATE ON documents
 -- TABLES — Investment
 -- ============================================================================
 
-CREATE TABLE investment_intents (
+CREATE TABLE IF NOT EXISTS investment_intents (
   id                uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   opportunity_id    uuid NOT NULL REFERENCES opportunities(id),
   user_id           uuid NOT NULL REFERENCES users(id),
@@ -392,8 +392,8 @@ CREATE TABLE investment_intents (
   updated_at        timestamptz NOT NULL DEFAULT now(),
   UNIQUE (opportunity_id, user_id)
 );
-CREATE INDEX investment_intents_opportunity_id_idx ON investment_intents (opportunity_id);
-CREATE INDEX investment_intents_user_id_idx ON investment_intents (user_id);
+CREATE INDEX IF NOT EXISTS investment_intents_opportunity_id_idx ON investment_intents (opportunity_id);
+CREATE INDEX IF NOT EXISTS investment_intents_user_id_idx ON investment_intents (user_id);
 CREATE TRIGGER investment_intents_set_updated_at BEFORE UPDATE ON investment_intents
   FOR EACH ROW EXECUTE FUNCTION set_updated_at();
 
@@ -401,7 +401,7 @@ CREATE TRIGGER investment_intents_set_updated_at BEFORE UPDATE ON investment_int
 -- TABLES — Portfolio
 -- ============================================================================
 
-CREATE TABLE portfolio_positions (
+CREATE TABLE IF NOT EXISTS portfolio_positions (
   id              uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id         uuid NOT NULL REFERENCES users(id),
   opportunity_id  uuid NOT NULL REFERENCES opportunities(id),
@@ -410,18 +410,18 @@ CREATE TABLE portfolio_positions (
   updated_at      timestamptz NOT NULL DEFAULT now(),
   UNIQUE (user_id, opportunity_id)
 );
-CREATE INDEX portfolio_positions_user_id_idx ON portfolio_positions (user_id);
+CREATE INDEX IF NOT EXISTS portfolio_positions_user_id_idx ON portfolio_positions (user_id);
 
-CREATE TABLE portfolio_contributions (
+CREATE TABLE IF NOT EXISTS portfolio_contributions (
   id            uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   position_id   uuid NOT NULL REFERENCES portfolio_positions(id) ON DELETE CASCADE,
   amount_cents  bigint NOT NULL CHECK (amount_cents > 0),
   currency      text NOT NULL CHECK (currency ~ '^[A-Z]{3}$'),
   contributed_at timestamptz NOT NULL DEFAULT now()
 );
-CREATE INDEX portfolio_contributions_position_id_idx ON portfolio_contributions (position_id);
+CREATE INDEX IF NOT EXISTS portfolio_contributions_position_id_idx ON portfolio_contributions (position_id);
 
-CREATE TABLE portfolio_distributions (
+CREATE TABLE IF NOT EXISTS portfolio_distributions (
   id              uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   position_id     uuid NOT NULL REFERENCES portfolio_positions(id) ON DELETE CASCADE,
   amount_cents    bigint NOT NULL CHECK (amount_cents > 0),
@@ -429,32 +429,32 @@ CREATE TABLE portfolio_distributions (
   distribution_type text NOT NULL CHECK (distribution_type IN ('dividend','capital_return','interest','other')),
   distributed_at   timestamptz NOT NULL DEFAULT now()
 );
-CREATE INDEX portfolio_distributions_position_id_idx ON portfolio_distributions (position_id);
+CREATE INDEX IF NOT EXISTS portfolio_distributions_position_id_idx ON portfolio_distributions (position_id);
 
-CREATE TABLE portfolio_valuations (
+CREATE TABLE IF NOT EXISTS portfolio_valuations (
   id            uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   position_id   uuid NOT NULL REFERENCES portfolio_positions(id) ON DELETE CASCADE,
   value_cents   bigint NOT NULL,
   currency      text NOT NULL CHECK (currency ~ '^[A-Z]{3}$'),
   valued_at     timestamptz NOT NULL DEFAULT now()
 );
-CREATE INDEX portfolio_valuations_position_id_idx ON portfolio_valuations (position_id);
+CREATE INDEX IF NOT EXISTS portfolio_valuations_position_id_idx ON portfolio_valuations (position_id);
 
-CREATE TABLE portfolio_events (
+CREATE TABLE IF NOT EXISTS portfolio_events (
   id            uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   position_id   uuid NOT NULL REFERENCES portfolio_positions(id) ON DELETE CASCADE,
   event_type    text NOT NULL,
   payload       jsonb NOT NULL DEFAULT '{}',
   occurred_at   timestamptz NOT NULL DEFAULT now()
 );
-CREATE INDEX portfolio_events_position_id_idx ON portfolio_events (position_id);
+CREATE INDEX IF NOT EXISTS portfolio_events_position_id_idx ON portfolio_events (position_id);
 
 -- ============================================================================
 -- TABLES — Operations
 -- ============================================================================
 
 -- ── Audit events ───────────────────────────────────────────────────────────
-CREATE TABLE audit_events (
+CREATE TABLE IF NOT EXISTS audit_events (
   id               uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   event_type       audit_event_type NOT NULL,
   user_id          uuid REFERENCES users(id),
@@ -466,13 +466,13 @@ CREATE TABLE audit_events (
   ip_address       text,
   created_at       timestamptz NOT NULL DEFAULT now()
 );
-CREATE INDEX audit_events_event_type_idx ON audit_events (event_type);
-CREATE INDEX audit_events_user_id_idx ON audit_events (user_id);
-CREATE INDEX audit_events_entity_idx ON audit_events (entity_type, entity_id);
-CREATE INDEX audit_events_created_at_idx ON audit_events (created_at DESC);
+CREATE INDEX IF NOT EXISTS audit_events_event_type_idx ON audit_events (event_type);
+CREATE INDEX IF NOT EXISTS audit_events_user_id_idx ON audit_events (user_id);
+CREATE INDEX IF NOT EXISTS audit_events_entity_idx ON audit_events (entity_type, entity_id);
+CREATE INDEX IF NOT EXISTS audit_events_created_at_idx ON audit_events (created_at DESC);
 
 -- ── Outbox ─────────────────────────────────────────────────────────────────
-CREATE TABLE outbox (
+CREATE TABLE IF NOT EXISTS outbox (
   id            uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   channel       text NOT NULL CHECK (channel IN ('email','push','webhook')),
   recipient     text NOT NULL,
@@ -485,10 +485,10 @@ CREATE TABLE outbox (
   sent_at       timestamptz,
   created_at    timestamptz NOT NULL DEFAULT now()
 );
-CREATE INDEX outbox_status_scheduled_idx ON outbox (status, scheduled_at);
+CREATE INDEX IF NOT EXISTS outbox_status_scheduled_idx ON outbox (status, scheduled_at);
 
 -- ── Background jobs ────────────────────────────────────────────────────────
-CREATE TABLE jobs (
+CREATE TABLE IF NOT EXISTS jobs (
   id            uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   type          text NOT NULL,
   payload       jsonb NOT NULL DEFAULT '{}',
@@ -500,10 +500,10 @@ CREATE TABLE jobs (
   created_at    timestamptz NOT NULL DEFAULT now(),
   updated_at    timestamptz NOT NULL DEFAULT now()
 );
-CREATE INDEX jobs_status_locked_idx ON jobs (status, locked_until);
+CREATE INDEX IF NOT EXISTS jobs_status_locked_idx ON jobs (status, locked_until);
 
 -- ── Feature configuration ──────────────────────────────────────────────────
-CREATE TABLE feature_flags (
+CREATE TABLE IF NOT EXISTS feature_flags (
   key           text PRIMARY KEY,
   value         text NOT NULL,
   description   text,
@@ -514,6 +514,7 @@ CREATE TABLE feature_flags (
 -- TABLE — Migration tracking (created by runner if not exists)
 -- ============================================================================
 
--- Record this baseline
+-- Record this baseline (idempotent)
 INSERT INTO schema_migrations (id, checksum) VALUES ('0001_baseline_definitive',
-  '0000000000000000000000000000000000000000000000000000000000000000');
+  '0000000000000000000000000000000000000000000000000000000000000000')
+ON CONFLICT (id) DO NOTHING;
