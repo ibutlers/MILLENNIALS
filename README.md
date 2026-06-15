@@ -6,18 +6,15 @@ Webapp inmobiliaria para presentar oportunidades de real estate con una base pú
 
 La aplicación desplegada incluye:
 
-- landing pública mobile-first con identidad azul petróleo + verde mineral;
-- hero visual con imagen arquitectónica generada específicamente para MILLENNIALS CONSTRUYEN | CAPITAL;
-- narrativa corporativa antes de oportunidades;
-- tesis de inversión, metodología, tecnología y análisis;
-- oportunidades públicas servidas desde PostgreSQL vía `GET /api/v1/opportunities`;
-- fichas públicas JSON vía `GET /api/v1/opportunities/:slug`;
-- estados loading/error/empty en frontend sin mostrar datos falsos si la API falla;
-- rutas informativas honestas de acceso/zona privada futura, sin autenticación simulada;
-- modelo PostgreSQL para oportunidades, media, highlights, riesgos e hitos;
-- migraciones SQL controladas y seed demo idempotente;
-- menú móvil fullscreen accesible;
-- página visual 404 para rutas desconocidas;
+- **Baseline definitivo (Hito 11):** migración única inmutable, runner con advisory lock y checksum SHA-256
+- **PostgreSQL:** 28 tablas, 19 enums, 31 FK, modelo de datos completo (oportunidades, identidad, inversor, leads, documentos, inversión, cartera, operación)
+- **API pública:** `GET /api/v1/opportunities` con filtros, paginación, ordenación; `GET /api/v1/opportunities/:slug`
+- **Frontend:** landing institucional, catálogo público (4 oportunidades demo), fichas con highlights/riesgos/hitos/media
+- **Estados honestos:** loading, error, vacío — sin datos mock cuando la API falla
+- **Auth/Admin desactivados** en producción (`AUTH_ENABLED=false`, `ADMIN_ENABLED=false`)
+- **Seed idempotente:** 5 oportunidades demo (4 públicas + 1 privada)
+- **Calidad:** 88 tests (69 API + 19 web), lint, typecheck, build, audit
+- **Despliegue:** Docker Compose, Caddy proxy, nginx para assets, backup automático
 - cabeceras de seguridad configuradas en Caddy.
 
 Las oportunidades y cifras visibles son demo y están marcadas como datos ilustrativos. No se publica capital gestionado, rentabilidad histórica, número de proyectos reales, oficinas ni presencia internacional hasta tener datos verificables.
