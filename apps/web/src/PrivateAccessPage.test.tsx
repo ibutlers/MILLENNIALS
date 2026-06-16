@@ -1,7 +1,16 @@
 import { render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { PrivateAccessPage } from './PrivateAccessPage';
+
+function mockFetch() {
+  vi.stubGlobal('fetch', vi.fn((url: string) => {
+    if (url.includes('/api/v1/lead-settings')) {
+      return Promise.resolve({ ok: true, json: async () => ({ enabled: false }) });
+    }
+    return Promise.resolve({ ok: true, json: async () => ({}) });
+  }));
+}
 
 function renderPrivateAccessPage() {
   return render(
@@ -12,20 +21,24 @@ function renderPrivateAccessPage() {
 }
 
 describe('PrivateAccessPage — acceso privado informativo', () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
   it('muestra la cabecera mínima con marca y enlace de vuelta', () => {
+    mockFetch();
     renderPrivateAccessPage();
 
-    // Brand
     expect(screen.getByText('MC')).toBeInTheDocument();
     expect(screen.getByText('MILLENNIALS CONSTRUYEN')).toBeInTheDocument();
 
-    // Return link
     const returnLink = screen.getByRole('link', { name: /volver al sitio/i });
     expect(returnLink).toBeInTheDocument();
     expect(returnLink.getAttribute('href')).toBe('/');
   });
 
   it('muestra el panel editorial oscuro con eyebrow, título y puntos', () => {
+    mockFetch();
     renderPrivateAccessPage();
 
     expect(screen.getByText('ÁREA PRIVADA')).toBeInTheDocument();
@@ -42,6 +55,7 @@ describe('PrivateAccessPage — acceso privado informativo', () => {
   });
 
   it('muestra el panel informativo con CTAs correctos', () => {
+    mockFetch();
     renderPrivateAccessPage();
 
     expect(screen.getByText('ACCESO PRIVADO')).toBeInTheDocument();
@@ -52,10 +66,10 @@ describe('PrivateAccessPage — acceso privado informativo', () => {
       screen.getByText(/el acceso estará reservado a inversores previamente validados/i)
     ).toBeInTheDocument();
 
-    // CTA principal
+    // CTA principal → #solicitud (ancla en la misma página)
     const solicitarLink = screen.getByRole('link', { name: /solicitar acceso/i });
     expect(solicitarLink).toBeInTheDocument();
-    expect(solicitarLink.getAttribute('href')).toBe('/#coinvierte');
+    expect(solicitarLink.getAttribute('href')).toBe('#solicitud');
 
     // CTA secundario
     const proyectosLink = screen.getByRole('link', { name: /ver proyectos/i });
@@ -68,13 +82,24 @@ describe('PrivateAccessPage — acceso privado informativo', () => {
     ).toBeInTheDocument();
   });
 
-  it('no muestra formularios de credenciales ni breadcrumbs', () => {
+  it('no muestra breadcrumbs ni textos antiguos', () => {
+    mockFetch();
     renderPrivateAccessPage();
 
-    expect(screen.queryByRole('textbox')).not.toBeInTheDocument();
     expect(screen.queryByText('Inicio')).not.toBeInTheDocument();
     expect(screen.queryByText(/próximamente/i)).not.toBeInTheDocument();
-    expect(screen.queryByText(/contactar/i)).not.toBeInTheDocument();
     expect(screen.queryByText(/cartera/i)).not.toBeInTheDocument();
+  });
+
+  it('incluye el formulario de solicitud de acceso', () => {
+    mockFetch();
+    renderPrivateAccessPage();
+
+    // El formulario de coinvestir debe estar presente (CoinvestSection)
+    expect(screen.getByText(/Coinvierte con nosotros/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/Nombre/)).toBeInTheDocument();
+    expect(screen.getByLabelText(/Email/)).toBeInTheDocument();
+    expect(screen.getByLabelText(/Perfil/)).toBeInTheDocument();
+    expect(screen.getByLabelText(/Experiencia/)).toBeInTheDocument();
   });
 });

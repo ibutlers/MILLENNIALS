@@ -114,8 +114,6 @@ describe('MILLENNIALS CONSTRUYEN landing', () => {
     // Key messaging present
     expect(screen.getAllByText(/Pocas oportunidades/i).length).toBeGreaterThan(0);
     expect(screen.getByText(/Del análisis a la ejecución/i)).toBeInTheDocument();
-    // Coinvierte editorial text present after Contact
-    expect(screen.getByText(/Accede a oportunidades seleccionadas con criterio/i)).toBeInTheDocument();
   });
 
   it('opens and closes an accessible mobile navigation drawer', async () => {
@@ -322,188 +320,6 @@ describe('ContactSection form', () => {
   });
 });
 
-// ── CoinvestSection form ──
-
-function mockCoinvestFetch(body: unknown, ok = true, status = 201) {
-  vi.stubGlobal('fetch', vi.fn((url: string) => {
-    if (url.includes('/api/coinvest')) {
-      return Promise.resolve({ ok, status, json: async () => body });
-    }
-    if (url.includes('/api/v1/lead-settings')) {
-      return Promise.resolve({ ok: true, json: async () => ({ enabled: false }) });
-    }
-    return Promise.resolve({ ok: true, json: async () => apiResponse });
-  }));
-}
-
-function fillCoinvestForm(overrides: Partial<Record<'name' | 'email' | 'profile' | 'experience' | 'interests', string>> = {}) {
-  const section = document.getElementById('coinvierte')!;
-  const withinSection = within(section);
-  fireEvent.change(withinSection.getByLabelText(/Nombre/), { target: { value: overrides.name ?? 'Carlos López' } });
-  fireEvent.change(withinSection.getByLabelText(/Email/), { target: { value: overrides.email ?? 'carlos@example.com' } });
-  fireEvent.change(withinSection.getByLabelText(/Perfil/), { target: { value: overrides.profile ?? 'Inversor particular' } });
-  fireEvent.change(withinSection.getByLabelText(/Experiencia/), { target: { value: overrides.experience ?? 'Alguna inversión previa' } });
-  if (overrides.interests !== undefined) {
-    fireEvent.change(withinSection.getByLabelText(/Intereses/), { target: { value: overrides.interests } });
-  }
-  fireEvent.click(withinSection.getByLabelText(/Acepto que los datos/));
-}
-
-describe('CoinvestSection form', () => {
-  afterEach(() => {
-    vi.unstubAllGlobals();
-  });
-
-  it('shows all fields including profile and experience selectors', async () => {
-    mockCoinvestFetch({});
-    render(<App />);
-    await waitFor(() => expect(fetch).toHaveBeenCalled());
-    const section = document.getElementById('coinvierte')!;
-    const withinSection = within(section);
-
-    expect(withinSection.getByLabelText(/Nombre/)).toBeInTheDocument();
-    expect(withinSection.getByLabelText(/Email/)).toBeInTheDocument();
-    expect(withinSection.getByLabelText(/Teléfono/)).toBeInTheDocument();
-    expect(withinSection.getByLabelText(/Perfil/)).toBeInTheDocument();
-    expect(withinSection.getByLabelText(/Experiencia/)).toBeInTheDocument();
-    expect(withinSection.getByLabelText(/Intereses/)).toBeInTheDocument();
-    expect(withinSection.getByLabelText(/Acepto que los datos/)).toBeInTheDocument();
-  });
-
-  it('validates required fields and shows alert on empty submission', async () => {
-    mockCoinvestFetch({});
-    render(<App />);
-    await waitFor(() => expect(fetch).toHaveBeenCalled());
-    const section = document.getElementById('coinvierte')!;
-
-    fireEvent.click(within(section).getByRole('button', { name: /solicitar acceso/i }));
-    expect(await within(section).findByRole('alert')).toHaveTextContent(/Campo obligatorio/);
-  });
-
-  it('sends a valid submission and shows success', async () => {
-    mockCoinvestFetch({
-      data: {
-        publicReference: 'RS-20260616-ABC456',
-        status: 'new',
-        createdAt: '2026-06-16T10:00:00.000Z',
-        message: 'Solicitud recibida. Revisaremos la información facilitada y contactaremos contigo si existe encaje.'
-      }
-    });
-    render(<App />);
-    await waitFor(() => expect(fetch).toHaveBeenCalled());
-
-    fillCoinvestForm();
-    const section = document.getElementById('coinvierte')!;
-    fireEvent.click(within(section).getByRole('button', { name: /solicitar acceso/i }));
-
-    const success = await within(section).findByRole('status');
-    expect(success).toHaveTextContent('Solicitud recibida');
-    expect(success).toHaveTextContent(/contactaremos contigo/);
-  });
-
-  it('shows error when server returns failure', async () => {
-    mockCoinvestFetch({ error: { code: 'internal_error' } }, false, 500);
-    render(<App />);
-    await waitFor(() => expect(fetch).toHaveBeenCalled());
-
-    fillCoinvestForm();
-    const section = document.getElementById('coinvierte')!;
-    fireEvent.click(within(section).getByRole('button', { name: /solicitar acceso/i }));
-
-    const alert = await within(section).findByRole('alert');
-    expect(alert).toHaveTextContent(/No hemos podido enviar la solicitud/);
-  });
-
-  it('prevents double submission', async () => {
-    vi.stubGlobal('fetch', vi.fn((url: string) => {
-      if (url.includes('/api/coinvest')) return new Promise(() => {});
-      if (url.includes('/api/v1/lead-settings')) return Promise.resolve({ ok: true, json: async () => ({ enabled: false }) });
-      return Promise.resolve({ ok: true, json: async () => apiResponse });
-    }));
-    render(<App />);
-    await waitFor(() => expect(fetch).toHaveBeenCalled());
-
-    fillCoinvestForm();
-    const section = document.getElementById('coinvierte')!;
-    fireEvent.click(within(section).getByRole('button', { name: /solicitar acceso/i }));
-    await waitFor(() => {
-      expect(within(section).getByRole('button', { name: /enviando/i })).toBeDisabled();
-    });
-  });
-
-  it('rejects invalid email with a specific message', async () => {
-    mockCoinvestFetch({});
-    render(<App />);
-    await waitFor(() => expect(fetch).toHaveBeenCalled());
-    const section = document.getElementById('coinvierte')!;
-
-    fillCoinvestForm({ email: 'no-es-un-email' });
-    fireEvent.click(within(section).getByRole('button', { name: /solicitar acceso/i }));
-    expect(await within(section).findByRole('alert')).toHaveTextContent(/email|correo/i);
-  });
-
-  it('rejects submission without consent checkbox checked', async () => {
-    mockCoinvestFetch({});
-    render(<App />);
-    await waitFor(() => expect(fetch).toHaveBeenCalled());
-    const section = document.getElementById('coinvierte')!;
-
-    // Fill form but skip consent checkbox
-    const withinSection = within(section);
-    fireEvent.change(withinSection.getByLabelText(/Nombre/), { target: { value: 'Carlos López' } });
-    fireEvent.change(withinSection.getByLabelText(/Email/), { target: { value: 'carlos@example.com' } });
-    fireEvent.change(withinSection.getByLabelText(/Perfil/), { target: { value: 'Inversor particular' } });
-    fireEvent.change(withinSection.getByLabelText(/Experiencia/), { target: { value: 'Alguna inversión previa' } });
-    fireEvent.click(withinSection.getByRole('button', { name: /solicitar acceso/i }));
-    expect(await withinSection.findByRole('alert')).toHaveTextContent(/Debes aceptar el uso de tus datos/);
-  });
-
-  it('clears form fields and moves focus to confirmation after success', async () => {
-    mockCoinvestFetch({
-      data: {
-        publicReference: 'RS-20260616-ABC789',
-        status: 'new',
-        createdAt: '2026-06-16T10:00:00.000Z',
-        message: 'Solicitud recibida. Revisaremos la información facilitada y contactaremos contigo si existe encaje.'
-      }
-    });
-    render(<App />);
-    await waitFor(() => expect(fetch).toHaveBeenCalled());
-
-    fillCoinvestForm({ name: 'María García', email: 'maria@example.com' });
-    const section = document.getElementById('coinvierte')!;
-    fireEvent.click(within(section).getByRole('button', { name: /solicitar acceso/i }));
-
-    const status = await within(section).findByRole('status');
-    expect(status).toHaveTextContent(/Solicitud recibida/);
-    expect(status).toHaveFocus();
-
-    // Form fields should be cleared
-    const nameInput = within(section).getByLabelText(/Nombre/) as HTMLInputElement;
-    const emailInput = within(section).getByLabelText(/Email/) as HTMLInputElement;
-    expect(nameInput.value).toBe('');
-    expect(emailInput.value).toBe('');
-  });
-
-  it('preserves field data after server error', async () => {
-    mockCoinvestFetch({ error: { code: 'internal_error' } }, false, 500);
-    render(<App />);
-    await waitFor(() => expect(fetch).toHaveBeenCalled());
-
-    fillCoinvestForm({ name: 'Ana Torres', email: 'ana@example.com' });
-    const section = document.getElementById('coinvierte')!;
-    fireEvent.click(within(section).getByRole('button', { name: /solicitar acceso/i }));
-
-    await within(section).findByRole('alert');
-
-    // Data should be preserved
-    const nameInput = within(section).getByLabelText(/Nombre/) as HTMLInputElement;
-    const emailInput = within(section).getByLabelText(/Email/) as HTMLInputElement;
-    expect(nameInput.value).toBe('Ana Torres');
-    expect(emailInput.value).toBe('ana@example.com');
-  });
-});
-
 // ── Footer ──
 
 describe('Footer', () => {
@@ -524,7 +340,7 @@ describe('Footer', () => {
     // Navigation links with correct anchors
     const secondaryNav = withinFooter.getByRole('navigation', { name: /navegación secundaria/i });
     expect(within(secondaryNav).getByText('Nosotros')).toHaveAttribute('href', '/#nosotros');
-    expect(within(secondaryNav).getByText('Coinvierte')).toHaveAttribute('href', '/#coinvierte');
+    expect(within(secondaryNav).getByText('Solicitar acceso')).toHaveAttribute('href', '/acceso#solicitud');
   });
 
   it('does not render old demo or construction text in footer', async () => {

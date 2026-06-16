@@ -15,7 +15,7 @@ const drawerLinks = [
   { label: 'Cómo trabajamos', href: '/#metodologia' },
   { label: 'Contacto', href: '/#contacto' },
   { label: 'FAQ', href: '/#faq' },
-  { label: 'Coinvierte', href: '/#coinvierte' }
+  { label: 'Solicitar acceso', href: '/acceso#solicitud' }
 ];
 
 const activityBlocks = [
@@ -314,8 +314,8 @@ function Hero() {
           Seleccionamos proyectos capaces de generar valor mediante una estrategia inmobiliaria definida y una ejecución disciplinada.
         </p>
         <div className="mt-7 flex flex-col gap-3 sm:flex-row">
-          <a href="/#coinvierte" className="inline-flex items-center justify-center bg-electric px-6 py-3.5 text-sm font-bold tracking-[0.12em] text-white transition hover:bg-electric-hover focus:outline-none focus-visible:ring-2 focus-visible:ring-electric focus-visible:ring-offset-4 focus-visible:ring-offset-lavender">
-            Coinvierte con nosotros
+          <a href="/acceso#solicitud" className="inline-flex items-center justify-center bg-electric px-6 py-3.5 text-sm font-bold tracking-[0.12em] text-white transition hover:bg-electric-hover focus:outline-none focus-visible:ring-2 focus-visible:ring-electric focus-visible:ring-offset-4 focus-visible:ring-offset-lavender">
+            Solicitar acceso
           </a>
           <a href="/#proyectos" className="inline-flex items-center justify-center border border-charcoal/15 px-6 py-3.5 text-sm font-bold tracking-[0.12em] text-ink transition hover:border-electric hover:text-electric focus:outline-none focus-visible:ring-2 focus-visible:ring-electric focus-visible:ring-offset-4 focus-visible:ring-offset-lavender">
             Ver proyectos
@@ -663,7 +663,7 @@ function ContactSection() {
               </p>
               <p className="mt-4 text-sm leading-6 text-white/60">
                 Para solicitar acceso como coinversor, utiliza la sección{' '}
-                <a href="/#coinvierte" className="font-semibold text-electric underline hover:text-electric-hover focus:outline-none focus-visible:ring-2 focus-visible:ring-white">Coinvierte</a>.
+                <a href="/acceso#solicitud" className="font-semibold text-electric underline hover:text-electric-hover focus:outline-none focus-visible:ring-2 focus-visible:ring-white">Solicitar acceso</a>.
               </p>
             </div>
           </div>
@@ -749,12 +749,12 @@ function ContactSection() {
 
 // ── Coinvierte section ──
 
-const COINVEST_PROFILES = ['Inversor particular', 'Empresa', 'Family office', 'Profesional del sector', 'Otro'] as const;
-const COINVEST_EXPERIENCES = ['Sin experiencia previa', 'Alguna inversión previa', 'Experiencia habitual', 'Prefiero no indicarlo'] as const;
+export const COINVEST_PROFILES = ['Inversor particular', 'Empresa', 'Family office', 'Profesional del sector', 'Otro'] as const;
+export const COINVEST_EXPERIENCES = ['Sin experiencia previa', 'Alguna inversión previa', 'Experiencia habitual', 'Prefiero no indicarlo'] as const;
 
 type CvErrors = Record<string, string>;
 
-function CoinvestSection() {
+export function CoinvestSection() {
   const mountedAt = useRef(Date.now());
   const successRef = useRef<HTMLDivElement>(null);
   const [errors, setErrors] = useState<CvErrors>({});
@@ -958,7 +958,7 @@ function Footer() {
     { label: 'Proyectos', href: '/#proyectos' },
     { label: 'FAQ', href: '/#faq' },
     { label: 'Contacto', href: '/#contacto' },
-    { label: 'Coinvierte', href: '/#coinvierte' }
+    { label: 'Solicitar acceso', href: '/acceso#solicitud' }
   ];
 
   return (
@@ -1010,7 +1010,6 @@ export function App() {
         <Methodology />
         <Faq />
         <ContactSection />
-        <CoinvestSection />
       </main>
       <Footer />
     </div>
