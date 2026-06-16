@@ -11,13 +11,13 @@ const navigation = [
   { label: 'Contacto', href: '/#contacto' }
 ];
 
-const processIndicators = [
-  'Análisis proyecto a proyecto',
-  'Documentación estructurada',
-  'Seguimiento periódico',
-  'Inversión con horizonte definido',
-  'Revisión técnica, comercial y financiera',
-  'Actualización de avance'
+const activityBlocks = [
+  { number: '01', title: 'Selección rigurosa', desc: 'Evaluamos cada oportunidad antes de incorporarla a nuestra cartera de proyectos.' },
+  { number: '02', title: 'Análisis integral', desc: 'Revisamos sus variables técnicas, comerciales, jurídicas y financieras.' },
+  { number: '03', title: 'Estructuración de la operación', desc: 'Definimos la estrategia, el horizonte y el marco de inversión de cada proyecto.' },
+  { number: '04', title: 'Documentación clara', desc: 'Ordenamos la información relevante para facilitar una evaluación comprensible.' },
+  { number: '05', title: 'Seguimiento operativo', desc: 'Monitorizamos hitos, riesgos y posibles desviaciones durante la ejecución.' },
+  { number: '06', title: 'Comunicación periódica', desc: 'Compartimos los avances de cada proyecto de forma estructurada y transparente.' }
 ];
 
 const methodology = [
@@ -357,14 +357,18 @@ function ProcessSection() {
           <div>
             <p className="text-xs font-black uppercase tracking-[0.28em] text-electric">Nuestra actividad</p>
             <h2 className="mt-5 font-serif text-4xl leading-tight tracking-[-0.03em] text-ink sm:text-6xl">
-              Menos ruido, más trazabilidad.
+              Del análisis a la ejecución.
             </h2>
+            <p className="mt-5 max-w-prose leading-8 text-charcoal/80">
+              Seleccionamos, estructuramos y seguimos cada proyecto con una visión inmobiliaria, financiera y operativa.
+            </p>
           </div>
           <div className="grid gap-px overflow-hidden rounded-lg border border-frost bg-frost sm:grid-cols-2">
-            {processIndicators.map((item) => (
-              <div key={item} className="bg-white p-6">
-                <span className="mb-5 block h-8 w-8 bg-electric/10" aria-hidden="true" />
-                <p className="text-xl font-semibold text-ink">{item}</p>
+            {activityBlocks.map((block) => (
+              <div key={block.number} className="bg-white p-6 sm:p-7">
+                <p className="text-sm font-black tracking-[0.16em] text-electric">{block.number}</p>
+                <h3 className="mt-3 font-serif text-2xl tracking-[-0.02em] text-ink">{block.title}</h3>
+                <p className="mt-2 leading-7 text-charcoal/70">{block.desc}</p>
               </div>
             ))}
           </div>
