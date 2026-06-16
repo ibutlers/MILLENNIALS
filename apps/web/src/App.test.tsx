@@ -113,7 +113,8 @@ describe('MILLENNIALS CONSTRUYEN landing', () => {
     // Key messaging present (use getAllByText for repeated entries)
     expect(screen.getAllByText(/Pocas oportunidades/i).length).toBeGreaterThan(0);
     expect(screen.getByText(/Del análisis a la ejecución/i)).toBeInTheDocument();
-    expect(screen.getByText(/Preparado para documentación/i)).toBeInTheDocument();
+    // Coinvierte editorial text present after Contact
+    expect(screen.getByText(/Accede a oportunidades seleccionadas con criterio/i)).toBeInTheDocument();
   });
 
   it('opens and closes an accessible mobile navigation drawer', async () => {
@@ -151,11 +152,13 @@ function mockContactFetch(body: unknown, ok = true, status = 201) {
 }
 
 function fillContactForm(overrides: Partial<Record<'name' | 'email' | 'subject' | 'message', string>> = {}) {
-  fireEvent.change(screen.getByLabelText(/Nombre/), { target: { value: overrides.name ?? 'María García' } });
-  fireEvent.change(screen.getByLabelText(/Email/), { target: { value: overrides.email ?? 'maria@example.com' } });
-  fireEvent.change(screen.getByLabelText(/Motivo/), { target: { value: overrides.subject ?? 'Consulta general' } });
-  fireEvent.change(screen.getByLabelText(/Mensaje/), { target: { value: overrides.message ?? 'Me gustaría recibir más información sobre sus servicios de inversión inmobiliaria.' } });
-  fireEvent.click(screen.getByLabelText(/Acepto que los datos facilitados/));
+  const section = document.getElementById('contacto')!;
+  const withinSection = within(section);
+  fireEvent.change(withinSection.getByLabelText(/Nombre/), { target: { value: overrides.name ?? 'María García' } });
+  fireEvent.change(withinSection.getByLabelText(/Email/), { target: { value: overrides.email ?? 'maria@example.com' } });
+  fireEvent.change(withinSection.getByLabelText(/Motivo/), { target: { value: overrides.subject ?? 'Consulta general' } });
+  fireEvent.change(withinSection.getByLabelText(/Mensaje/), { target: { value: overrides.message ?? 'Me gustaría recibir más información sobre sus servicios de inversión inmobiliaria.' } });
+  fireEvent.click(withinSection.getByLabelText(/Acepto que los datos facilitados/));
 }
 
 describe('ContactSection form', () => {
@@ -167,22 +170,26 @@ describe('ContactSection form', () => {
     mockContactFetch({});
     render(<App />);
     await waitFor(() => expect(fetch).toHaveBeenCalled());
+    const section = document.getElementById('contacto')!;
+    const withinSection = within(section);
 
-    expect(screen.getByLabelText(/Nombre/)).toBeInTheDocument();
-    expect(screen.getByLabelText(/Email/)).toBeInTheDocument();
-    expect(screen.getByLabelText(/Teléfono/)).toBeInTheDocument();
-    expect(screen.getByLabelText(/Motivo/)).toBeInTheDocument();
-    expect(screen.getByLabelText(/Mensaje/)).toBeInTheDocument();
-    expect(screen.getByLabelText(/Acepto que los datos facilitados/)).toBeInTheDocument();
+    expect(withinSection.getByLabelText(/Nombre/)).toBeInTheDocument();
+    expect(withinSection.getByLabelText(/Email/)).toBeInTheDocument();
+    expect(withinSection.getByLabelText(/Teléfono/)).toBeInTheDocument();
+    expect(withinSection.getByLabelText(/Motivo/)).toBeInTheDocument();
+    expect(withinSection.getByLabelText(/Mensaje/)).toBeInTheDocument();
+    expect(withinSection.getByLabelText(/Acepto que los datos facilitados/)).toBeInTheDocument();
   });
 
   it('validates required fields and shows alert when empty form is submitted', async () => {
     mockContactFetch({});
     render(<App />);
     await waitFor(() => expect(fetch).toHaveBeenCalled());
+    const section = document.getElementById('contacto')!;
+    const withinSection = within(section);
 
-    fireEvent.click(screen.getByRole('button', { name: 'Enviar mensaje' }));
-    expect(await screen.findByRole('alert')).toHaveTextContent(/Campo obligatorio/);
+    fireEvent.click(withinSection.getByRole('button', { name: 'Enviar mensaje' }));
+    expect(await withinSection.findByRole('alert')).toHaveTextContent(/Campo obligatorio/);
   });
 
   it('rejects invalid email with a specific message', async () => {
@@ -191,8 +198,9 @@ describe('ContactSection form', () => {
     await waitFor(() => expect(fetch).toHaveBeenCalled());
 
     fillContactForm({ email: 'notanemail' });
-    fireEvent.click(screen.getByRole('button', { name: 'Enviar mensaje' }));
-    expect(await screen.findByRole('alert')).toHaveTextContent(/Introduce un email válido/);
+    const section = document.getElementById('contacto')!;
+    fireEvent.click(within(section).getByRole('button', { name: 'Enviar mensaje' }));
+    expect(await within(section).findByRole('alert')).toHaveTextContent(/Introduce un email válido/);
   });
 
   it('rejects message shorter than 20 characters', async () => {
@@ -201,8 +209,9 @@ describe('ContactSection form', () => {
     await waitFor(() => expect(fetch).toHaveBeenCalled());
 
     fillContactForm({ message: 'Corto' });
-    fireEvent.click(screen.getByRole('button', { name: 'Enviar mensaje' }));
-    expect(await screen.findByRole('alert')).toHaveTextContent(/al menos 20 caracteres/);
+    const section = document.getElementById('contacto')!;
+    fireEvent.click(within(section).getByRole('button', { name: 'Enviar mensaje' }));
+    expect(await within(section).findByRole('alert')).toHaveTextContent(/al menos 20 caracteres/);
   });
 
   it('rejects submission without privacy consent', async () => {
@@ -210,19 +219,20 @@ describe('ContactSection form', () => {
     render(<App />);
     await waitFor(() => expect(fetch).toHaveBeenCalled());
 
-    // Fill all fields except consent checkbox
-    fireEvent.change(screen.getByLabelText(/Nombre/), { target: { value: 'María' } });
-    fireEvent.change(screen.getByLabelText(/Email/), { target: { value: 'maria@example.com' } });
-    fireEvent.change(screen.getByLabelText(/Motivo/), { target: { value: 'Consulta general' } });
-    fireEvent.change(screen.getByLabelText(/Mensaje/), { target: { value: 'Me gustaría recibir más información sobre sus servicios.' } });
-    fireEvent.click(screen.getByRole('button', { name: 'Enviar mensaje' }));
-    expect(await screen.findByRole('alert')).toHaveTextContent(/Debes aceptar/);
+    const section = document.getElementById('contacto')!;
+    const withinSection = within(section);
+    fireEvent.change(withinSection.getByLabelText(/Nombre/), { target: { value: 'María' } });
+    fireEvent.change(withinSection.getByLabelText(/Email/), { target: { value: 'maria@example.com' } });
+    fireEvent.change(withinSection.getByLabelText(/Motivo/), { target: { value: 'Consulta general' } });
+    fireEvent.change(withinSection.getByLabelText(/Mensaje/), { target: { value: 'Me gustaría recibir más información sobre sus servicios.' } });
+    fireEvent.click(withinSection.getByRole('button', { name: 'Enviar mensaje' }));
+    expect(await withinSection.findByRole('alert')).toHaveTextContent(/Debes aceptar/);
   });
 
   it('disables button and shows "Enviando…" while submitting', async () => {
-    // Return a never-resolving promise so we stay in submitting state
     vi.stubGlobal('fetch', vi.fn((url: string) => {
       if (url.includes('/api/contact')) return new Promise(() => {});
+      if (url.includes('/api/coinvest')) return Promise.resolve({ ok: true, json: async () => ({ data: { publicReference: 'X', status: 'new', createdAt: '', message: 'OK' } }) });
       if (url.includes('/api/v1/lead-settings')) return Promise.resolve({ ok: true, json: async () => ({ enabled: false }) });
       return Promise.resolve({ ok: true, json: async () => apiResponse });
     }));
@@ -230,15 +240,17 @@ describe('ContactSection form', () => {
     await waitFor(() => expect(fetch).toHaveBeenCalled());
 
     fillContactForm();
-    fireEvent.click(screen.getByRole('button', { name: 'Enviar mensaje' }));
+    const section = document.getElementById('contacto')!;
+    fireEvent.click(within(section).getByRole('button', { name: 'Enviar mensaje' }));
     await waitFor(() => {
-      expect(screen.getByRole('button', { name: 'Enviando…' })).toBeDisabled();
+      expect(within(section).getByRole('button', { name: 'Enviando…' })).toBeDisabled();
     });
   });
 
   it('prevents double submission by disabling all inputs while submitting', async () => {
     vi.stubGlobal('fetch', vi.fn((url: string) => {
       if (url.includes('/api/contact')) return new Promise(() => {});
+      if (url.includes('/api/coinvest')) return Promise.resolve({ ok: true, json: async () => ({ data: { publicReference: 'X', status: 'new', createdAt: '', message: 'OK' } }) });
       if (url.includes('/api/v1/lead-settings')) return Promise.resolve({ ok: true, json: async () => ({ enabled: false }) });
       return Promise.resolve({ ok: true, json: async () => apiResponse });
     }));
@@ -246,11 +258,12 @@ describe('ContactSection form', () => {
     await waitFor(() => expect(fetch).toHaveBeenCalled());
 
     fillContactForm();
-    fireEvent.click(screen.getByRole('button', { name: 'Enviar mensaje' }));
+    const section = document.getElementById('contacto')!;
+    fireEvent.click(within(section).getByRole('button', { name: 'Enviar mensaje' }));
     await waitFor(() => {
-      expect(screen.getByLabelText(/Nombre/)).toBeDisabled();
-      expect(screen.getByLabelText(/Email/)).toBeDisabled();
-      expect(screen.getByRole('button', { name: 'Enviando…' })).toBeDisabled();
+      expect(within(section).getByLabelText(/Nombre/)).toBeDisabled();
+      expect(within(section).getByLabelText(/Email/)).toBeDisabled();
+      expect(within(section).getByRole('button', { name: 'Enviando…' })).toBeDisabled();
     });
   });
 
@@ -267,16 +280,15 @@ describe('ContactSection form', () => {
     await waitFor(() => expect(fetch).toHaveBeenCalled());
 
     fillContactForm();
-    fireEvent.click(screen.getByRole('button', { name: 'Enviar mensaje' }));
+    const section = document.getElementById('contacto')!;
+    fireEvent.click(within(section).getByRole('button', { name: 'Enviar mensaje' }));
 
-    const success = await screen.findByRole('status');
+    const success = await within(section).findByRole('status');
     expect(success).toHaveTextContent('Mensaje enviado');
     expect(success).toHaveTextContent(/Gracias por contactar/);
-    // Focus via requestAnimationFrame is unreliable in jsdom; verify element is present and focusable
     expect(success).toHaveAttribute('tabIndex', '-1');
-    // Fields should be cleared (form reset)
-    expect(screen.getByLabelText(/Nombre/)).toHaveValue('');
-    expect(screen.getByLabelText(/Email/)).toHaveValue('');
+    expect(within(section).getByLabelText(/Nombre/)).toHaveValue('');
+    expect(within(section).getByLabelText(/Email/)).toHaveValue('');
   });
 
   it('shows generic error when server returns failure and preserves field data', async () => {
@@ -285,14 +297,13 @@ describe('ContactSection form', () => {
     await waitFor(() => expect(fetch).toHaveBeenCalled());
 
     fillContactForm();
-    fireEvent.click(screen.getByRole('button', { name: 'Enviar mensaje' }));
+    const section = document.getElementById('contacto')!;
+    fireEvent.click(within(section).getByRole('button', { name: 'Enviar mensaje' }));
 
-    const alert = await screen.findByRole('alert');
+    const alert = await within(section).findByRole('alert');
     expect(alert).toHaveTextContent(/No hemos podido enviar el mensaje/);
-    // Fields should still contain the data
-    expect(screen.getByLabelText(/Nombre/)).toHaveValue('María García');
-    expect(screen.getByLabelText(/Email/)).toHaveValue('maria@example.com');
-    // Server internals must NOT leak
+    expect(within(section).getByLabelText(/Nombre/)).toHaveValue('María García');
+    expect(within(section).getByLabelText(/Email/)).toHaveValue('maria@example.com');
     expect(alert.textContent).not.toMatch(/stack|trace|internal_error/i);
   });
 
@@ -302,9 +313,231 @@ describe('ContactSection form', () => {
     await waitFor(() => expect(fetch).toHaveBeenCalled());
 
     fillContactForm();
-    fireEvent.click(screen.getByRole('button', { name: 'Enviar mensaje' }));
+    const section = document.getElementById('contacto')!;
+    fireEvent.click(within(section).getByRole('button', { name: 'Enviar mensaje' }));
 
-    const alert = await screen.findByRole('alert');
+    const alert = await within(section).findByRole('alert');
     expect(alert).toHaveTextContent(/Demasiados intentos/);
+  });
+});
+
+// ── CoinvestSection form ──
+
+function mockCoinvestFetch(body: unknown, ok = true, status = 201) {
+  vi.stubGlobal('fetch', vi.fn((url: string) => {
+    if (url.includes('/api/coinvest')) {
+      return Promise.resolve({ ok, status, json: async () => body });
+    }
+    if (url.includes('/api/v1/lead-settings')) {
+      return Promise.resolve({ ok: true, json: async () => ({ enabled: false }) });
+    }
+    return Promise.resolve({ ok: true, json: async () => apiResponse });
+  }));
+}
+
+function fillCoinvestForm(overrides: Partial<Record<'name' | 'email' | 'profile' | 'experience' | 'interests', string>> = {}) {
+  const section = document.getElementById('coinvierte')!;
+  const withinSection = within(section);
+  fireEvent.change(withinSection.getByLabelText(/Nombre/), { target: { value: overrides.name ?? 'Carlos López' } });
+  fireEvent.change(withinSection.getByLabelText(/Email/), { target: { value: overrides.email ?? 'carlos@example.com' } });
+  fireEvent.change(withinSection.getByLabelText(/Perfil/), { target: { value: overrides.profile ?? 'Inversor particular' } });
+  fireEvent.change(withinSection.getByLabelText(/Experiencia/), { target: { value: overrides.experience ?? 'Alguna inversión previa' } });
+  if (overrides.interests !== undefined) {
+    fireEvent.change(withinSection.getByLabelText(/Intereses/), { target: { value: overrides.interests } });
+  }
+  fireEvent.click(withinSection.getByLabelText(/Acepto que los datos/));
+}
+
+describe('CoinvestSection form', () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it('shows all fields including profile and experience selectors', async () => {
+    mockCoinvestFetch({});
+    render(<App />);
+    await waitFor(() => expect(fetch).toHaveBeenCalled());
+    const section = document.getElementById('coinvierte')!;
+    const withinSection = within(section);
+
+    expect(withinSection.getByLabelText(/Nombre/)).toBeInTheDocument();
+    expect(withinSection.getByLabelText(/Email/)).toBeInTheDocument();
+    expect(withinSection.getByLabelText(/Teléfono/)).toBeInTheDocument();
+    expect(withinSection.getByLabelText(/Perfil/)).toBeInTheDocument();
+    expect(withinSection.getByLabelText(/Experiencia/)).toBeInTheDocument();
+    expect(withinSection.getByLabelText(/Intereses/)).toBeInTheDocument();
+    expect(withinSection.getByLabelText(/Acepto que los datos/)).toBeInTheDocument();
+  });
+
+  it('validates required fields and shows alert on empty submission', async () => {
+    mockCoinvestFetch({});
+    render(<App />);
+    await waitFor(() => expect(fetch).toHaveBeenCalled());
+    const section = document.getElementById('coinvierte')!;
+
+    fireEvent.click(within(section).getByRole('button', { name: /solicitar acceso/i }));
+    expect(await within(section).findByRole('alert')).toHaveTextContent(/Campo obligatorio/);
+  });
+
+  it('sends a valid submission and shows success', async () => {
+    mockCoinvestFetch({
+      data: {
+        publicReference: 'RS-20260616-ABC456',
+        status: 'new',
+        createdAt: '2026-06-16T10:00:00.000Z',
+        message: 'Solicitud recibida. Revisaremos la información facilitada y contactaremos contigo si existe encaje.'
+      }
+    });
+    render(<App />);
+    await waitFor(() => expect(fetch).toHaveBeenCalled());
+
+    fillCoinvestForm();
+    const section = document.getElementById('coinvierte')!;
+    fireEvent.click(within(section).getByRole('button', { name: /solicitar acceso/i }));
+
+    const success = await within(section).findByRole('status');
+    expect(success).toHaveTextContent('Solicitud recibida');
+    expect(success).toHaveTextContent(/contactaremos contigo/);
+  });
+
+  it('shows error when server returns failure', async () => {
+    mockCoinvestFetch({ error: { code: 'internal_error' } }, false, 500);
+    render(<App />);
+    await waitFor(() => expect(fetch).toHaveBeenCalled());
+
+    fillCoinvestForm();
+    const section = document.getElementById('coinvierte')!;
+    fireEvent.click(within(section).getByRole('button', { name: /solicitar acceso/i }));
+
+    const alert = await within(section).findByRole('alert');
+    expect(alert).toHaveTextContent(/No hemos podido enviar la solicitud/);
+  });
+
+  it('prevents double submission', async () => {
+    vi.stubGlobal('fetch', vi.fn((url: string) => {
+      if (url.includes('/api/coinvest')) return new Promise(() => {});
+      if (url.includes('/api/v1/lead-settings')) return Promise.resolve({ ok: true, json: async () => ({ enabled: false }) });
+      return Promise.resolve({ ok: true, json: async () => apiResponse });
+    }));
+    render(<App />);
+    await waitFor(() => expect(fetch).toHaveBeenCalled());
+
+    fillCoinvestForm();
+    const section = document.getElementById('coinvierte')!;
+    fireEvent.click(within(section).getByRole('button', { name: /solicitar acceso/i }));
+    await waitFor(() => {
+      expect(within(section).getByRole('button', { name: /enviando/i })).toBeDisabled();
+    });
+  });
+
+  it('rejects invalid email with a specific message', async () => {
+    mockCoinvestFetch({});
+    render(<App />);
+    await waitFor(() => expect(fetch).toHaveBeenCalled());
+    const section = document.getElementById('coinvierte')!;
+
+    fillCoinvestForm({ email: 'no-es-un-email' });
+    fireEvent.click(within(section).getByRole('button', { name: /solicitar acceso/i }));
+    expect(await within(section).findByRole('alert')).toHaveTextContent(/email|correo/i);
+  });
+
+  it('rejects submission without consent checkbox checked', async () => {
+    mockCoinvestFetch({});
+    render(<App />);
+    await waitFor(() => expect(fetch).toHaveBeenCalled());
+    const section = document.getElementById('coinvierte')!;
+
+    // Fill form but skip consent checkbox
+    const withinSection = within(section);
+    fireEvent.change(withinSection.getByLabelText(/Nombre/), { target: { value: 'Carlos López' } });
+    fireEvent.change(withinSection.getByLabelText(/Email/), { target: { value: 'carlos@example.com' } });
+    fireEvent.change(withinSection.getByLabelText(/Perfil/), { target: { value: 'Inversor particular' } });
+    fireEvent.change(withinSection.getByLabelText(/Experiencia/), { target: { value: 'Alguna inversión previa' } });
+    fireEvent.click(withinSection.getByRole('button', { name: /solicitar acceso/i }));
+    expect(await withinSection.findByRole('alert')).toHaveTextContent(/Debes aceptar el uso de tus datos/);
+  });
+
+  it('clears form fields and moves focus to confirmation after success', async () => {
+    mockCoinvestFetch({
+      data: {
+        publicReference: 'RS-20260616-ABC789',
+        status: 'new',
+        createdAt: '2026-06-16T10:00:00.000Z',
+        message: 'Solicitud recibida. Revisaremos la información facilitada y contactaremos contigo si existe encaje.'
+      }
+    });
+    render(<App />);
+    await waitFor(() => expect(fetch).toHaveBeenCalled());
+
+    fillCoinvestForm({ name: 'María García', email: 'maria@example.com' });
+    const section = document.getElementById('coinvierte')!;
+    fireEvent.click(within(section).getByRole('button', { name: /solicitar acceso/i }));
+
+    const status = await within(section).findByRole('status');
+    expect(status).toHaveTextContent(/Solicitud recibida/);
+    expect(status).toHaveFocus();
+
+    // Form fields should be cleared
+    const nameInput = within(section).getByLabelText(/Nombre/) as HTMLInputElement;
+    const emailInput = within(section).getByLabelText(/Email/) as HTMLInputElement;
+    expect(nameInput.value).toBe('');
+    expect(emailInput.value).toBe('');
+  });
+
+  it('preserves field data after server error', async () => {
+    mockCoinvestFetch({ error: { code: 'internal_error' } }, false, 500);
+    render(<App />);
+    await waitFor(() => expect(fetch).toHaveBeenCalled());
+
+    fillCoinvestForm({ name: 'Ana Torres', email: 'ana@example.com' });
+    const section = document.getElementById('coinvierte')!;
+    fireEvent.click(within(section).getByRole('button', { name: /solicitar acceso/i }));
+
+    await within(section).findByRole('alert');
+
+    // Data should be preserved
+    const nameInput = within(section).getByLabelText(/Nombre/) as HTMLInputElement;
+    const emailInput = within(section).getByLabelText(/Email/) as HTMLInputElement;
+    expect(nameInput.value).toBe('Ana Torres');
+    expect(emailInput.value).toBe('ana@example.com');
+  });
+});
+
+// ── Footer ──
+
+describe('Footer', () => {
+  it('renders brand, description, navigation links and legal notice', async () => {
+    mockFetch(apiResponse);
+    render(<App />);
+    await waitFor(() => expect(fetch).toHaveBeenCalled());
+
+    const footer = document.querySelector('footer')!;
+    const withinFooter = within(footer);
+
+    expect(withinFooter.getByText('MILLENNIALS CONSTRUYEN')).toBeInTheDocument();
+    expect(withinFooter.getByText(/Club privado de coinversión inmobiliaria/)).toBeInTheDocument();
+    expect(withinFooter.getByText(/Acceso sujeto a invitación o validación previa/)).toBeInTheDocument();
+    expect(withinFooter.getByText(/no constituye una oferta pública de inversión/)).toBeInTheDocument();
+    expect(withinFooter.getByText(/© 2026/)).toBeInTheDocument();
+
+    // Navigation links with correct anchors
+    const secondaryNav = withinFooter.getByRole('navigation', { name: /navegación secundaria/i });
+    expect(within(secondaryNav).getByText('Nosotros')).toHaveAttribute('href', '/#nosotros');
+    expect(within(secondaryNav).getByText('Coinvierte')).toHaveAttribute('href', '/#coinvierte');
+  });
+
+  it('does not render old demo or construction text in footer', async () => {
+    mockFetch(apiResponse);
+    render(<App />);
+    await waitFor(() => expect(fetch).toHaveBeenCalled());
+
+    const footer = document.querySelector('footer')!;
+    const withinFooter = within(footer);
+
+    expect(withinFooter.queryByText(/datos demo/i)).not.toBeInTheDocument();
+    expect(withinFooter.queryByText(/activos visuales generados/i)).not.toBeInTheDocument();
+    expect(withinFooter.queryByText(/Plataforma inmobiliaria en construcción/i)).not.toBeInTheDocument();
+    // "Private Real Estate Investment Club" is still in header — only check footer
+    expect(withinFooter.queryByText(/Private Real Estate Investment Club/i)).not.toBeInTheDocument();
   });
 });

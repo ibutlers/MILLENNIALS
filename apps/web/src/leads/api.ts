@@ -94,3 +94,48 @@ export async function submitContact(payload: ContactPayload, signal?: AbortSigna
   }
   return contactCreatedSchema.parse(body).data;
 }
+
+// ── Co-invest form ──
+
+export const coinvestProfileEnum = z.enum(['Inversor particular', 'Empresa', 'Family office', 'Profesional del sector', 'Otro']);
+export type CoinvestProfile = z.infer<typeof coinvestProfileEnum>;
+
+export const coinvestExperienceEnum = z.enum(['Sin experiencia previa', 'Alguna inversión previa', 'Experiencia habitual', 'Prefiero no indicarlo']);
+export type CoinvestExperience = z.infer<typeof coinvestExperienceEnum>;
+
+export type CoinvestPayload = {
+  name: string;
+  email: string;
+  phone?: string;
+  profile: CoinvestProfile;
+  experience: CoinvestExperience;
+  interests?: string;
+  consent: true;
+  submittedAfterMs: number;
+  website: string;
+};
+
+export const coinvestCreatedSchema = z.object({
+  data: z.object({
+    publicReference: z.string(),
+    status: z.literal('new'),
+    createdAt: z.string(),
+    message: z.string()
+  })
+});
+export type CoinvestCreated = z.infer<typeof coinvestCreatedSchema>['data'];
+
+export async function submitCoinvest(payload: CoinvestPayload, signal?: AbortSignal): Promise<CoinvestCreated> {
+  const response = await fetch('/api/coinvest', {
+    method: 'POST',
+    signal,
+    headers: { Accept: 'application/json', 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload)
+  });
+  const body = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    if (response.status === 429) throw new Error('rate_limited');
+    throw new Error('invalid');
+  }
+  return coinvestCreatedSchema.parse(body).data;
+}

@@ -1,13 +1,15 @@
 import { FormEvent, useEffect, useRef, useState } from 'react';
 import { fetchPublicOpportunities, returnTypeLabel, riskLabel, statusLabel, type PublicOpportunity } from './opportunities/api';
-import { submitContact, type ContactCreated } from './leads/api';
+import { submitContact, submitCoinvest, type ContactCreated, type CoinvestCreated } from './leads/api';
 
 const navigation = [
   { label: 'Nosotros', href: '/#nosotros' },
   { label: 'Nuestra actividad', href: '/#actividad' },
+  { label: 'Cómo trabajamos', href: '/#metodologia' },
   { label: 'Proyectos', href: '/#proyectos' },
   { label: 'FAQ', href: '/#faq' },
-  { label: 'Contacto', href: '/#contacto' }
+  { label: 'Contacto', href: '/#contacto' },
+  { label: 'Coinvierte', href: '/#coinvierte' }
 ];
 
 const activityBlocks = [
@@ -751,21 +753,201 @@ function ContactSection() {
   );
 }
 
-// ── Coinvierte CTA ──
+// ── Coinvierte section ──
 
-function AccessCta() {
+const COINVEST_PROFILES = ['Inversor particular', 'Empresa', 'Family office', 'Profesional del sector', 'Otro'] as const;
+const COINVEST_EXPERIENCES = ['Sin experiencia previa', 'Alguna inversión previa', 'Experiencia habitual', 'Prefiero no indicarlo'] as const;
+
+type CvErrors = Record<string, string>;
+
+function CoinvestSection() {
+  const mountedAt = useRef(Date.now());
+  const successRef = useRef<HTMLDivElement>(null);
+  const [errors, setErrors] = useState<CvErrors>({});
+  const [result, setResult] = useState<CoinvestCreated | null>(null);
+  const [submitting, setSubmitting] = useState(false);
+
+  function validate(form: HTMLFormElement): { data?: FormData; errors: CvErrors } {
+    const data = new FormData(form);
+    const next: CvErrors = {};
+    if (!String(data.get('name') ?? '').trim()) next.name = 'Campo obligatorio.';
+    const email = String(data.get('email') ?? '').trim();
+    if (!email) next.email = 'Campo obligatorio.';
+    else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) next.email = 'Introduce un email válido.';
+    if (!data.get('profile')) next.profile = 'Selecciona un perfil.';
+    if (!data.get('experience')) next.experience = 'Selecciona una opción.';
+    const interests = String(data.get('interests') ?? '').trim();
+    if (interests.length > 1000) next.interests = 'Máximo 1.000 caracteres.';
+    if (data.get('consent') !== 'on') next.consent = 'Debes aceptar el uso de tus datos para evaluar la solicitud.';
+    if (String(data.get('website') ?? '').trim()) next.website = 'No se pudo procesar la solicitud.';
+    return { data, errors: next };
+  }
+
+  async function onSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const form = event.currentTarget;
+    const { data, errors: nextErrors } = validate(form);
+    setErrors(nextErrors);
+    setResult(null);
+    if (!data || Object.keys(nextErrors).length) return;
+    setSubmitting(true);
+    try {
+      const created = await submitCoinvest({
+        name: String(data.get('name') ?? '').trim(),
+        email: String(data.get('email') ?? '').trim(),
+        phone: String(data.get('phone') ?? '').trim() || undefined,
+        profile: String(data.get('profile') ?? '') as typeof COINVEST_PROFILES[number],
+        experience: String(data.get('experience') ?? '') as typeof COINVEST_EXPERIENCES[number],
+        interests: String(data.get('interests') ?? '').trim() || undefined,
+        consent: true,
+        submittedAfterMs: Date.now() - mountedAt.current,
+        website: String(data.get('website') ?? '')
+      });
+      setResult(created);
+      form.reset();
+    } catch (error) {
+      const message = error instanceof Error && error.message === 'rate_limited'
+        ? 'Demasiados intentos. Inténtalo más tarde.'
+        : 'No hemos podido enviar la solicitud. Revisa los datos e inténtalo de nuevo.';
+      setErrors({ form: message });
+    } finally { setSubmitting(false); }
+  }
+
+  // Focus success message when it appears
+  useEffect(() => {
+    if (result) successRef.current?.focus();
+  }, [result]);
+
   return (
-    <section id="coinvierte" className="bg-electric py-16 text-white sm:py-24">
-      <div className="mx-auto grid max-w-7xl gap-8 px-4 sm:px-6 lg:grid-cols-[1fr_auto] lg:items-center lg:px-8">
-        <div>
-          <p className="text-xs font-black uppercase tracking-[0.28em] text-white/70">Coinvierte con nosotros</p>
-          <h2 className="mt-5 font-serif text-4xl leading-tight tracking-[-0.03em] text-white sm:text-6xl">
-            Preparado para documentación, hitos y seguimiento de inversores.
-          </h2>
-        </div>
-        <div className="grid gap-3 sm:flex lg:grid">
-          <a href="/coinvierte" className="bg-white px-6 py-4 text-center text-sm font-black uppercase tracking-[0.18em] text-electric transition hover:bg-frost focus:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-4 focus-visible:ring-offset-electric">Coinvierte con nosotros</a>
-          <a href="/#contacto" className="border border-white/30 px-6 py-4 text-center text-sm font-black uppercase tracking-[0.18em] text-white transition hover:border-white hover:text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-4 focus-visible:ring-offset-electric">Contactar</a>
+    <section id="coinvierte" className="bg-ink py-10 sm:py-14">
+      <div className="mx-auto max-w-[1200px] px-4 sm:px-6 lg:px-8">
+        {/* Single integrated container */}
+        <div className="overflow-hidden rounded-lg bg-charcoal lg:grid lg:grid-cols-[52%_48%] lg:rounded-xl">
+          {/* ── Left column · editorial ── */}
+          <div className="flex items-center px-8 py-10 text-white lg:px-12 lg:py-12">
+            <div className="max-w-prose">
+              <p className="text-xs font-black uppercase tracking-[0.28em] text-electric">Coinvierte con nosotros</p>
+              <h2 className="mt-5 font-serif text-4xl leading-tight tracking-[-0.03em] sm:text-[44px] sm:leading-[1.12] lg:text-[48px] lg:leading-[1.1]">
+                Accede a oportunidades seleccionadas con criterio.
+              </h2>
+              <p className="mt-5 leading-7 text-white/80">
+                El acceso al club no es automático. Revisamos cada solicitud para conocer el perfil, los intereses y la adecuación de cada potencial coinversor.
+              </p>
+              <p className="mt-3 leading-7 text-white/70">
+                Cuando exista encaje, compartiremos contigo los siguientes pasos y la información disponible sobre futuras oportunidades.
+              </p>
+
+              {/* Process steps */}
+              <div className="mt-8 flex flex-col gap-3 border-t border-white/15 pt-8">
+                <div className="flex items-start gap-4">
+                  <span className="mt-0.5 flex-shrink-0 text-sm font-black text-electric">01</span>
+                  <div>
+                    <p className="text-sm font-bold text-white">Solicitud</p>
+                    <p className="mt-0.5 text-sm leading-6 text-white/60">Cuéntanos brevemente quién eres y qué tipo de oportunidades te interesan.</p>
+                  </div>
+                </div>
+                <div className="flex items-start gap-4">
+                  <span className="mt-0.5 flex-shrink-0 text-sm font-black text-electric">02</span>
+                  <div>
+                    <p className="text-sm font-bold text-white">Validación</p>
+                    <p className="mt-0.5 text-sm leading-6 text-white/60">Revisamos el perfil y valoramos su adecuación al enfoque del club.</p>
+                  </div>
+                </div>
+                <div className="flex items-start gap-4">
+                  <span className="mt-0.5 flex-shrink-0 text-sm font-black text-electric">03</span>
+                  <div>
+                    <p className="text-sm font-bold text-white">Acceso</p>
+                    <p className="mt-0.5 text-sm leading-6 text-white/60">Si existe encaje, contactaremos contigo para explicarte el funcionamiento y los siguientes pasos.</p>
+                  </div>
+                </div>
+              </div>
+
+              <p className="mt-8 text-xs leading-5 text-white/40">
+                Enviar una solicitud no implica ningún compromiso de inversión ni garantiza el acceso al club.
+              </p>
+            </div>
+          </div>
+
+          {/* ── Right column · form ── */}
+          <div className="bg-white p-6 sm:p-8 lg:p-10">
+            {Object.keys(errors).length ? (
+              <div role="alert" tabIndex={-1} className="mb-5 rounded-lg border border-warning/40 bg-warning/5 p-4">
+                <p className="font-bold text-charcoal/80">Revisa el formulario</p>
+                <ul className="mt-2 list-disc pl-5 text-sm text-charcoal/80">
+                  {Object.entries(errors).map(([k, v]) => <li key={k}>{v}</li>)}
+                </ul>
+              </div>
+            ) : null}
+            {result ? (
+              <div ref={successRef} role="status" tabIndex={-1} className="mb-5 rounded-lg border border-frost bg-white p-4">
+                <p className="font-bold text-ink">Solicitud recibida</p>
+                <p className="mt-1 text-sm leading-6 text-charcoal/80">{result.message}</p>
+              </div>
+            ) : null}
+            <form className="grid gap-[18px]" onSubmit={onSubmit} noValidate>
+              <div className="hidden" aria-hidden="true">
+                <label>Website <input name="website" tabIndex={-1} autoComplete="off" /></label>
+              </div>
+
+              {/* Row 1: Nombre + Email */}
+              <div className="grid gap-[18px] sm:grid-cols-2">
+                <label className="grid gap-1.5">
+                  <span className="text-sm font-bold text-ink">Nombre *</span>
+                  <input name="name" className="h-11 rounded-lg border border-frost bg-white px-3 text-ink placeholder:text-charcoal/40 focus:border-electric focus:outline-none focus:ring-2 focus:ring-electric/20 disabled:opacity-60" autoComplete="name" maxLength={100} disabled={submitting} required />
+                </label>
+                <label className="grid gap-1.5">
+                  <span className="text-sm font-bold text-ink">Email *</span>
+                  <input name="email" type="email" className="h-11 rounded-lg border border-frost bg-white px-3 text-ink placeholder:text-charcoal/40 focus:border-electric focus:outline-none focus:ring-2 focus:ring-electric/20 disabled:opacity-60" autoComplete="email" maxLength={254} disabled={submitting} required />
+                </label>
+              </div>
+
+              {/* Row 2: Teléfono + Perfil */}
+              <div className="grid gap-[18px] sm:grid-cols-2">
+                <label className="grid gap-1.5">
+                  <span className="text-sm font-bold text-ink">Teléfono (opcional)</span>
+                  <input name="phone" className="h-11 rounded-lg border border-frost bg-white px-3 text-ink placeholder:text-charcoal/40 focus:border-electric focus:outline-none focus:ring-2 focus:ring-electric/20 disabled:opacity-60" autoComplete="tel" maxLength={30} disabled={submitting} />
+                </label>
+                <label className="grid gap-1.5">
+                  <span className="text-sm font-bold text-ink">Perfil *</span>
+                  <select name="profile" className="h-11 rounded-lg border border-frost bg-white px-3 text-ink focus:border-electric focus:outline-none focus:ring-2 focus:ring-electric/20 disabled:opacity-60" disabled={submitting} required>
+                    <option value="">Selecciona una opción</option>
+                    {COINVEST_PROFILES.map((s) => <option key={s} value={s}>{s}</option>)}
+                  </select>
+                </label>
+              </div>
+
+              {/* Full width: Experiencia */}
+              <label className="grid gap-1.5">
+                <span className="text-sm font-bold text-ink">Experiencia en inversión inmobiliaria *</span>
+                <select name="experience" className="h-11 rounded-lg border border-frost bg-white px-3 text-ink focus:border-electric focus:outline-none focus:ring-2 focus:ring-electric/20 disabled:opacity-60" disabled={submitting} required>
+                  <option value="">Selecciona una opción</option>
+                  {COINVEST_EXPERIENCES.map((s) => <option key={s} value={s}>{s}</option>)}
+                </select>
+              </label>
+
+              {/* Full width: Intereses */}
+              <label className="grid gap-1.5">
+                <span className="text-sm font-bold text-ink">Intereses</span>
+                <textarea name="interests" rows={3} maxLength={1000} placeholder="Cuéntanos qué tipo de proyectos, ubicaciones u horizontes de inversión te interesan." className="min-h-[100px] rounded-lg border border-frost bg-white px-3 py-3 text-ink placeholder:text-charcoal/40 focus:border-electric focus:outline-none focus:ring-2 focus:ring-electric/20 disabled:opacity-60" disabled={submitting} />
+              </label>
+
+              {/* Consent + note */}
+              <div>
+                <label className="flex items-start gap-2.5 text-sm leading-6 text-charcoal/80">
+                  <input name="consent" type="checkbox" className="mt-[0.35em] h-4 w-4 flex-shrink-0 accent-electric" disabled={submitting} required />
+                  <span>Acepto que los datos facilitados se utilicen para evaluar mi solicitud de acceso y contactar conmigo en relación con el club.</span>
+                </label>
+                <p className="mt-1.5 pl-[26px] text-xs leading-5 text-charcoal/50">
+                  No utilizaremos estos datos para comunicaciones comerciales ajenas a esta solicitud sin consentimiento adicional.
+                </p>
+              </div>
+
+              {/* Button — full width inside form */}
+              <button type="submit" disabled={submitting} className="h-12 w-full rounded-lg bg-electric px-6 text-sm font-black uppercase tracking-[0.16em] text-white transition hover:bg-electric-hover disabled:cursor-not-allowed disabled:opacity-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-electric focus-visible:ring-offset-2">
+                {submitting ? 'Enviando…' : 'Solicitar acceso'}
+              </button>
+            </form>
+          </div>
         </div>
       </div>
     </section>
@@ -775,17 +957,44 @@ function AccessCta() {
 // ── Footer ──
 
 function Footer() {
+  const footerLinks = [
+    { label: 'Nosotros', href: '/#nosotros' },
+    { label: 'Nuestra actividad', href: '/#actividad' },
+    { label: 'Cómo trabajamos', href: '/#metodologia' },
+    { label: 'Proyectos', href: '/#proyectos' },
+    { label: 'FAQ', href: '/#faq' },
+    { label: 'Contacto', href: '/#contacto' },
+    { label: 'Coinvierte', href: '/#coinvierte' }
+  ];
+
   return (
-    <footer className="bg-lavender" role="contentinfo">
-      <div className="mx-auto grid max-w-7xl gap-8 border-t border-frost px-4 py-10 text-sm text-charcoal/70 sm:px-6 md:grid-cols-[1fr_auto] lg:px-8">
-        <div>
-          <p className="text-lg font-black uppercase tracking-[0.12em] text-ink">MILLENNIALS CONSTRUYEN</p>
-          <p className="mt-1 text-[0.65rem] font-medium uppercase tracking-[0.22em] text-charcoal/50">Private Real Estate Investment Club</p>
-          <p className="mt-3 max-w-xl">Plataforma inmobiliaria en construcción. Esta página usa datos demo y activos visuales generados específicamente para MILLENNIALS CONSTRUYEN.</p>
+    <footer className="border-t border-frost bg-white" role="contentinfo">
+      <div className="mx-auto max-w-[1200px] px-4 py-8 sm:px-6 lg:px-8">
+        <div className="grid gap-6 sm:grid-cols-[1fr_auto] sm:items-start">
+          {/* Brand column */}
+          <div>
+            <p className="text-lg font-black uppercase tracking-[0.12em] text-ink">MILLENNIALS CONSTRUYEN</p>
+            <p className="mt-1 max-w-md text-sm leading-6 text-charcoal/60">Club privado de coinversión inmobiliaria.</p>
+            <p className="mt-2 text-xs text-charcoal/40">Acceso sujeto a invitación o validación previa.</p>
+          </div>
+
+          {/* Navigation */}
+          <nav aria-label="Navegación secundaria">
+            <ul className="flex flex-wrap gap-x-5 gap-y-2 text-sm font-semibold text-charcoal/70">
+              {footerLinks.map((item) => (
+                <li key={item.href}>
+                  <a className="hover:text-electric focus:outline-none focus-visible:ring-2 focus-visible:ring-electric" href={item.href}>{item.label}</a>
+                </li>
+              ))}
+            </ul>
+          </nav>
         </div>
-        <nav aria-label="Navegación secundaria" className="flex flex-wrap gap-4 font-semibold">
-          {navigation.map((item) => <a key={item.href} className="hover:text-electric focus:outline-none focus-visible:ring-2 focus-visible:ring-electric" href={item.href}>{item.label}</a>)}
-        </nav>
+
+        {/* Bottom strip */}
+        <div className="mt-8 border-t border-frost pt-5 text-xs leading-5 text-charcoal/40">
+          <p>La información contenida en esta web tiene carácter informativo y no constituye una oferta pública de inversión. Toda inversión inmobiliaria implica riesgos y puede producir pérdidas.</p>
+          <p className="mt-1">&copy; 2026 MILLENNIALS CONSTRUYEN</p>
+        </div>
       </div>
     </footer>
   );
@@ -807,7 +1016,7 @@ export function App() {
         <ProjectsSection />
         <Faq />
         <ContactSection />
-        <AccessCta />
+        <CoinvestSection />
       </main>
       <Footer />
     </div>

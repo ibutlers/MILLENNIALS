@@ -26,7 +26,7 @@ import { createProviders, type ProviderSet } from './providers/index.js';
 export type AppDependencies = {
   pool?: Pool;
   opportunities?: OpportunityRepository;
-  leads?: Pick<LeadRepository, 'create' | 'createContact'>;
+  leads?: Pick<LeadRepository, 'create' | 'createContact'> & Partial<Pick<LeadRepository, 'createCoinvest'>>;
   auth?: {
     repo: AuthRepository;
     emailTransport: EmailTransport;
@@ -267,6 +267,40 @@ export function buildApp(dependencies: AppDependencies = {}): FastifyInstance {
     } catch (error) {
       request.log.error({ err: error }, 'contact creation failed');
       const body = publicError('internal_error', 'No hemos podido enviar el mensaje. Revisa los datos e inténtalo de nuevo.');
+      return reply.status(500).send(errorResponseSchema.parse(body));
+    }
+  });
+
+  // ── Co-invest form ──
+  app.post('/api/coinvest', async (request, reply) => {
+    if (!leads.createCoinvest) {
+      return reply.status(503).send(errorResponseSchema.parse(publicError('leads_disabled', 'La captación de solicitudes todavía no está habilitada.')));
+    }
+    const { coinvestRequestSchema, normalizeCoinvestInput, coinvestCreatedResponseSchema } = await import('./leads/co-invest.schema.js');
+
+    const origin = request.ip || 'unknown';
+    const rate = leadRateLimiter.check(origin);
+    if (!rate.allowed) {
+      const body = publicError('rate_limited', 'Hemos recibido demasiadas solicitudes. Inténtalo más tarde.');
+      return reply.status(429).send(errorResponseSchema.parse(body));
+    }
+
+    const parsed = coinvestRequestSchema.parse(request.body);
+    const normalized = normalizeCoinvestInput(parsed);
+    try {
+      const created = await leads.createCoinvest(normalized);
+      request.log.info({ coinvestReference: created.publicReference }, 'coinvest request created');
+      return reply.status(201).send(coinvestCreatedResponseSchema.parse({
+        data: {
+          publicReference: created.publicReference,
+          status: 'new',
+          createdAt: created.createdAt,
+          message: 'Solicitud recibida. Revisaremos la información facilitada y contactaremos contigo si existe encaje.'
+        }
+      }));
+    } catch (error) {
+      request.log.error({ err: error }, 'coinvest creation failed');
+      const body = publicError('internal_error', 'No hemos podido enviar la solicitud. Revisa los datos e inténtalo de nuevo.');
       return reply.status(500).send(errorResponseSchema.parse(body));
     }
   });

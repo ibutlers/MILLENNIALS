@@ -22,6 +22,7 @@ function repo(overrides = {}) {
   return {
     create: vi.fn(async (input) => ({ publicReference: 'RS-20260614-ABC123', kind: input.kind, status: 'new' as const, createdAt: '2026-06-14T09:30:00.000Z' })),
     createContact: vi.fn(async () => ({ publicReference: 'RS-20260614-ABC123', status: 'new' as const, createdAt: '2026-06-14T09:30:00.000Z' })),
+    createCoinvest: vi.fn(async () => ({ publicReference: 'RS-20260614-ABC123', status: 'new' as const, createdAt: '2026-06-14T09:30:00.000Z' })),
     ...overrides
   };
 }
@@ -272,5 +273,213 @@ describe('POST /api/contact', () => {
     // "error" is a normal field name in errorResponseSchema; reject only stack traces / internal details
     expect(text).not.toMatch(/stack|trace|Error\(/i);
     expect(response.json().error.code).toBe('internal_error');
+  });
+});
+
+// ── POST /api/coinvest ──
+
+const validCoinvestBody = {
+  name: 'Carlos López',
+  email: 'carlos@example.com',
+  phone: '+34 600 000 003',
+  profile: 'Inversor particular',
+  experience: 'Alguna inversión previa',
+  interests: 'Proyectos en Vigo, rentabilidad estable.',
+  consent: true,
+  submittedAfterMs: 3500,
+  website: ''
+};
+
+function coinvestConfig() {
+  return contactConfig();
+}
+
+describe('POST /api/coinvest', () => {
+  it('1. valid submission returns 201 and calls createCoinvest exactly once', async () => {
+    const leads = repo();
+    const app = buildApp({ logger: false, opportunities, leads, config: coinvestConfig() });
+    const response = await app.inject({ method: 'POST', url: '/api/coinvest', payload: validCoinvestBody });
+    expect(response.statusCode).toBe(201);
+    expect(leads.createCoinvest).toHaveBeenCalledTimes(1);
+  });
+
+  it('2. saved record carries kind, source_path, profile, experience, consent and correct initial status', async () => {
+    const leads = repo();
+    const app = buildApp({ logger: false, opportunities, leads, config: coinvestConfig() });
+    const response = await app.inject({ method: 'POST', url: '/api/coinvest', payload: validCoinvestBody });
+    expect(response.statusCode).toBe(201);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const call: Record<string, unknown> = (leads.createCoinvest as any).mock.calls[0][0];
+    expect(call.profile).toBe('Inversor particular');
+    expect(call.experience).toBe('Alguna inversión previa');
+    expect(call.interests).toBe('Proyectos en Vigo, rentabilidad estable.');
+    const body = response.json();
+    expect(body.data.status).toBe('new');
+    expect(body.data.publicReference).toMatch(/^RS-/);
+  });
+
+  it('3. invalid email returns 400 and does not call createCoinvest', async () => {
+    const leads = repo();
+    const app = buildApp({ logger: false, opportunities, leads, config: coinvestConfig() });
+    const response = await app.inject({ method: 'POST', url: '/api/coinvest', payload: { ...validCoinvestBody, email: 'bad' } });
+    expect(response.statusCode).toBe(400);
+    expect(leads.createCoinvest).not.toHaveBeenCalled();
+  });
+
+  it('4. absent or false consent is rejected', async () => {
+    const leads = repo();
+    const app = buildApp({ logger: false, opportunities, leads, config: coinvestConfig() });
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const { consent: _c, ...noConsent } = validCoinvestBody;
+    let response = await app.inject({ method: 'POST', url: '/api/coinvest', payload: noConsent });
+    expect(response.statusCode).toBe(400);
+    response = await app.inject({ method: 'POST', url: '/api/coinvest', payload: { ...validCoinvestBody, consent: false } });
+    expect(response.statusCode).toBe(400);
+    expect(leads.createCoinvest).not.toHaveBeenCalled();
+  });
+
+  it('5. filled honeypot is rejected without storing', async () => {
+    const leads = repo();
+    const app = buildApp({ logger: false, opportunities, leads, config: coinvestConfig() });
+    const response = await app.inject({ method: 'POST', url: '/api/coinvest', payload: { ...validCoinvestBody, website: 'https://spam.bot' } });
+    expect(response.statusCode).toBe(400);
+    expect(leads.createCoinvest).not.toHaveBeenCalled();
+  });
+
+  it('6. rate limit activates and blocked attempts do not call createCoinvest', async () => {
+    const leads = repo();
+    const app = buildApp({ logger: false, opportunities, leads, config: coinvestConfig() });
+    // Fire 11 rapid requests; rate limit should trigger
+    for (let i = 0; i < 11; i += 1) {
+      await app.inject({ method: 'POST', url: '/api/coinvest', payload: validCoinvestBody, headers: { 'x-forwarded-for': '10.0.0.99' } });
+    }
+    const calls = (leads.createCoinvest as ReturnType<typeof vi.fn>).mock.calls.length;
+    expect(calls).toBeLessThan(11);
+    expect(calls).toBeGreaterThan(0);
+  });
+
+  it('7. unknown fields are rejected', async () => {
+    const leads = repo();
+    const app = buildApp({ logger: false, opportunities, leads, config: coinvestConfig() });
+    const response = await app.inject({ method: 'POST', url: '/api/coinvest', payload: { ...validCoinvestBody, injected: true } });
+    expect(response.statusCode).toBe(400);
+    expect(leads.createCoinvest).not.toHaveBeenCalled();
+  });
+
+  it('8. consent_version is server-controlled (client cannot override)', async () => {
+    const leads = repo();
+    const app = buildApp({ logger: false, opportunities, leads, config: coinvestConfig() });
+    // Sending consentVersion should be rejected as unknown field
+    const response = await app.inject({ method: 'POST', url: '/api/coinvest', payload: { ...validCoinvestBody, consentVersion: 'old-v0' } });
+    expect(response.statusCode).toBe(400);
+    expect(leads.createCoinvest).not.toHaveBeenCalled();
+  });
+
+  it('9. optional interests and phone are normalized', async () => {
+    const leads = repo();
+    const app = buildApp({ logger: false, opportunities, leads, config: coinvestConfig() });
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const { interests: _i, phone: _p, ...noOpt } = validCoinvestBody;
+    const response = await app.inject({ method: 'POST', url: '/api/coinvest', payload: noOpt });
+    expect(response.statusCode).toBe(201);
+  });
+
+  it('10. email is lowercased and name trimmed in persisted data', async () => {
+    const leads = repo();
+    const app = buildApp({ logger: false, opportunities, leads, config: coinvestConfig() });
+    await app.inject({ method: 'POST', url: '/api/coinvest', payload: { ...validCoinvestBody, name: '  Carlos  López  ', email: 'CARLOS@Example.COM' } });
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const call: Record<string, unknown> = (leads.createCoinvest as any).mock.calls[0][0];
+    expect(call.name).toBe('Carlos López');
+    expect(call.email).toBe('carlos@example.com');
+  });
+
+  it('11. returns safe error without PII on database failure', async () => {
+    const app = buildApp({
+      logger: false,
+      opportunities,
+      leads: repo({ createCoinvest: vi.fn(async () => { throw new Error('db connection lost'); }) }),
+      config: coinvestConfig()
+    });
+    const response = await app.inject({ method: 'POST', url: '/api/coinvest', payload: validCoinvestBody });
+    expect(response.statusCode).toBe(500);
+    const text = JSON.stringify(response.json());
+    expect(text).not.toMatch(/carlos@example/i);
+    expect(text).not.toMatch(/López/i);
+    expect(text).not.toMatch(/db connection/i);
+    expect(text).not.toMatch(/stack|trace|Error\(/i);
+  });
+
+  it('12. returns 503 when createCoinvest method is not available', async () => {
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const { createCoinvest: _cv, ...withoutMethod } = repo();
+    const app = buildApp({ logger: false, opportunities, leads: withoutMethod, config: coinvestConfig() });
+    const response = await app.inject({ method: 'POST', url: '/api/coinvest', payload: validCoinvestBody });
+    expect(response.statusCode).toBe(503);
+  });
+
+  it('13. oversized body returns 413 without calling createCoinvest', async () => {
+    const leads = repo();
+    const app = buildApp({ logger: false, opportunities, leads, config: coinvestConfig() });
+    const bigBody = { ...validCoinvestBody, interests: 'x'.repeat(17000) };
+    const response = await app.inject({ method: 'POST', url: '/api/coinvest', payload: bigBody });
+    expect(response.statusCode).toBe(413);
+    expect(leads.createCoinvest).not.toHaveBeenCalled();
+  });
+
+  it('14. rejects profile with a value not in the allowed enum (400, no persist)', async () => {
+    const leads = repo();
+    const app = buildApp({ logger: false, opportunities, leads, config: coinvestConfig() });
+    const response = await app.inject({ method: 'POST', url: '/api/coinvest', payload: { ...validCoinvestBody, profile: 'Perfil inventado' } });
+    expect(response.statusCode).toBe(400);
+    expect(leads.createCoinvest).not.toHaveBeenCalled();
+  });
+
+  it('15. rejects experience with a value not in the allowed enum (400, no persist)', async () => {
+    const leads = repo();
+    const app = buildApp({ logger: false, opportunities, leads, config: coinvestConfig() });
+    const response = await app.inject({ method: 'POST', url: '/api/coinvest', payload: { ...validCoinvestBody, experience: 'Experiencia imaginaria' } });
+    expect(response.statusCode).toBe(400);
+    expect(leads.createCoinvest).not.toHaveBeenCalled();
+  });
+
+  it('16. rejects interests longer than 1000 characters (400, no persist)', async () => {
+    const leads = repo();
+    const app = buildApp({ logger: false, opportunities, leads, config: coinvestConfig() });
+    const response = await app.inject({ method: 'POST', url: '/api/coinvest', payload: { ...validCoinvestBody, interests: 'x'.repeat(1001) } });
+    expect(response.statusCode).toBe(400);
+    expect(leads.createCoinvest).not.toHaveBeenCalled();
+  });
+
+  it('17. rejects client-supplied kind field (400, no persist)', async () => {
+    const leads = repo();
+    const app = buildApp({ logger: false, opportunities, leads, config: coinvestConfig() });
+    const response = await app.inject({ method: 'POST', url: '/api/coinvest', payload: { ...validCoinvestBody, kind: 'access_request' } });
+    expect(response.statusCode).toBe(400);
+    expect(leads.createCoinvest).not.toHaveBeenCalled();
+  });
+
+  it('18. rejects client-supplied source_path field (400, no persist)', async () => {
+    const leads = repo();
+    const app = buildApp({ logger: false, opportunities, leads, config: coinvestConfig() });
+    const response = await app.inject({ method: 'POST', url: '/api/coinvest', payload: { ...validCoinvestBody, source_path: '/malicious-path' } });
+    expect(response.statusCode).toBe(400);
+    expect(leads.createCoinvest).not.toHaveBeenCalled();
+  });
+
+  it('19. rejects client-supplied status field (400, no persist)', async () => {
+    const leads = repo();
+    const app = buildApp({ logger: false, opportunities, leads, config: coinvestConfig() });
+    const response = await app.inject({ method: 'POST', url: '/api/coinvest', payload: { ...validCoinvestBody, status: 'approved' } });
+    expect(response.statusCode).toBe(400);
+    expect(leads.createCoinvest).not.toHaveBeenCalled();
+  });
+
+  it('20. rejects client-supplied consentVersion field (400, no persist)', async () => {
+    const leads = repo();
+    const app = buildApp({ logger: false, opportunities, leads, config: coinvestConfig() });
+    const response = await app.inject({ method: 'POST', url: '/api/coinvest', payload: { ...validCoinvestBody, consentVersion: 'v2-evil' } });
+    expect(response.statusCode).toBe(400);
+    expect(leads.createCoinvest).not.toHaveBeenCalled();
   });
 });

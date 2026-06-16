@@ -1,9 +1,11 @@
 import { randomBytes } from 'node:crypto';
 import type { Pool } from 'pg';
 import type { LeadRequest } from './schemas.js';
+import { COINVEST_CONSENT_VERSION } from './co-invest.schema.js';
 
 export type CreateLeadInput = ReturnType<typeof import('./schemas.js').normalizeLeadInput> & { privacyPolicyVersion: string };
 export type CreateContactInput = ReturnType<typeof import('./contact-schema.js').normalizeContactInput>;
+export type CreateCoinvestInput = ReturnType<typeof import('./co-invest.schema.js').normalizeCoinvestInput>;
 
 export class LeadRepository {
   constructor(private readonly pool: Pool) {}
@@ -99,5 +101,41 @@ export class LeadRepository {
       }
     }
     throw new Error('Unable to create contact reference');
+  }
+
+  async createCoinvest(input: CreateCoinvestInput) {
+    const now = new Date();
+    for (let attempt = 0; attempt < 3; attempt += 1) {
+      const reference = this.publicReference();
+      try {
+        const result = await this.pool.query<{ public_reference: string; status: 'new'; created_at: Date }>(
+          `INSERT INTO leads (
+            public_reference, kind, first_name, email, phone, profile, experience, interests, message, source_path,
+            consent_version, consent_accepted_at, status
+          ) VALUES (
+            $1,'investor_interest',$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,'new'
+          ) RETURNING public_reference, status::text, created_at`,
+          [
+            reference,
+            input.name,
+            input.email,
+            input.phone ?? null,
+            input.profile,
+            input.experience,
+            input.interests ?? null,
+            null,
+            '/coinvierte',
+            COINVEST_CONSENT_VERSION,
+            now
+          ]
+        );
+        const row = result.rows[0];
+        return { publicReference: row.public_reference, status: row.status, createdAt: row.created_at.toISOString() };
+      } catch (error: unknown) {
+        if ((error as { code?: string }).code === '23505' && attempt < 2) continue;
+        throw error;
+      }
+    }
+    throw new Error('Unable to create coinvest reference');
   }
 }
