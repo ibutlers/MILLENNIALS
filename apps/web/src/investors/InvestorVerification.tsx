@@ -4,8 +4,8 @@ import { setPageMetadata } from "../metadata";
 export function InvestorVerification() {
   useEffect(() => {
     setPageMetadata(
-      "Verificación | MILLENNIALS CONSTRUYEN | CAPITAL",
-      "Verificación de identidad en MILLENNIALS CONSTRUYEN | CAPITAL."
+      "Verificación | MILLENNIALS CONSTRUYEN",
+      "Verificación de identidad en MILLENNIALS CONSTRUYEN."
     );
   }, []);
 

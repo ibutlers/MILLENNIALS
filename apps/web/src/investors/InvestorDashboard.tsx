@@ -7,7 +7,7 @@ export function InvestorDashboard() {
   const { user, isAuthAvailable, checkedAvailability, isLoading } = useAuth();
 
   useEffect(() => {
-    setPageMetadata('Panel de inversor | MILLENNIALS CONSTRUYEN | CAPITAL', 'Panel principal de la zona privada de inversores de MILLENNIALS CONSTRUYEN | CAPITAL.');
+    setPageMetadata('Panel de inversor | MILLENNIALS CONSTRUYEN', 'Panel principal de la zona privada de inversores de MILLENNIALS CONSTRUYEN.');
   }, []);
 
   if (isLoading || !checkedAvailability) {
@@ -34,7 +34,7 @@ export function InvestorDashboard() {
 
       {isAuthAvailable ? (
         <p className="mt-4 text-lg leading-8 text-muted">
-          Este es tu espacio privado en MILLENNIALS CONSTRUYEN | CAPITAL. Desde aquí puedes consultar tu perfil, cartera, documentos y el estado de verificación.
+          Este es tu espacio privado en MILLENNIALS CONSTRUYEN. Desde aquí puedes consultar tu perfil, cartera, documentos y el estado de verificación.
         </p>
       ) : (
         <p className="mt-4 text-lg leading-8 text-muted">

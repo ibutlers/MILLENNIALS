@@ -17,7 +17,7 @@ export function LoginPage() {
   const returnTo = searchParams.get('retorno') || '/inversores';
 
   useEffect(() => {
-    setPageMetadata('Acceso inversores | MILLENNIALS CONSTRUYEN | CAPITAL', 'Accede a la zona privada de inversores de MILLENNIALS CONSTRUYEN | CAPITAL.');
+    setPageMetadata('Acceso inversores | MILLENNIALS CONSTRUYEN', 'Accede a la zona privada de inversores de MILLENNIALS CONSTRUYEN.');
   }, []);
 
   useEffect(() => {

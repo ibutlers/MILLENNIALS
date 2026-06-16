@@ -7,8 +7,8 @@ export function InvestorProfile() {
 
   useEffect(() => {
     setPageMetadata(
-      "Perfil | MILLENNIALS CONSTRUYEN | CAPITAL",
-      "Perfil de inversor en MILLENNIALS CONSTRUYEN | CAPITAL."
+      "Perfil | MILLENNIALS CONSTRUYEN",
+      "Perfil de inversor en MILLENNIALS CONSTRUYEN."
     );
   }, []);
 
@@ -29,7 +29,7 @@ export function InvestorProfile() {
         Tu perfil
       </h1>
       <p className="mt-4 text-lg leading-8 text-muted">
-        Estos son los datos que MILLENNIALS CONSTRUYEN | CAPITAL tiene
+        Estos son los datos que MILLENNIALS CONSTRUYEN tiene
         registrados sobre ti. Los campos vacíos aparecen como tales — no los
         hemos inventado.
       </p>

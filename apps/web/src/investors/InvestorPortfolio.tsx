@@ -4,8 +4,8 @@ import { setPageMetadata } from "../metadata";
 export function InvestorPortfolio() {
   useEffect(() => {
     setPageMetadata(
-      "Cartera | MILLENNIALS CONSTRUYEN | CAPITAL",
-      "Cartera de inversiones en MILLENNIALS CONSTRUYEN | CAPITAL."
+      "Cartera | MILLENNIALS CONSTRUYEN",
+      "Cartera de inversiones en MILLENNIALS CONSTRUYEN."
     );
   }, []);
 

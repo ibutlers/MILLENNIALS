@@ -12,7 +12,7 @@ export function RecoverAccessPage() {
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
-    setPageMetadata('Recuperar acceso | MILLENNIALS CONSTRUYEN | CAPITAL', 'Recupera el acceso a tu cuenta de MILLENNIALS CONSTRUYEN | CAPITAL.');
+    setPageMetadata('Recuperar acceso | MILLENNIALS CONSTRUYEN', 'Recupera el acceso a tu cuenta de MILLENNIALS CONSTRUYEN.');
   }, []);
 
   async function onSubmit(event: FormEvent<HTMLFormElement>) {

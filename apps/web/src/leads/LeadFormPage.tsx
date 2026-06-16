@@ -8,9 +8,9 @@ import { fetchLeadSettings, submitLead, type LeadCreated, type LeadKind } from '
 type Errors = Record<string, string>;
 
 const labels = {
-  access_request: { title: 'Solicitar acceso a MILLENNIALS CONSTRUYEN | CAPITAL', eyebrow: 'Acceso privado futuro', intro: 'Déjanos tus datos para valorar una futura invitación cuando la zona privada esté disponible.', cta: 'Enviar solicitud de acceso' },
+  access_request: { title: 'Solicitar acceso a MILLENNIALS CONSTRUYEN', eyebrow: 'Acceso privado futuro', intro: 'Déjanos tus datos para valorar una futura invitación cuando la zona privada esté disponible.', cta: 'Enviar solicitud de acceso' },
   opportunity_inquiry: { title: 'Solicitar información de oportunidad', eyebrow: 'Información pública', intro: 'Solicitar información no implica invertir ni reservar participación.', cta: 'Solicitar información' },
-  general_contact: { title: 'Contactar con MILLENNIALS CONSTRUYEN | CAPITAL', eyebrow: 'Contacto general', intro: 'Usa este canal para consultas generales sobre la firma o la plataforma.', cta: 'Enviar consulta' }
+  general_contact: { title: 'Contactar con MILLENNIALS CONSTRUYEN', eyebrow: 'Contacto general', intro: 'Usa este canal para consultas generales sobre la firma o la plataforma.', cta: 'Enviar consulta' }
 };
 
 export function LeadFormPage({ kind }: { kind: LeadKind }) {
@@ -24,7 +24,7 @@ export function LeadFormPage({ kind }: { kind: LeadKind }) {
   const opportunity = useQuery({ queryKey: ['opportunity', slug], queryFn: ({ signal }) => fetchOpportunityDetail(slug ?? '', signal), enabled: kind === 'opportunity_inquiry' && Boolean(slug), staleTime: 30_000 });
   const text = labels[kind];
 
-  useEffect(() => { setPageMetadata(`${text.title} | MILLENNIALS CONSTRUYEN | CAPITAL`, `${text.intro} Captación provisional con privacidad pendiente de revisión legal.`); }, [text.intro, text.title]);
+  useEffect(() => { setPageMetadata(`${text.title} | MILLENNIALS CONSTRUYEN`, `${text.intro} Captación provisional con privacidad pendiente de revisión legal.`); }, [text.intro, text.title]);
   useEffect(() => { if (Object.keys(errors).length) errorRef.current?.focus(); }, [errors]);
 
   const disabledReason = useMemo(() => {
@@ -111,7 +111,7 @@ export function LeadFormPage({ kind }: { kind: LeadKind }) {
               <label className="grid gap-1">País opcional<input name="countryCode" maxLength={2} className="border border-carbon/20 p-3" placeholder="ES" disabled={Boolean(disabledReason) || submitting} /></label>
               {kind !== 'general_contact' ? <label className="grid gap-1">Rango de interés aproximado opcional<select name="investmentRange" className="border border-carbon/20 p-3" disabled={Boolean(disabledReason) || submitting}><option value="">Sin indicar</option><option value="10000_25000">10.000–25.000 €</option><option value="25000_50000">25.000–50.000 €</option><option value="50000_plus">Más de 50.000 €</option></select></label> : null}
               <label className="grid gap-1">Mensaje opcional<textarea name="message" rows={5} maxLength={2000} className="border border-carbon/20 p-3" disabled={Boolean(disabledReason) || submitting} /></label>
-              <label className="flex gap-3"><input name="privacyAccepted" type="checkbox" disabled={Boolean(disabledReason) || submitting} /> <span>Acepto la <Link to="/privacidad" className="underline">información de privacidad provisional</Link> para que MILLENNIALS CONSTRUYEN | CAPITAL pueda responder.</span></label>
+              <label className="flex gap-3"><input name="privacyAccepted" type="checkbox" disabled={Boolean(disabledReason) || submitting} /> <span>Acepto la <Link to="/privacidad" className="underline">información de privacidad provisional</Link> para que MILLENNIALS CONSTRUYEN pueda responder.</span></label>
               <label className="flex gap-3"><input name="marketingOptIn" type="checkbox" disabled={Boolean(disabledReason) || submitting} /> <span>Acepto recibir comunicaciones comerciales futuras. Opcional y separado.</span></label>
               {kind === 'opportunity_inquiry' ? <label className="flex gap-3"><input name="riskAcknowledged" type="checkbox" disabled={Boolean(disabledReason) || submitting} /> <span>Entiendo que solicitar información no implica inversión y que los objetivos no están garantizados.</span></label> : null}
               <button type="submit" disabled={Boolean(disabledReason) || submitting} className="bg-mineral px-5 py-4 text-sm font-black uppercase tracking-[0.16em] text-textDark disabled:cursor-not-allowed disabled:opacity-50">{submitting ? 'Enviando…' : text.cta}</button>

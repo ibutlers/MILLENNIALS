@@ -20,7 +20,7 @@ export function OpportunityDetailPage() {
 
   useEffect(() => {
     if (query.data?.data) {
-      setPageMetadata(`${query.data.data.title} | MILLENNIALS CONSTRUYEN | CAPITAL`, `${query.data.data.shortDescription} Objetivos no garantizados.`);
+      setPageMetadata(`${query.data.data.title} | MILLENNIALS CONSTRUYEN`, `${query.data.data.shortDescription} Objetivos no garantizados.`);
     }
   }, [query.data]);
 

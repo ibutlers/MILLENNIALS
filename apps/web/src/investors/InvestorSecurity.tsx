@@ -6,7 +6,7 @@ export function InvestorSecurity() {
   const { isAuthAvailable } = useAuth();
 
   useEffect(() => {
-    setPageMetadata('Seguridad | MILLENNIALS CONSTRUYEN | CAPITAL', 'Seguridad de la cuenta de inversor en MILLENNIALS CONSTRUYEN | CAPITAL.');
+    setPageMetadata('Seguridad | MILLENNIALS CONSTRUYEN', 'Seguridad de la cuenta de inversor en MILLENNIALS CONSTRUYEN.');
   }, []);
 
   return (

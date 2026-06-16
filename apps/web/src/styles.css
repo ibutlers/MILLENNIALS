@@ -4,17 +4,17 @@
 
 @layer base {
   :root {
-    --color-bg-primary: #0C1524;
-    --color-bg-secondary: #141E30;
-    --color-surface-light: #F7F3EC;
-    --color-text-on-dark: #F0EBE0;
-    --color-text-on-light: #1A202C;
-    --color-text-muted: #8F9AA5;
-    --color-accent-primary: #C9A44B;
-    --color-accent-hover: #D9BA66;
-    --color-editorial-detail: #B8926A;
+    --color-accent-primary: #2D50EC;
+    --color-accent-hover: #2142C7;
+    --color-bg-primary: #F4F4FE;
+    --color-bg-secondary: #FFFFFF;
+    --color-surface: #FFFFFF;
+    --color-text-primary: #050505;
+    --color-text-secondary: #303038;
+    --color-text-muted: #6B7280;
+    --color-border: #E1E4ED;
+    --color-border-hover: #2D50EC;
     --color-success: #5B9A7C;
-    --color-border: #2A3344;
     --color-error: #C75B5B;
     --color-warning: #D4A24E;
   }
@@ -31,7 +31,7 @@
     margin: 0;
     min-width: 320px;
     background: var(--color-bg-primary);
-    color: var(--color-text-on-dark);
+    color: var(--color-text-secondary);
     overflow-x: hidden;
   }
 
@@ -41,6 +41,6 @@
 
   ::selection {
     background: var(--color-accent-primary);
-    color: var(--color-text-on-light);
+    color: #FFFFFF;
   }
 }

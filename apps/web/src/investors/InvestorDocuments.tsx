@@ -4,8 +4,8 @@ import { setPageMetadata } from "../metadata";
 export function InvestorDocuments() {
   useEffect(() => {
     setPageMetadata(
-      "Documentos | MILLENNIALS CONSTRUYEN | CAPITAL",
-      "Documentos de inversor en MILLENNIALS CONSTRUYEN | CAPITAL."
+      "Documentos | MILLENNIALS CONSTRUYEN",
+      "Documentos de inversor en MILLENNIALS CONSTRUYEN."
     );
   }, []);
 

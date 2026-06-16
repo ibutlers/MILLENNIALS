@@ -11,7 +11,7 @@ export function InvestorAccount() {
   const [revoking, setRevoking] = useState<string | null>(null);
 
   useEffect(() => {
-    setPageMetadata('Cuenta | MILLENNIALS CONSTRUYEN | CAPITAL', 'Configuración de cuenta de inversor en MILLENNIALS CONSTRUYEN | CAPITAL.');
+    setPageMetadata('Cuenta | MILLENNIALS CONSTRUYEN', 'Configuración de cuenta de inversor en MILLENNIALS CONSTRUYEN.');
   }, []);
 
   useEffect(() => {

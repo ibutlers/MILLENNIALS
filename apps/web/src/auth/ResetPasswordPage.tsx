@@ -16,7 +16,7 @@ export function ResetPasswordPage() {
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
-    setPageMetadata('Restablecer contraseña | MILLENNIALS CONSTRUYEN | CAPITAL', 'Restablece la contraseña de tu cuenta de MILLENNIALS CONSTRUYEN | CAPITAL.');
+    setPageMetadata('Restablecer contraseña | MILLENNIALS CONSTRUYEN', 'Restablece la contraseña de tu cuenta de MILLENNIALS CONSTRUYEN.');
   }, []);
 
   async function onSubmit(event: FormEvent<HTMLFormElement>) {
