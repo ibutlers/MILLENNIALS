@@ -101,16 +101,17 @@ describe('MILLENNIALS CONSTRUYEN landing', () => {
     expect(screen.queryByRole('link', { name: /^Ver proyecto: / })).not.toBeInTheDocument();
   });
 
-  it('presents corporate narrative, methodology and activity sections before opportunities', async () => {
+  it('presents projects right after hero, then corporate narrative, activity and methodology', async () => {
     render(<App />);
     await screen.findAllByRole('link', { name: /^Ver proyecto: / });
 
     const mainText = screen.getByRole('main').textContent ?? '';
-    // Eyebrow labels in rendering order (CSS uppercased in browser; source is sentence case)
+    // Proyectos appears right after Hero, before Nosotros and Nuestra actividad
+    expect(mainText.indexOf('Proyectos seleccionados')).toBeGreaterThan(-1);
+    expect(mainText.indexOf('Proyectos seleccionados')).toBeLessThan(mainText.indexOf('Nuestra actividad'));
     expect(mainText.indexOf('Nuestra actividad')).toBeGreaterThan(-1);
     expect(mainText.indexOf('Cómo trabajamos')).toBeGreaterThan(mainText.indexOf('Nuestra actividad'));
-    expect(mainText.indexOf('Proyectos seleccionados')).toBeGreaterThan(mainText.indexOf('Cómo trabajamos'));
-    // Key messaging present (use getAllByText for repeated entries)
+    // Key messaging present
     expect(screen.getAllByText(/Pocas oportunidades/i).length).toBeGreaterThan(0);
     expect(screen.getByText(/Del análisis a la ejecución/i)).toBeInTheDocument();
     // Coinvierte editorial text present after Contact

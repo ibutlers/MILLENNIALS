@@ -3,16 +3,16 @@ import { fetchPublicOpportunities, returnTypeLabel, riskLabel, statusLabel, type
 import { submitContact, submitCoinvest, type ContactCreated, type CoinvestCreated } from './leads/api';
 
 const navigation = [
+  { label: 'Proyectos', href: '/#proyectos' },
   { label: 'Nosotros', href: '/#nosotros' },
   { label: 'Cómo trabajamos', href: '/#metodologia' },
-  { label: 'Proyectos', href: '/#proyectos' },
   { label: 'Contacto', href: '/#contacto' }
 ];
 
 const drawerLinks = [
+  { label: 'Proyectos', href: '/#proyectos' },
   { label: 'Nosotros', href: '/#nosotros' },
   { label: 'Cómo trabajamos', href: '/#metodologia' },
-  { label: 'Proyectos', href: '/#proyectos' },
   { label: 'Contacto', href: '/#contacto' },
   { label: 'FAQ', href: '/#faq' },
   { label: 'Coinvierte', href: '/#coinvierte' }
@@ -1004,10 +1004,10 @@ export function App() {
       <Header />
       <main id="contenido" tabIndex={-1} className="focus:outline-none">
         <Hero />
+        <ProjectsSection />
         <FirmNarrative />
         <ProcessSection />
         <Methodology />
-        <ProjectsSection />
         <Faq />
         <ContactSection />
         <CoinvestSection />
