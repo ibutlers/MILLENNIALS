@@ -127,7 +127,7 @@ describe('MILLENNIALS CONSTRUYEN landing', () => {
     const dialog = screen.getByRole('dialog', { name: /menú de navegación/i });
     expect(dialog).toBeInTheDocument();
     expect(within(dialog).getByRole('button', { name: /cerrar menú/i })).toBeInTheDocument();
-    expect(within(dialog).getByRole('link', { name: /coinvierte con nosotros/i })).toBeInTheDocument();
+    expect(within(dialog).getByRole('link', { name: /login/i })).toBeInTheDocument();
     expect(document.body.style.overflow).toBe('hidden');
 
     fireEvent.keyDown(document, { key: 'Escape' });

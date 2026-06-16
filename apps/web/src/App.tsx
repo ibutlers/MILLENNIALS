@@ -4,11 +4,17 @@ import { submitContact, submitCoinvest, type ContactCreated, type CoinvestCreate
 
 const navigation = [
   { label: 'Nosotros', href: '/#nosotros' },
-  { label: 'Nuestra actividad', href: '/#actividad' },
   { label: 'Cómo trabajamos', href: '/#metodologia' },
   { label: 'Proyectos', href: '/#proyectos' },
-  { label: 'FAQ', href: '/#faq' },
+  { label: 'Contacto', href: '/#contacto' }
+];
+
+const drawerLinks = [
+  { label: 'Nosotros', href: '/#nosotros' },
+  { label: 'Cómo trabajamos', href: '/#metodologia' },
+  { label: 'Proyectos', href: '/#proyectos' },
   { label: 'Contacto', href: '/#contacto' },
+  { label: 'FAQ', href: '/#faq' },
   { label: 'Coinvierte', href: '/#coinvierte' }
 ];
 
@@ -72,7 +78,7 @@ function scrollToHash(hash: string) {
   const el = document.getElementById(hash.replace('#', ''));
   if (!el) return;
   const prefersReduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-  const headerHeight = 96;
+  const headerHeight = 80;
   el.setAttribute('tabindex', '-1');
   el.focus({ preventScroll: true });
   el.style.outline = 'none';
@@ -166,14 +172,7 @@ function useMobileMenu() {
 
 function Header() {
   const { isOpen, setIsOpen, openButtonRef, closeButtonRef, drawerRef } = useMobileMenu();
-  const [scrolled, setScrolled] = useState(false);
   const [activeSection, setActiveSection] = useState('');
-
-  useEffect(() => {
-    function onScroll() { setScrolled(window.scrollY > 10); }
-    window.addEventListener('scroll', onScroll, { passive: true });
-    return () => window.removeEventListener('scroll', onScroll);
-  }, []);
 
   useEffect(() => {
     const sectionIds = navigation.map((n) => n.href.replace('/#', ''));
@@ -202,29 +201,22 @@ function Header() {
 
   return (
     <>
-      <header className={`sticky top-0 z-40 border-b bg-white transition-shadow ${
-        scrolled ? 'border-frost/80 shadow-[0_1px_3px_rgba(0,0,0,0.04)]' : 'border-transparent'
-      }`}>
+      <header className="sticky top-0 z-40 border-b border-frost bg-white">
         <a
           href="#contenido"
-          className="sr-only focus:not-sr-only focus:absolute focus:left-8 focus:top-6 focus:z-50 focus:bg-electric focus:px-4 focus:py-2 focus:text-sm focus:font-bold focus:text-white"
+          className="sr-only focus:not-sr-only focus:absolute focus:left-6 focus:top-4 focus:z-50 focus:bg-electric focus:px-4 focus:py-2 focus:text-sm focus:font-bold focus:text-white"
         >
           Saltar al contenido
         </a>
-        <div className="mx-auto flex h-24 max-w-[1440px] items-center px-6">
+        <div className="mx-auto flex h-20 max-w-[1440px] items-center gap-4 px-5 sm:px-6 lg:px-8">
           {/* Brand */}
-          <a href="/" className="flex-shrink-0" style={{ maxWidth: 'min(280px, 25%)' }}>
-            <span className="flex items-center gap-3 focus:outline-none focus-visible:ring-2 focus-visible:ring-electric focus-visible:ring-offset-2">
-              <span className="grid h-12 w-12 flex-shrink-0 place-items-center bg-electric text-sm font-black text-white">MC</span>
-              <span className="grid leading-tight min-w-0">
-                <span className="text-[19px] font-black uppercase tracking-[0.04em] text-ink truncate">MILLENNIALS CONSTRUYEN</span>
-                <span className="text-[10px] font-medium uppercase tracking-[0.16em] text-charcoal/50 hidden xl:block">Private Real Estate Investment Club</span>
-              </span>
-            </span>
+          <a href="/" className="flex flex-shrink-0 items-center gap-[14px] focus:outline-none focus-visible:ring-2 focus-visible:ring-electric focus-visible:ring-offset-2">
+            <span className="grid h-[42px] w-[42px] flex-shrink-0 place-items-center bg-electric text-[15px] font-black text-white select-none">MC</span>
+            <span className="hidden text-[18px] font-bold tracking-[0.02em] text-ink select-none sm:inline lg:text-[19px]">MILLENNIALS CONSTRUYEN</span>
           </a>
 
-          {/* Nav center */}
-          <nav aria-label="Navegación principal" className="hidden xl:flex flex-1 items-center justify-center gap-8 xl:gap-9">
+          {/* Nav */}
+          <nav aria-label="Navegación principal" className="hidden xl:flex flex-1 items-center justify-center gap-8">
             {navigation.map((item) => {
               const sectionId = item.href.replace('/#', '');
               const isActive = activeSection === sectionId;
@@ -232,34 +224,34 @@ function Header() {
                 <a
                   key={item.href}
                   href={item.href}
-                  className={`relative whitespace-nowrap pb-[2px] text-[12px] font-semibold tracking-[0.06em] transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-electric ${
+                  className={`relative text-[14px] font-medium tracking-[0.02em] transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-electric ${
                     isActive ? 'text-electric' : 'text-charcoal/55 hover:text-electric'
                   }`}
                 >
                   {item.label}
-                  {isActive ? <span className="absolute bottom-[-21px] left-0 right-0 h-[2px] bg-electric" /> : null}
+                  {isActive ? <span className="absolute -bottom-[24px] left-1/2 h-[2px] w-8 -translate-x-1/2 bg-electric" /> : null}
                 </a>
               );
             })}
           </nav>
 
-          {/* Right: Lang + CTA */}
-          <div className="hidden xl:flex items-center gap-6">
-            <button type="button" aria-label="Idioma español seleccionado" className="text-[12px] font-semibold uppercase tracking-[0.10em] text-charcoal/55 hover:text-electric transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-electric">
-              <span className="text-electric font-bold">ES</span> · EN
+          {/* Right zone: Lang + Login */}
+          <div className="hidden xl:flex flex-shrink-0 items-center gap-5">
+            <button type="button" aria-label="Idioma español seleccionado" className="text-[13px] font-medium text-charcoal/55 hover:text-electric transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-electric">
+              <span className="text-electric font-semibold">ES</span> · EN
             </button>
-            <a href="/coinvierte" className="inline-flex h-[46px] items-center rounded-md border border-charcoal/25 bg-ink px-6 text-[12px] font-bold tracking-[0.06em] text-white transition hover:bg-electric hover:border-electric focus:outline-none focus-visible:ring-2 focus-visible:ring-electric focus-visible:ring-offset-2">
-              Coinvierte con nosotros
+            <a href="/acceso" className="inline-flex h-10 w-[100px] items-center justify-center rounded bg-ink text-[14px] font-semibold text-white transition hover:bg-electric focus:outline-none focus-visible:ring-2 focus-visible:ring-electric focus-visible:ring-offset-2">
+              Login
             </a>
           </div>
 
-          {/* Mobile hamburger */}
+          {/* Hamburger */}
           <button
             ref={openButtonRef}
             type="button"
             aria-label="Abrir menú"
             aria-expanded={isOpen}
-            className="ml-auto grid h-10 w-10 place-items-center text-ink transition hover:text-electric focus:outline-none focus-visible:ring-2 focus-visible:ring-electric xl:hidden"
+            className="ml-auto grid h-10 w-10 flex-shrink-0 place-items-center text-ink transition hover:text-electric focus:outline-none focus-visible:ring-2 focus-visible:ring-electric xl:hidden"
             onClick={() => setIsOpen(true)}
           >
             <span aria-hidden="true" className="space-y-1.5">
@@ -271,31 +263,33 @@ function Header() {
         </div>
       </header>
 
-      {/* Mobile drawer */}
+      {/* Drawer */}
       {isOpen ? (
         <div className="fixed inset-0 z-50 bg-white text-ink xl:hidden" role="dialog" aria-modal="true" aria-label="Menú de navegación" ref={drawerRef}>
           <div className="flex items-center justify-between border-b border-frost px-6 py-4">
             <span className="flex items-center gap-3">
               <span className="grid h-10 w-10 place-items-center bg-electric text-sm font-black text-white">MC</span>
-              <span className="text-base font-black uppercase tracking-[0.04em]">MILLENNIALS CONSTRUYEN</span>
+              <span className="text-base font-bold uppercase tracking-[0.02em]">MILLENNIALS CONSTRUYEN</span>
             </span>
-            <button ref={closeButtonRef} type="button" aria-label="Cerrar menú" className="rounded-md border border-frost px-4 py-2 text-sm font-bold uppercase tracking-[0.12em] focus:outline-none focus-visible:ring-2 focus-visible:ring-electric" onClick={() => setIsOpen(false)}>
+            <button ref={closeButtonRef} type="button" aria-label="Cerrar menú" className="rounded border border-frost px-4 py-2 text-sm font-semibold focus:outline-none focus-visible:ring-2 focus-visible:ring-electric" onClick={() => setIsOpen(false)}>
               Cerrar
             </button>
           </div>
           <div className="grid min-h-[calc(100dvh-65px)] content-between px-8 py-8">
             <nav aria-label="Navegación móvil" className="grid gap-4 text-2xl font-serif text-ink">
-              {navigation.map((item) => (
+              {drawerLinks.map((item) => (
                 <a key={item.href} href={item.href} onClick={() => setIsOpen(false)} className="border-b border-frost pb-3 focus:outline-none focus-visible:ring-2 focus-visible:ring-electric">
                   {item.label}
                 </a>
               ))}
             </nav>
             <div className="grid gap-4">
-              <div className="flex items-center gap-4 text-sm font-semibold uppercase tracking-[0.10em] text-charcoal/55">
-                <span className="text-electric font-bold">ES</span> · EN
+              <div className="flex items-center gap-4 text-[14px] font-medium text-charcoal/55">
+                <span className="text-electric font-semibold">ES</span> · EN
               </div>
-              <a href="/coinvierte" onClick={() => setIsOpen(false)} className="rounded-md bg-electric px-6 py-4 text-center text-sm font-bold uppercase tracking-[0.12em] text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-electric">Coinvierte con nosotros</a>
+              <a href="/acceso" onClick={() => setIsOpen(false)} className="rounded bg-electric px-6 py-4 text-center text-sm font-bold text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-electric">
+                Login
+              </a>
             </div>
           </div>
         </div>
