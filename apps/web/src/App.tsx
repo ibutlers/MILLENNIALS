@@ -351,9 +351,9 @@ function FirmNarrative() {
 
 function ProcessSection() {
   return (
-    <section id="actividad" className="bg-lavender py-16 sm:py-24">
+    <section id="actividad" className="bg-lavender py-12 sm:py-20">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-        <div className="grid gap-8 lg:grid-cols-[0.8fr_1.2fr]">
+        <div className="grid gap-6 lg:grid-cols-[0.7fr_1.3fr]">
           <div>
             <p className="text-xs font-black uppercase tracking-[0.28em] text-electric">Nuestra actividad</p>
             <h2 className="mt-5 font-serif text-4xl leading-tight tracking-[-0.03em] text-ink sm:text-6xl">
@@ -363,12 +363,12 @@ function ProcessSection() {
               Seleccionamos, estructuramos y seguimos cada proyecto con una visión inmobiliaria, financiera y operativa.
             </p>
           </div>
-          <div className="grid gap-px overflow-hidden rounded-lg border border-frost bg-frost sm:grid-cols-2">
+          <div className="grid gap-px overflow-hidden rounded-lg border border-frost bg-frost sm:grid-cols-2 lg:grid-cols-3">
             {activityBlocks.map((block) => (
-              <div key={block.number} className="bg-white p-6 sm:p-7">
+              <div key={block.number} className="flex flex-col bg-white p-[22px] sm:p-6">
                 <p className="text-sm font-black tracking-[0.16em] text-electric">{block.number}</p>
-                <h3 className="mt-3 font-serif text-2xl tracking-[-0.02em] text-ink">{block.title}</h3>
-                <p className="mt-2 leading-7 text-charcoal/70">{block.desc}</p>
+                <h3 className="mt-2 font-serif text-xl tracking-[-0.02em] text-ink">{block.title}</h3>
+                <p className="mt-1.5 text-[15px] leading-snug text-charcoal/70">{block.desc}</p>
               </div>
             ))}
           </div>
