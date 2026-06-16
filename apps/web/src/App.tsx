@@ -2,11 +2,11 @@ import { useEffect, useRef, useState } from 'react';
 import { fetchPublicOpportunities, returnTypeLabel, riskLabel, statusLabel, type PublicOpportunity } from './opportunities/api';
 
 const navigation = [
-  { label: 'Firma', href: '#firma' },
-  { label: 'Tesis', href: '#tesis' },
-  { label: 'Método', href: '#metodologia' },
-  { label: 'Oportunidades', href: '/oportunidades' },
-  { label: 'FAQ', href: '#faq' }
+  { label: 'Nosotros', href: '#firma' },
+  { label: 'Nuestra actividad', href: '#metodologia' },
+  { label: 'Proyectos', href: '/oportunidades' },
+  { label: 'FAQ', href: '#faq' },
+  { label: 'Contacto', href: '/contacto' }
 ];
 
 const processIndicators = [
@@ -135,8 +135,8 @@ function Header() {
             <button type="button" aria-label="Idioma español seleccionado" className="border border-frost px-3 py-2 text-xs font-black uppercase tracking-[0.18em] text-charcoal/60">
               ES / EN
             </button>
-            <a href="/inversores" className="border border-frost px-4 py-2 text-xs font-black uppercase tracking-[0.16em] text-charcoal/80 transition hover:border-electric hover:text-electric focus:outline-none focus-visible:ring-2 focus-visible:ring-electric focus-visible:ring-offset-2 focus-visible:ring-offset-white">
-              Acceso inversores
+            <a href="/solicitar-acceso" className="border border-frost px-4 py-2 text-xs font-black uppercase tracking-[0.16em] text-charcoal/80 transition hover:border-electric hover:text-electric focus:outline-none focus-visible:ring-2 focus-visible:ring-electric focus-visible:ring-offset-2 focus-visible:ring-offset-white">
+              Coinvierte con nosotros
             </a>
           </div>
           <button
@@ -175,12 +175,7 @@ function Header() {
               ))}
             </nav>
             <div className="grid gap-4">
-              <div className="flex gap-3">
-                <button type="button" aria-label="Idioma español seleccionado" className="border border-electric bg-electric px-4 py-3 text-sm font-black uppercase tracking-[0.18em] text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-electric">ES</button>
-                <button type="button" aria-label="Cambiar idioma a inglés" className="border border-frost px-4 py-3 text-sm font-black uppercase tracking-[0.18em] text-charcoal/60 focus:outline-none focus-visible:ring-2 focus-visible:ring-electric">EN</button>
-              </div>
-              <a href="/solicitar-acceso" onClick={() => setIsOpen(false)} className="border border-electric bg-electric px-5 py-4 text-center text-sm font-black uppercase tracking-[0.18em] text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-electric">Solicitar acceso</a>
-              <a href="/inversores" onClick={() => setIsOpen(false)} className="border border-frost px-5 py-4 text-center text-sm font-black uppercase tracking-[0.18em] text-ink focus:outline-none focus-visible:ring-2 focus-visible:ring-electric">Acceso inversores</a>
+              <a href="/solicitar-acceso" onClick={() => setIsOpen(false)} className="border border-electric bg-electric px-5 py-4 text-center text-sm font-black uppercase tracking-[0.18em] text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-electric">Coinvierte con nosotros</a>
             </div>
           </div>
         </div>
