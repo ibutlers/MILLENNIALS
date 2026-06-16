@@ -218,13 +218,13 @@ function Header() {
               <span className="grid h-12 w-12 flex-shrink-0 place-items-center bg-electric text-sm font-black text-white">MC</span>
               <span className="grid leading-tight min-w-0">
                 <span className="text-[19px] font-black uppercase tracking-[0.04em] text-ink truncate">MILLENNIALS CONSTRUYEN</span>
-                <span className="text-[10px] font-medium uppercase tracking-[0.16em] text-charcoal/50 hidden lg:block">Private Real Estate Investment Club</span>
+                <span className="text-[10px] font-medium uppercase tracking-[0.16em] text-charcoal/50 hidden xl:block">Private Real Estate Investment Club</span>
               </span>
             </span>
           </a>
 
           {/* Nav center */}
-          <nav aria-label="Navegación principal" className="hidden lg:flex flex-1 items-center justify-center gap-8 xl:gap-9">
+          <nav aria-label="Navegación principal" className="hidden xl:flex flex-1 items-center justify-center gap-8 xl:gap-9">
             {navigation.map((item) => {
               const sectionId = item.href.replace('/#', '');
               const isActive = activeSection === sectionId;
@@ -244,7 +244,7 @@ function Header() {
           </nav>
 
           {/* Right: Lang + CTA */}
-          <div className="hidden lg:flex items-center gap-6">
+          <div className="hidden xl:flex items-center gap-6">
             <button type="button" aria-label="Idioma español seleccionado" className="text-[12px] font-semibold uppercase tracking-[0.10em] text-charcoal/55 hover:text-electric transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-electric">
               <span className="text-electric font-bold">ES</span> · EN
             </button>
@@ -259,7 +259,7 @@ function Header() {
             type="button"
             aria-label="Abrir menú"
             aria-expanded={isOpen}
-            className="ml-auto grid h-10 w-10 place-items-center text-ink transition hover:text-electric focus:outline-none focus-visible:ring-2 focus-visible:ring-electric lg:hidden"
+            className="ml-auto grid h-10 w-10 place-items-center text-ink transition hover:text-electric focus:outline-none focus-visible:ring-2 focus-visible:ring-electric xl:hidden"
             onClick={() => setIsOpen(true)}
           >
             <span aria-hidden="true" className="space-y-1.5">
@@ -273,7 +273,7 @@ function Header() {
 
       {/* Mobile drawer */}
       {isOpen ? (
-        <div className="fixed inset-0 z-50 bg-white text-ink lg:hidden" role="dialog" aria-modal="true" aria-label="Menú de navegación" ref={drawerRef}>
+        <div className="fixed inset-0 z-50 bg-white text-ink xl:hidden" role="dialog" aria-modal="true" aria-label="Menú de navegación" ref={drawerRef}>
           <div className="flex items-center justify-between border-b border-frost px-6 py-4">
             <span className="flex items-center gap-3">
               <span className="grid h-10 w-10 place-items-center bg-electric text-sm font-black text-white">MC</span>
