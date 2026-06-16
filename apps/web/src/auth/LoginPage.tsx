@@ -138,10 +138,11 @@ export function LoginPage() {
         ) : null}
 
         <form className="mt-6 grid gap-4" onSubmit={onSubmit} noValidate>
-          <label className="grid gap-1 text-sm text-muted">
+          <label htmlFor="login-email" className="grid gap-1 text-sm text-muted">
             Email
             <input
               ref={emailRef}
+              id="login-email"
               name="email"
               type="email"
               value={email}
@@ -152,9 +153,10 @@ export function LoginPage() {
               placeholder="tu@email.com"
             />
           </label>
-          <label className="grid gap-1 text-sm text-muted">
+          <label htmlFor="login-password" className="grid gap-1 text-sm text-muted">
             Contraseña
             <input
+              id="login-password"
               name="password"
               type="password"
               value={password}

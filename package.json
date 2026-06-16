@@ -19,6 +19,8 @@
     "users:disable": "pnpm --filter @realstate/api users:disable",
     "users:revoke-sessions": "pnpm --filter @realstate/api users:revoke-sessions",
     "test:e2e:admin": "pnpm --filter @realstate/web test:e2e:admin",
+    "test:e2e:investor": "pnpm --filter @realstate/web test:e2e:investor",
+    "test:e2e:investor:smoke": "pnpm --filter @realstate/web test:e2e:investor:smoke",
     "test:e2e:admin:setup": "bash scripts/e2e-admin-setup.sh",
     "test:e2e:admin:teardown": "bash scripts/e2e-admin-teardown.sh"
   },

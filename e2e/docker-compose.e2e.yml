@@ -30,7 +30,7 @@ services:
       LEADS_ENABLED: "true"
       NODE_ENV: "e2e"
       E2E_TEST_MODE: "true"
-      E2E_INTERNAL_SECRET: "${E2E_INTERNAL_SECRET:?E2E_INTERNAL_SECRET is required}"
+      E2E_INTERNAL_SECRET: "${E2E_INTERNAL_SECRET:-e2e-ephemeral}"
       AUTH_RATE_LIMIT_MAX: "100"
       APP_BASE_URL: http://127.0.0.1:8089
       SESSION_COOKIE_SECURE: "false"

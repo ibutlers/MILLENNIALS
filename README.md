@@ -1,148 +1,130 @@
 # MILLENNIALS CONSTRUYEN | CAPITAL
 
-Webapp inmobiliaria para presentar oportunidades de real estate con una base pública institucional, API pública de oportunidades y preparación para una futura zona privada de inversores.
+Plataforma de inversión inmobiliaria. Monorepo con API (Fastify + TypeScript), frontend (React + Vite + Tailwind), contratos compartidos (Zod + TypeScript) y despliegue Docker Compose.
 
-## Estado actual
+## Estado actual (Hito 12)
 
-La aplicación desplegada incluye:
+### Activo en producción
+- Catálogo público de oportunidades (4 demo)
+- Formularios de leads (captura desactivada: `LEADS_ENABLED=false`)
+- Autenticación (desactivada: `AUTH_ENABLED=false`)
+- Panel de administración (desactivado: `ADMIN_ENABLED=false`)
+- Módulo E2E aislado para testing
 
-- **Baseline definitivo (Hito 11):** migración única inmutable, runner con advisory lock y checksum SHA-256
-- **PostgreSQL:** 28 tablas, 19 enums, 31 FK, modelo de datos completo (oportunidades, identidad, inversor, leads, documentos, inversión, cartera, operación)
-- **API pública:** `GET /api/v1/opportunities` con filtros, paginación, ordenación; `GET /api/v1/opportunities/:slug`
-- **Frontend:** landing institucional, catálogo público (4 oportunidades demo), fichas con highlights/riesgos/hitos/media
-- **Estados honestos:** loading, error, vacío — sin datos mock cuando la API falla
-- **Auth/Admin desactivados** en producción (`AUTH_ENABLED=false`, `ADMIN_ENABLED=false`)
-- **Seed idempotente:** 5 oportunidades demo (4 públicas + 1 privada)
-- **Calidad:** 88 tests (69 API + 19 web), lint, typecheck, build, audit
-- **Despliegue:** Docker Compose, Caddy proxy, nginx para assets, backup automático
-- cabeceras de seguridad configuradas en Caddy.
+### Desactivado por feature flags
+Todas las funcionalidades sensibles están desactivadas en producción hasta disponer de HTTPS y conformidad legal:
 
-Las oportunidades y cifras visibles son demo y están marcadas como datos ilustrativos. No se publica capital gestionado, rentabilidad histórica, número de proyectos reales, oficinas ni presencia internacional hasta tener datos verificables.
+| Flag | Estado | Descripción |
+|------|--------|-------------|
+| `AUTH_ENABLED` | `false` | Autenticación y sesiones |
+| `REGISTRATION_ENABLED` | `false` | Registro público de usuarios |
+| `EMAIL_DELIVERY_ENABLED` | `false` | Envío real de emails |
+| `ADMIN_ENABLED` | `false` | Panel de administración |
+| `ADMIN_MEDIA_UPLOAD_ENABLED` | `false` | Subida de medios en admin |
+| `LEADS_ENABLED` | `false` | Captación de solicitudes |
+| `DEMO_SEED_ENABLED` | `false` | Datos demo en producción |
 
-No están implementados todavía: KYC, pagos, cartera, inversión real, panel administrativo funcional ni documentos privados.
+### Proveedores externos — todos desactivados
+Ningún proveedor externo está configurado. Todos los adaptadores son `Disabled*Provider` que devuelven `provider_not_configured`:
 
-## Stack
+- **Email:** `DisabledEmailProvider` — sin envío real
+- **Storage:** `DisabledStorageProvider` — sin almacenamiento
+- **KYC:** `DisabledKycProvider` — sin verificación de identidad
+- **Signature:** `DisabledSignatureProvider` — sin firma electrónica
+- **Payments:** `DisabledPaymentsProvider` — sin pasarela de pago
 
-React + Vite + TypeScript, React Router, Tailwind CSS, Zod, Node.js + Fastify, PostgreSQL, `pg`, Vitest, Testing Library, Playwright, axe, Docker Compose + Caddy.
+La selección se controla mediante variables `PROVIDER_*` (ver `.env.example`).
+
+### Área inversora
+Rutas implementadas con estados vacíos honestos (sin datos simulados):
+
+| Ruta | Descripción | Estado |
+|------|-------------|--------|
+| `/inversores` | Dashboard | Identidad real, sin inversiones ficticias |
+| `/inversores/perfil` | Perfil | Datos existentes, campos vacíos indicados |
+| `/inversores/cartera` | Cartera | "Todavía no tienes inversiones activas" |
+| `/inversores/documentos` | Documentos | "No hay documentos disponibles" |
+| `/inversores/verificacion` | KYC | "La verificación todavía no está disponible" |
+| `/inversores/oportunidades` | Catálogo | Oportunidades públicas |
+| `/inversores/cuenta` | Configuración | Sesiones activas |
+
+## Estructura del proyecto
+
+```
+├── apps/
+│   ├── api/          # Fastify 5 + TypeScript + PostgreSQL
+│   │   └── src/
+│   │       ├── auth/            # Autenticación (Argon2id, sesiones, RBAC)
+│   │       ├── admin/           # Panel de administración
+│   │       ├── investor/        # API privada del inversor
+│   │       ├── providers/       # Puertos y adaptadores de proveedores
+│   │       ├── opportunities/   # API pública de oportunidades
+│   │       ├── leads/           # Captación de leads
+│   │       ├── db/              # Pool, migraciones, seed
+│   │       └── fixtures/        # Usuarios E2E (solo test)
+│   └── web/          # React 19 + Vite + Tailwind + TanStack Query
+│       └── src/
+│           ├── auth/            # Login, registro, guards, contexto
+│           ├── investors/       # Área privada del inversor
+│           ├── admin/           # Panel de administración
+│           ├── opportunities/   # Catálogo y detalle
+│           └── leads/           # Formularios de leads
+├── packages/
+│   └── contracts/    # Contratos compartidos (Zod + TypeScript)
+├── e2e/              # Docker Compose para entorno E2E aislado
+├── scripts/          # deploy.sh, test-database.sh, run-e2e.sh
+└── docs/             # Documentación técnica
+```
+
+## Arquitectura de contratos
+
+`packages/contracts` centraliza schemas Zod y tipos TypeScript compartidos por API y Web:
+
+- `errors.ts` — `errorResponseSchema`, `paginationSchema`, códigos de error de proveedor
+- `auth.ts` — `userResponseSchema`, `loginRequestSchema`, `registerRequestSchema`, sesiones, verificación, recuperación
+- `opportunities.ts` — `opportunitySummarySchema`, `opportunityDetailSchema`, respuestas, filtros, queries
+- `providers.ts` — Schemas para email, storage, KYC, firma, pagos, eventos, health
+
+**Principio:** Una sola forma canónica por respuesta. Sin parsers duplicados. Sin `any` en fronteras HTTP nuevas. Sin compatibilidad silenciosa con formatos antiguos.
+
+## Puertos y adaptadores
+
+Cada integración externa se modela como una interfaz TypeScript (puerto) con un adaptador `Disabled*` que nunca simula éxito:
+
+```
+apps/api/src/providers/
+├── interfaces.ts     # Puertos tipados (EmailProvider, StorageProvider, …)
+├── disabled.ts       # Adaptadores desactivados (nunca simulan éxito)
+├── config.ts         # Selección centralizada (env vars PROVIDER_*)
+└── index.ts          # Barrel export
+```
+
+Para activar un proveedor real: implementar la interfaz correspondiente, registrarlo en `config.ts` y establecer `PROVIDER_*=nombre` en el entorno.
 
 ## Comandos
 
 ```bash
-pnpm install --frozen-lockfile
-pnpm dev
-pnpm lint
-pnpm typecheck
-pnpm test
-pnpm test:e2e
-pnpm build
-pnpm audit --audit-level=low
-bash -n scripts/*.sh
-git diff --check
+pnpm install          # Instalar dependencias
+pnpm lint             # ESLint en todos los workspaces
+pnpm typecheck        # TypeScript --noEmit
+pnpm test             # Vitest (unitarios + integración)
+pnpm build            # Compilar TypeScript + Vite
+pnpm test:e2e         # Playwright E2E (público)
+pnpm test:e2e:admin   # Playwright E2E (admin)
+./scripts/test-database.sh  # Test canónico de base de datos
+./scripts/deploy.sh   # Desplegar a producción
 ```
 
-## Base de datos
+## Variables de entorno
 
-```bash
-pnpm --filter @realstate/api db:migrate
-pnpm --filter @realstate/api db:seed
-./scripts/test-database.sh
-```
+Ver `.env.example` para la lista completa sin valores secretos.
 
-Representación financiera:
+## Qué sigue desactivado
 
-- importes en céntimos enteros;
-- porcentajes en basis points;
-- moneda ISO;
-- tipos de retorno explícitos: anual objetivo, total objetivo, TIR objetivo y ROI objetivo.
-
-## API pública
-
-```bash
-curl http://127.0.0.1:8088/api/v1/opportunities
-curl http://127.0.0.1:8088/api/v1/opportunities/eixample-rehabilitacion-luminosa
-```
-
-Filtros permitidos:
-
-- `status`
-- `city`
-- `assetType`
-- `strategy`
-- `riskLevel`
-- `limit`
-- `offset`
-- `sort`
-- `direction`
-
-## Producción
-
-El único comando autorizado de producción es:
-
-```bash
-./scripts/deploy.sh
-```
-
-Reglas de seguridad operativa:
-
-- no mostrar secretos;
-- no ejecutar `docker compose down -v`;
-- preservar `current_postgres-data`;
-- mantener `COMPOSE_PROJECT_NAME=current`;
-- usar rollback con `./scripts/rollback.sh` si procede.
-
-Ver `AGENTS.md` y `docs/` antes de modificar el proyecto.
-
-
-## Catálogo y ficha pública
-
-Rutas Hito 3:
-
-```text
-/oportunidades
-/oportunidades/:slug
-```
-
-El catálogo consume `GET /api/v1/opportunities` con filtros `status`, `city`, `assetType`, `strategy`, `riskLevel`, `sort`, `direction`, `limit` y `offset`. La ficha consume `GET /api/v1/opportunities/:slug`. Ambas rutas validan contratos con Zod y muestran estados loading/error/empty sin inventar datos si la API falla.
-
-Los CTAs públicos son `Ver oportunidad`, `Solicitar información` y `Solicitar acceso`. No hay autenticación, KYC, pagos, cartera, administración ni inversión real.
-
-Después de deploy puede verificarse la trazabilidad con:
-
-```bash
-cat /srv/deployments/realstate/current/REVISION
-git -C /srv/workspaces/realstate rev-parse HEAD
-```
-
-## Leads y solicitudes públicas
-
-Hito 4 añade `POST /api/v1/leads` para tres tipos: `access_request`, `opportunity_inquiry` y `general_contact`. No hay endpoints públicos de listado de leads. La respuesta de éxito devuelve solo referencia pública, tipo, estado `new`, fecha y mensaje genérico.
-
-Feature flags y privacidad:
-```dotenv
-LEADS_ENABLED=false
-PRIVACY_CONTROLLER_NAME=
-PRIVACY_CONTACT_EMAIL=
-PRIVACY_POLICY_VERSION=2026-06-14
-LEADS_RATE_LIMIT_MAX=5
-LEADS_RATE_LIMIT_WINDOW_MS=900000
-```
-
-Mientras falten datos legales reales, producción debe permanecer con captación desactivada. Gestión local:
-```bash
-pnpm leads:summary
-pnpm leads:list -- --status new --limit 20
-pnpm leads:update -- --reference <ref> --status contacted
-```
-Usa `--show-pii` solo cuando sea necesario operacionalmente.
-
-## Autenticación y sesiones (Hito 5)
-
-- Identidad de inversores con registro y verificación de email.
-- Sesiones seguras con hash SHA-256 en PostgreSQL, cookies HttpOnly/SameSite/Secure.
-- Contraseñas con Argon2id (64 MiB, timeCost=3, parallelism=1).
-- Área privada bajo `/inversores/*` con dashboard, oportunidades, cuenta y seguridad.
-- Roles: `investor`, `operator`, `admin`.
-- Recuperación de contraseña con token enviado por email.
-- Bootstrap administrativo vía CLI (`pnpm users:create-admin`, `users:list`, `users:disable`, `users:revoke-sessions`).
-- Auth desactivada en producción hasta disponer de HTTPS y dominio real.
-- Rate limiting y anti-enumeración de cuentas en todos los endpoints de autenticación.
+- **Inversión real:** No existe flujo de inversión. La cartera y documentos están vacíos porque el producto aún no permite invertir.
+- **KYC:** El proveedor de verificación de identidad no está contratado.
+- **Firma electrónica:** No hay proveedor de firma configurado.
+- **Pasarela de pago:** No está integrada.
+- **Envío de emails:** `ConsoleEmailTransport` en desarrollo; `DisabledEmailProvider` en producción.
+- **HTTPS:** El despliegue actual usa HTTP plano. Se requiere HTTPS antes de activar `AUTH_ENABLED` en producción.
+- **Dominio y DNS:** No gestionados en este hito.

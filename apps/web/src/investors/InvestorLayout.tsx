@@ -3,9 +3,13 @@ import { Link, Outlet, useLocation } from 'react-router';
 import { useAuth } from '../auth/context';
 
 const navItems = [
+  { label: 'Panel', href: '/inversores' },
+  { label: 'Perfil', href: '/inversores/perfil' },
+  { label: 'Cartera', href: '/inversores/cartera' },
+  { label: 'Documentos', href: '/inversores/documentos' },
+  { label: 'Verificación', href: '/inversores/verificacion' },
   { label: 'Oportunidades', href: '/inversores/oportunidades' },
   { label: 'Cuenta', href: '/inversores/cuenta' },
-  { label: 'Seguridad', href: '/inversores/seguridad' },
 ];
 
 function useMobileMenu() {

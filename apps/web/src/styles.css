@@ -20,8 +20,11 @@
   }
 
   html {
+    margin: 0;
+    padding: 0;
     scroll-behavior: smooth;
     background: var(--color-bg-primary);
+    overflow-x: hidden;
   }
 
   body {
@@ -29,6 +32,7 @@
     min-width: 320px;
     background: var(--color-bg-primary);
     color: var(--color-text-on-dark);
+    overflow-x: hidden;
   }
 
   * {

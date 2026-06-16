@@ -20,6 +20,8 @@ import { AuthRepository } from './auth/repository.js';
 import { ConsoleEmailTransport, type EmailTransport } from './auth/email.js';
 import { registerAuthRoutes } from './auth/routes.js';
 import { registerAdminRoutes } from './admin/routes.js';
+import { registerInvestorRoutes } from './investor/routes.js';
+import { createProviders, type ProviderSet } from './providers/index.js';
 
 export type AppDependencies = {
   pool?: Pool;
@@ -30,6 +32,7 @@ export type AppDependencies = {
     emailTransport: EmailTransport;
   };
   emailTransport?: EmailTransport;
+  providers?: ProviderSet;
   config?: Partial<AppConfig>;
   logger?: boolean | object;
 };
@@ -97,6 +100,9 @@ export function buildApp(dependencies: AppDependencies = {}): FastifyInstance {
   // Auth dependencies
   const authRepo = dependencies.auth?.repo ?? new AuthRepository(pool as Pool);
   const emailTransport = dependencies.emailTransport ?? dependencies.auth?.emailTransport ?? new ConsoleEmailTransport();
+
+  // Providers (all disabled by default)
+  const providers = dependencies.providers ?? createProviders();
 
   // ── Plugins ──
   app.register(cookie);
@@ -238,6 +244,12 @@ export function buildApp(dependencies: AppDependencies = {}): FastifyInstance {
   registerAdminRoutes(app, {
     pool: pool as Pool,
     config,
+  });
+
+  registerInvestorRoutes(app, {
+    pool: pool as Pool,
+    authEnabled: config.authEnabled,
+    providers,
   });
 
   return app;

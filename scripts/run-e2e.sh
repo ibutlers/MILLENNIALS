@@ -6,7 +6,6 @@ ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 E2E_COMPOSE="$ROOT_DIR/e2e/docker-compose.e2e.yml"
 E2E_PROJECT="realstate-e2e"
 ENV_FILE="/tmp/realstate-e2e-env-$$.env"
-PG_PASSWORD=***
 
 cleanup() {
   local status=$?
@@ -16,38 +15,30 @@ cleanup() {
   rm -f "$ENV_FILE"
   unset E2E_INTERNAL_SECRET
 
-  local remaining_containers remaining_volumes remaining_networks
-  remaining_containers="$(docker ps -a --filter "name=${E2E_PROJECT}" -q 2>/dev/null || true)"
-  remaining_volumes="$(docker volume ls --filter "name=${E2E_PROJECT}" -q 2>/dev/null || true)"
-  remaining_networks="$(docker network ls --filter "name=${E2E_PROJECT}" -q 2>/dev/null || true)"
-  if [[ -z "$remaining_containers" && -z "$remaining_volumes" && -z "$remaining_networks" ]]; then
+  local rc rv rn
+  rc="$(docker ps -a --filter "name=${E2E_PROJECT}" -q 2>/dev/null || true)"
+  rv="$(docker volume ls --filter "name=${E2E_PROJECT}" -q 2>/dev/null || true)"
+  rn="$(docker network ls --filter "name=${E2E_PROJECT}" -q 2>/dev/null || true)"
+  if [[ -z "$rc" && -z "$rv" && -z "$rn" ]]; then
     echo "E2E resources remaining: 0"
   else
-    echo "WARNING: E2E resources remain: containers=${remaining_containers:-0} volumes=${remaining_volumes:-0} networks=${remaining_networks:-0}"
+    echo "WARNING: E2E resources remain: containers=${rc:-0} volumes=${rv:-0} networks=${rn:-0}"
   fi
   exit "$status"
 }
 trap cleanup EXIT INT TERM
 
 case "$SUITE" in
-  public)
-    CONFIG="playwright.config.ts"
-    ADMIN_FIXTURES=false
-    ;;
-  admin)
-    CONFIG="playwright.admin.config.ts"
-    ADMIN_FIXTURES=true
-    ;;
-  *)
-    echo "Usage: $0 public|admin" >&2
-    exit 2
-    ;;
+  public) CONFIG="playwright.config.ts"; ADMIN_FIXTURES=false ;;
+  admin) CONFIG="playwright.admin.config.ts"; ADMIN_FIXTURES=true ;;
+  investor) CONFIG="playwright.investor.config.ts"; ADMIN_FIXTURES=true ;;
+  investor-smoke) CONFIG="playwright.investor-smoke.config.ts"; ADMIN_FIXTURES=true ;;
+  *) echo "Usage: $0 public|admin|investor|investor-smoke" >&2; exit 2 ;;
 esac
 
 cd "$ROOT_DIR"
 
 echo "=== E2E SETUP (${SUITE}) ==="
-# Hard isolation checks: never touch production identifiers/port.
 grep -q 'current_postgres-data' "$E2E_COMPOSE" && { echo "ERROR: production volume in E2E compose" >&2; exit 1; }
 grep -q 'shared/.env' "$E2E_COMPOSE" && { echo "ERROR: shared/.env in E2E compose" >&2; exit 1; }
 grep -q '8088' "$E2E_COMPOSE" && { echo "ERROR: production port 8088 in E2E compose" >&2; exit 1; }
@@ -56,13 +47,34 @@ grep -q 'POSTGRES_HOST_AUTH_METHOD' "$E2E_COMPOSE" && { echo "ERROR: trust auth 
 PG_PASSWORD="$(openssl rand -base64 18 | tr -dc 'a-zA-Z0-9' | head -c24)"
 E2E_INTERNAL_SECRET="$(openssl rand -hex 32)"
 export E2E_INTERNAL_SECRET
-printf 'POSTGRES_PASSWORD=***' > "$ENV_FILE"
+printf 'POSTGRES_PASSWORD=%s\n' "$PG_PASSWORD" > "$ENV_FILE"
 chmod 600 "$ENV_FILE"
-echo "Generated ephemeral PostgreSQL credentials and E2E internal secret (redacted)."
+echo "Generated ephemeral credentials (redacted)."
 
-# Fresh environment every run so SCRAM password and schema always match.
-docker compose -f "$E2E_COMPOSE" -p "$E2E_PROJECT" down -v --remove-orphans >/dev/null 2>&1 || true
-POSTGRES_PASSWORD=*** docker compose -f "$E2E_COMPOSE" -p "$E2E_PROJECT" up -d --wait --build
+echo "-> Tearing down any previous E2E environment..."
+docker compose -f "$E2E_COMPOSE" -p "$E2E_PROJECT" down -v --remove-orphans --timeout 10 2>&1 || true
+docker volume rm -f "$E2E_PROJECT"_e2e_postgres_data 2>/dev/null || true
+sleep 3
+
+if docker ps -a --filter "name=${E2E_PROJECT}" -q 2>/dev/null | grep -q .; then
+  echo "ERROR: residual E2E containers detected" >&2
+  exit 1
+fi
+
+POSTGRES_PASSWORD="$PG_PASSWORD" E2E_INTERNAL_SECRET="$E2E_INTERNAL_SECRET" \
+  docker compose -f "$E2E_COMPOSE" -p "$E2E_PROJECT" up -d --wait --build 2>&1
+
+if ! docker compose -f "$E2E_COMPOSE" -p "$E2E_PROJECT" ps --status running 2>/dev/null | grep -q postgres; then
+  echo "ERROR: PostgreSQL failed to start. Logs:" >&2
+  docker compose -f "$E2E_COMPOSE" -p "$E2E_PROJECT" logs postgres 2>&1 | tail -40 >&2
+  exit 1
+fi
+
+if ! docker compose -f "$E2E_COMPOSE" -p "$E2E_PROJECT" ps --status running 2>/dev/null | grep -q api; then
+  echo "ERROR: API failed to start. Logs:" >&2
+  docker compose -f "$E2E_COMPOSE" -p "$E2E_PROJECT" logs api 2>&1 | tail -40 >&2
+  exit 1
+fi
 
 echo "Running migrations..."
 docker compose -f "$E2E_COMPOSE" -p "$E2E_PROJECT" exec -T api node apps/api/dist/db/migrate.js
@@ -87,4 +99,8 @@ curl -fsS http://127.0.0.1:8090/health >/dev/null
 curl -fsS http://127.0.0.1:8090/api/health >/dev/null
 
 echo "Running Playwright (${SUITE})..."
-pnpm --filter @realstate/web exec playwright test --config "$CONFIG" --project=chromium --workers=1 --retries=0 --reporter=line
+if [[ "$SUITE" == "investor-smoke" ]]; then
+  pnpm --filter @realstate/web exec playwright test --config "$CONFIG" --workers=1 --retries=0 --reporter=line
+else
+  pnpm --filter @realstate/web exec playwright test --config "$CONFIG" --project=chromium --workers=1 --retries=0 --reporter=line
+fi

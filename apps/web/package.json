@@ -1,1 +1,40 @@
-{"name":"@realstate/web","version":"0.1.0","private":true,"type":"module","scripts":{"dev":"vite --host 127.0.0.1 --port 5173","lint":"eslint src --ext .ts,.tsx","typecheck":"tsc --noEmit","test":"vitest run","test:e2e":"bash ../../scripts/run-e2e.sh public","test:e2e:admin":"bash ../../scripts/run-e2e.sh admin","build":"tsc --noEmit && vite build"},"dependencies":{"@tanstack/react-query":"^5.90.12","react":"^19.2.1","react-dom":"^19.2.1","react-hook-form":"^7.68.0","react-router":"^7.10.1","zod":"^4.2.1"},"devDependencies":{"@axe-core/playwright":"^4.11.3","@playwright/test":"^1.57.0","@testing-library/jest-dom":"^6.9.1","@testing-library/react":"^16.3.0","@types/react":"^19.2.7","@types/react-dom":"^19.2.3","@vitejs/plugin-react":"^6.0.2","autoprefixer":"^10.4.22","jsdom":"^27.3.0","postcss":"^8.5.6","tailwindcss":"^3.4.18","vite":"^8.0.16","vitest":"^4.0.15"}}
+{
+  "name": "@realstate/web",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite --host 127.0.0.1 --port 5173",
+    "lint": "eslint src --ext .ts,.tsx",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:e2e": "bash ../../scripts/run-e2e.sh public",
+    "test:e2e:admin": "bash ../../scripts/run-e2e.sh admin",
+    "build": "tsc --noEmit && vite build",
+    "test:e2e:investor": "bash ../../scripts/run-e2e.sh investor",
+    "test:e2e:investor:smoke": "bash ../../scripts/run-e2e.sh investor-smoke"
+  },
+  "dependencies": {
+    "@tanstack/react-query": "^5.90.12",
+    "react": "^19.2.1",
+    "react-dom": "^19.2.1",
+    "react-hook-form": "^7.68.0",
+    "react-router": "^7.10.1",
+    "zod": "^4.2.1"
+  },
+  "devDependencies": {
+    "@axe-core/playwright": "^4.11.3",
+    "@playwright/test": "^1.57.0",
+    "@testing-library/jest-dom": "^6.9.1",
+    "@testing-library/react": "^16.3.0",
+    "@types/react": "^19.2.7",
+    "@types/react-dom": "^19.2.3",
+    "@vitejs/plugin-react": "^6.0.2",
+    "autoprefixer": "^10.4.22",
+    "jsdom": "^27.3.0",
+    "postcss": "^8.5.6",
+    "tailwindcss": "^3.4.18",
+    "vite": "^8.0.16",
+    "vitest": "^4.0.15"
+  }
+}
