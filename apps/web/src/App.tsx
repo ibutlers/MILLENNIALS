@@ -327,16 +327,19 @@ function FirmNarrative() {
       <div className="mx-auto grid max-w-7xl gap-10 px-4 sm:px-6 lg:grid-cols-[0.85fr_1.15fr] lg:px-8">
         <div>
           <p className="text-xs font-black uppercase tracking-[0.28em] text-electric">Nosotros</p>
-          <h2 className="mt-5 font-serif text-4xl leading-tight tracking-[-0.03em] text-ink sm:text-6xl">
-            Selección rigurosa antes que volumen.
+          <h2 className="mt-5 max-w-[20ch] font-serif text-4xl leading-tight tracking-[-0.03em] text-ink sm:text-5xl lg:text-6xl">
+            Pocas oportunidades. Mucho criterio.
           </h2>
         </div>
-        <div className="space-y-7 text-lg leading-9 text-charcoal/80">
+        <div className="space-y-6 text-lg leading-9 text-charcoal/80">
           <p>
-            MILLENNIALS CONSTRUYEN se plantea como una plataforma inmobiliaria profesional para explicar una tesis, organizar oportunidades y comunicar avances con transparencia.
+            Somos un club privado de inversión inmobiliaria que selecciona y estructura proyectos con una visión clara: entender bien cada operación antes de tomar una decisión.
           </p>
           <p>
-            La primera capa pública evita cifras no verificadas y prioriza proceso: revisión técnica, comercial y financiera, documentación estructurada y seguimiento periódico.
+            Preferimos analizar pocas oportunidades en profundidad, evaluar sus riesgos y acompañar su ejecución con disciplina, transparencia y una perspectiva de largo plazo.
+          </p>
+          <p className="border-t border-electric/30 pt-5 text-base leading-7 font-semibold text-charcoal/70">
+            El acceso al club es privado y está sujeto a invitación o validación previa.
           </p>
         </div>
       </div>
