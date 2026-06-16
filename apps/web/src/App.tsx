@@ -651,23 +651,29 @@ function ContactSection() {
   }
 
   return (
-    <section id="contacto" className="bg-lavender py-12 sm:py-20">
-      <div className="mx-auto max-w-5xl px-4 sm:px-6 lg:px-8">
-        <div className="grid gap-8 lg:grid-cols-[1fr_1.1fr]">
-          <div>
-            <p className="text-xs font-black uppercase tracking-[0.28em] text-electric">Contacto</p>
-            <h2 className="mt-5 font-serif text-4xl leading-tight tracking-[-0.03em] text-ink sm:text-5xl">
-              Conversemos.
-            </h2>
-            <p className="mt-5 leading-8 text-charcoal/80">
-              Para consultas generales, colaboraciones o propuestas inmobiliarias, envíanos un mensaje. Revisaremos tu solicitud y responderemos personalmente.
-            </p>
-            <p className="mt-4 text-sm leading-6 text-charcoal/60">
-              Para solicitar acceso como coinversor, utiliza la sección{' '}
-              <a href="/#coinvierte" className="font-semibold text-electric underline hover:text-electric-hover focus:outline-none focus-visible:ring-2 focus-visible:ring-electric">Coinvierte</a>.
-            </p>
+    <section id="contacto" className="bg-lavender py-10 sm:py-14">
+      <div className="mx-auto max-w-[1200px] px-4 sm:px-6 lg:px-8">
+        {/* Single integrated container */}
+        <div className="overflow-hidden rounded-lg border border-frost bg-white shadow-sm lg:grid lg:grid-cols-[38%_62%] lg:rounded-xl">
+          {/* ── Left column · dark ── */}
+          <div className="flex items-center bg-ink px-8 py-10 text-white lg:px-12 lg:py-12">
+            <div className="max-w-prose">
+              <p className="text-xs font-black uppercase tracking-[0.28em] text-electric">Contacto</p>
+              <h2 className="mt-5 font-serif text-4xl leading-tight tracking-[-0.03em] sm:text-[48px] sm:leading-[1.1] lg:text-[52px] lg:leading-[1.08]">
+                Conversemos.
+              </h2>
+              <p className="mt-5 leading-7 text-white/80">
+                Para consultas generales, colaboraciones o propuestas inmobiliarias, envíanos un mensaje. Revisaremos tu solicitud y responderemos personalmente.
+              </p>
+              <p className="mt-4 text-sm leading-6 text-white/60">
+                Para solicitar acceso como coinversor, utiliza la sección{' '}
+                <a href="/#coinvierte" className="font-semibold text-electric underline hover:text-electric-hover focus:outline-none focus-visible:ring-2 focus-visible:ring-white">Coinvierte</a>.
+              </p>
+            </div>
           </div>
-          <div>
+
+          {/* ── Right column · form ── */}
+          <div className="p-6 sm:p-8 lg:p-10">
             {Object.keys(errors).length ? (
               <div role="alert" tabIndex={-1} className="mb-5 rounded-lg border border-warning/40 bg-warning/5 p-4">
                 <p className="font-bold text-charcoal/80">Revisa el formulario</p>
@@ -682,43 +688,61 @@ function ContactSection() {
                 <p className="mt-1 text-sm leading-6 text-charcoal/80">{result.message}</p>
               </div>
             ) : null}
-            <form className="grid gap-4" onSubmit={onSubmit} noValidate>
+            <form className="grid gap-[18px]" onSubmit={onSubmit} noValidate>
               <div className="hidden" aria-hidden="true">
                 <label>Website <input name="website" tabIndex={-1} autoComplete="off" /></label>
               </div>
-              <label className="grid gap-1 text-sm font-bold text-ink">
-                Nombre <span className="font-normal text-charcoal/50">*</span>
-                <input name="name" className="min-h-[44px] rounded-lg border border-frost px-3 py-2 text-ink placeholder:text-charcoal/40 focus:outline-none focus-visible:ring-2 focus-visible:ring-electric" autoComplete="name" maxLength={100} disabled={submitting} required />
+
+              {/* Row 1: Nombre + Email */}
+              <div className="grid gap-[18px] sm:grid-cols-2">
+                <label className="grid gap-1.5">
+                  <span className="text-sm font-bold text-ink">Nombre *</span>
+                  <input name="name" className="h-11 rounded-lg border border-frost bg-white px-3 text-ink placeholder:text-charcoal/40 focus:border-electric focus:outline-none focus:ring-2 focus:ring-electric/20 disabled:opacity-60" autoComplete="name" maxLength={100} disabled={submitting} required />
+                </label>
+                <label className="grid gap-1.5">
+                  <span className="text-sm font-bold text-ink">Email *</span>
+                  <input name="email" type="email" className="h-11 rounded-lg border border-frost bg-white px-3 text-ink placeholder:text-charcoal/40 focus:border-electric focus:outline-none focus:ring-2 focus:ring-electric/20 disabled:opacity-60" autoComplete="email" maxLength={254} disabled={submitting} required />
+                </label>
+              </div>
+
+              {/* Row 2: Teléfono + Motivo */}
+              <div className="grid gap-[18px] sm:grid-cols-2">
+                <label className="grid gap-1.5">
+                  <span className="text-sm font-bold text-ink">Teléfono (opcional)</span>
+                  <input name="phone" className="h-11 rounded-lg border border-frost bg-white px-3 text-ink placeholder:text-charcoal/40 focus:border-electric focus:outline-none focus:ring-2 focus:ring-electric/20 disabled:opacity-60" autoComplete="tel" maxLength={30} disabled={submitting} />
+                </label>
+                <label className="grid gap-1.5">
+                  <span className="text-sm font-bold text-ink">Motivo *</span>
+                  <select name="subject" className="h-11 rounded-lg border border-frost bg-white px-3 text-ink focus:border-electric focus:outline-none focus:ring-2 focus:ring-electric/20 disabled:opacity-60" disabled={submitting} required>
+                    <option value="">Selecciona una opción</option>
+                    {CONTACT_SUBJECTS.map((s) => <option key={s} value={s}>{s}</option>)}
+                  </select>
+                </label>
+              </div>
+
+              {/* Full width: Mensaje */}
+              <label className="grid gap-1.5">
+                <span className="text-sm font-bold text-ink">Mensaje *</span>
+                <textarea name="message" rows={5} maxLength={2000} minLength={20} className="min-h-[120px] rounded-lg border border-frost bg-white px-3 py-3 text-ink placeholder:text-charcoal/40 focus:border-electric focus:outline-none focus:ring-2 focus:ring-electric/20 disabled:opacity-60" disabled={submitting} required />
               </label>
-              <label className="grid gap-1 text-sm font-bold text-ink">
-                Email <span className="font-normal text-charcoal/50">*</span>
-                <input name="email" type="email" className="min-h-[44px] rounded-lg border border-frost px-3 py-2 text-ink placeholder:text-charcoal/40 focus:outline-none focus-visible:ring-2 focus-visible:ring-electric" autoComplete="email" maxLength={254} disabled={submitting} required />
-              </label>
-              <label className="grid gap-1 text-sm font-bold text-ink">
-                Teléfono <span className="font-normal text-charcoal/50">(opcional)</span>
-                <input name="phone" className="min-h-[44px] rounded-lg border border-frost px-3 py-2 text-ink placeholder:text-charcoal/40 focus:outline-none focus-visible:ring-2 focus-visible:ring-electric" autoComplete="tel" maxLength={30} disabled={submitting} />
-              </label>
-              <label className="grid gap-1 text-sm font-bold text-ink">
-                Motivo <span className="font-normal text-charcoal/50">*</span>
-                <select name="subject" className="min-h-[44px] rounded-lg border border-frost px-3 py-2 text-ink focus:outline-none focus-visible:ring-2 focus-visible:ring-electric" disabled={submitting} required>
-                  <option value="">Selecciona una opción</option>
-                  {CONTACT_SUBJECTS.map((s) => <option key={s} value={s}>{s}</option>)}
-                </select>
-              </label>
-              <label className="grid gap-1 text-sm font-bold text-ink">
-                Mensaje <span className="font-normal text-charcoal/50">*</span>
-                <textarea name="message" rows={5} maxLength={2000} minLength={20} className="min-h-[120px] rounded-lg border border-frost px-3 py-2 text-ink placeholder:text-charcoal/40 focus:outline-none focus-visible:ring-2 focus-visible:ring-electric" disabled={submitting} required />
-              </label>
-              <label className="flex gap-3 text-sm leading-6 text-charcoal/80">
-                <input name="consent" type="checkbox" className="mt-0.5 flex-shrink-0" disabled={submitting} required />
-                <span>Acepto que los datos facilitados se utilicen exclusivamente para atender esta consulta.</span>
-              </label>
-              <p className="-mt-2 pl-7 text-xs leading-5 text-charcoal/50">
-                No utilizaremos estos datos para comunicaciones comerciales sin consentimiento adicional.
-              </p>
-              <button type="submit" disabled={submitting} className="rounded-lg bg-electric px-5 py-3.5 text-sm font-black uppercase tracking-[0.16em] text-white transition hover:bg-electric-hover disabled:cursor-not-allowed disabled:opacity-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-electric focus-visible:ring-offset-4 focus-visible:ring-offset-lavender">
-                {submitting ? 'Enviando…' : 'Enviar mensaje'}
-              </button>
+
+              {/* Consent + note */}
+              <div>
+                <label className="flex items-start gap-2.5 text-sm leading-6 text-charcoal/80">
+                  <input name="consent" type="checkbox" className="mt-[0.35em] h-4 w-4 flex-shrink-0 accent-electric" disabled={submitting} required />
+                  <span>Acepto que los datos facilitados se utilicen exclusivamente para atender esta consulta.</span>
+                </label>
+                <p className="mt-1.5 pl-[26px] text-xs leading-5 text-charcoal/50">
+                  No utilizaremos estos datos para comunicaciones comerciales sin consentimiento adicional.
+                </p>
+              </div>
+
+              {/* Button — right-aligned, constrained width */}
+              <div className="flex justify-end">
+                <button type="submit" disabled={submitting} className="h-12 w-full rounded-lg bg-electric px-6 text-sm font-black uppercase tracking-[0.16em] text-white transition hover:bg-electric-hover disabled:cursor-not-allowed disabled:opacity-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-electric focus-visible:ring-offset-2 sm:w-[220px]">
+                  {submitting ? 'Enviando…' : 'Enviar mensaje'}
+                </button>
+              </div>
             </form>
           </div>
         </div>
