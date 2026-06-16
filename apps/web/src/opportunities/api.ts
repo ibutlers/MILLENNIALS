@@ -5,7 +5,7 @@ const percentageSchema = z.object({ basisPoints: z.number().int().nullable(), de
 const mediaSchema = z.object({ type: z.string(), url: z.string(), altText: z.string(), position: z.number().int() });
 const nullableMediaSchema = mediaSchema.nullable();
 
-export const opportunityStatusSchema = z.enum(['coming_soon', 'open', 'funding', 'funded', 'in_execution', 'commercializing', 'closed', 'cancelled']);
+export const opportunityStatusSchema = z.enum(['coming_soon', 'open', 'funding', 'funded', 'in_execution', 'in_study', 'commercializing', 'closed', 'cancelled']);
 export const opportunityRiskSchema = z.enum(['low', 'medium', 'high', 'very_high']);
 export const opportunityReturnTypeSchema = z.enum(['target_annual_return', 'target_total_return', 'target_irr', 'target_roi']);
 
@@ -130,6 +130,7 @@ export function statusLabel(status: OpportunityStatus) {
     funding: 'En financiación',
     funded: 'Financiada',
     in_execution: 'En ejecución',
+    in_study: 'En estudio',
     commercializing: 'En comercialización',
     closed: 'Cerrada',
     cancelled: 'Cancelada'

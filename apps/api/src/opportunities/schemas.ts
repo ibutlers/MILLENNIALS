@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-export const opportunityStatusSchema = z.enum(['coming_soon', 'open', 'funding', 'funded', 'in_execution', 'commercializing', 'closed', 'cancelled']);
+export const opportunityStatusSchema = z.enum(['coming_soon', 'open', 'funding', 'funded', 'in_execution', 'in_study', 'commercializing', 'closed', 'cancelled']);
 export const opportunityVisibilitySchema = z.enum(['public', 'private', 'unlisted', 'draft']);
 export const riskLevelSchema = z.enum(['low', 'medium', 'high', 'very_high']);
 export const returnTypeSchema = z.enum(['target_annual_return', 'target_total_return', 'target_irr', 'target_roi']);

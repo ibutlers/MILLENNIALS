@@ -290,35 +290,46 @@ function Methodology() {
 function OpportunityCard({ opportunity }: { opportunity: PublicOpportunity }) {
   const progress = Math.max(0, Math.min(100, opportunity.fundingProgress));
   const location = [opportunity.city, opportunity.district].filter(Boolean).join(' · ');
+  const showFinancials = (opportunity.targetAmount?.cents ?? 0) > 1;
+  const showProgress = progress === 100 || (progress > 0 && (opportunity.committedAmount?.cents ?? 0) > 0);
+  const isFunded = progress === 100 && showProgress;
 
   return (
-    <article aria-label={`Oportunidad pública: ${opportunity.title}`} className="overflow-hidden rounded-lg border border-frost bg-white">
-      {opportunity.primaryImage ? (
-        <img src={opportunity.primaryImage.url} alt={opportunity.primaryImage.altText} width="900" height="600" loading="lazy" className="h-52 w-full object-cover" />
-      ) : (
-        <div className="h-52 w-full bg-electric/5" role="img" aria-label="Imagen pendiente de publicar" />
-      )}
+    <article aria-label={`Proyecto: ${opportunity.title}`} className="overflow-hidden rounded-lg border border-frost bg-white">
+      <div className="relative">
+        {opportunity.primaryImage ? (
+          <img src={opportunity.primaryImage.url} alt={opportunity.primaryImage.altText} width="900" height="600" loading="lazy" className="h-52 w-full object-cover" />
+        ) : (
+          <div className="h-52 w-full bg-electric/5" role="img" aria-label="Imagen pendiente de publicar" />
+        )}
+        <span className="absolute bottom-2 right-2 border border-white/30 bg-ink/60 px-2 py-0.5 text-[0.60rem] font-medium uppercase tracking-[0.14em] text-white backdrop-blur-sm">Imagen provisional</span>
+      </div>
       <div className="p-5 sm:p-6">
         <div className="flex flex-wrap items-center gap-2">
-          <span className="border border-electric/30 px-2.5 py-1 text-[0.68rem] font-black uppercase tracking-[0.18em] text-electric">Datos ilustrativos</span>
-          <span className="border border-frost px-2.5 py-1 text-[0.68rem] font-bold uppercase tracking-[0.18em] text-charcoal/60">{statusLabel(opportunity.status)}</span>
+          <span className="border border-electric/30 px-2.5 py-1 text-[0.68rem] font-black uppercase tracking-[0.18em] text-electric">{statusLabel(opportunity.status)}</span>
+          {isFunded ? <span className="border border-electric/30 px-2.5 py-1 text-[0.68rem] font-black uppercase tracking-[0.18em] text-electric">Financiación cerrada</span> : null}
+          {opportunity.strategy === 'Cambio de uso' ? <span className="border border-frost px-2.5 py-1 text-[0.68rem] font-bold uppercase tracking-[0.18em] text-charcoal/60">Cambio de uso</span> : null}
         </div>
         <h3 className="mt-5 font-serif text-3xl leading-tight tracking-[-0.03em] text-ink">{opportunity.title}</h3>
         <p className="mt-2 text-sm font-semibold uppercase tracking-[0.18em] text-charcoal/60">{location}</p>
         <p className="mt-4 leading-7 text-charcoal/80">{opportunity.shortDescription}</p>
-        <dl className="mt-6 grid grid-cols-2 gap-px overflow-hidden rounded-lg border border-frost bg-frost text-sm">
-          <div className="bg-white p-3"><dt className="text-charcoal/60">{returnTypeLabel(opportunity.targetReturnType)}</dt><dd className="mt-1 font-serif text-2xl text-ink">{opportunity.targetReturn.formatted ?? 'No publicado'}</dd></div>
-          <div className="bg-white p-3"><dt className="text-charcoal/60">Plazo estimado</dt><dd className="mt-1 font-semibold text-ink">{opportunity.estimatedTermMonths} meses</dd></div>
-          <div className="bg-white p-3"><dt className="text-charcoal/60">Ticket mínimo</dt><dd className="mt-1 font-semibold text-ink">{opportunity.minimumInvestment?.formatted ?? 'No publicado'}</dd></div>
-          <div className="bg-white p-3"><dt className="text-charcoal/60">Capital objetivo</dt><dd className="mt-1 font-semibold text-ink">{opportunity.targetAmount?.formatted ?? 'No publicado'}</dd></div>
-          <div className="bg-white p-3"><dt className="text-charcoal/60">Capital comprometido</dt><dd className="mt-1 font-semibold text-ink">{opportunity.committedAmount?.formatted ?? 'No publicado'}</dd></div>
-          <div className="bg-white p-3"><dt className="text-charcoal/60">Nivel de riesgo</dt><dd className="mt-1 font-semibold text-ink">{riskLabel(opportunity.riskLevel)} · no regulatorio</dd></div>
-        </dl>
-        <div className="mt-6">
-          <div className="mb-2 flex justify-between text-xs font-black uppercase tracking-[0.18em] text-charcoal/60"><span>Financiación</span><span>{progress}% demo</span></div>
-          <div className="h-2 rounded-full bg-frost"><div className="h-2 rounded-full bg-electric" style={{ width: `${progress}%` }} /></div>
-        </div>
-        <a href={`/oportunidades/${opportunity.slug}`} className="mt-6 inline-flex rounded-lg border border-frost px-4 py-3 text-xs font-black uppercase tracking-[0.16em] text-ink transition hover:border-electric hover:text-electric focus:outline-none focus-visible:ring-2 focus-visible:ring-electric">Ver oportunidad</a>
+        {showFinancials ? (
+          <dl className="mt-6 grid grid-cols-2 gap-px overflow-hidden rounded-lg border border-frost bg-frost text-sm">
+            <div className="bg-white p-3"><dt className="text-charcoal/60">{returnTypeLabel(opportunity.targetReturnType)}</dt><dd className="mt-1 font-serif text-2xl text-ink">{opportunity.targetReturn.formatted ?? '—'}</dd></div>
+            <div className="bg-white p-3"><dt className="text-charcoal/60">Plazo estimado</dt><dd className="mt-1 font-semibold text-ink">{opportunity.estimatedTermMonths} meses</dd></div>
+            <div className="bg-white p-3"><dt className="text-charcoal/60">Ticket mínimo</dt><dd className="mt-1 font-semibold text-ink">{opportunity.minimumInvestment?.formatted ?? '—'}</dd></div>
+            <div className="bg-white p-3"><dt className="text-charcoal/60">Capital objetivo</dt><dd className="mt-1 font-semibold text-ink">{opportunity.targetAmount?.formatted ?? '—'}</dd></div>
+            <div className="bg-white p-3"><dt className="text-charcoal/60">Capital comprometido</dt><dd className="mt-1 font-semibold text-ink">{opportunity.committedAmount?.formatted ?? '—'}</dd></div>
+            <div className="bg-white p-3"><dt className="text-charcoal/60">Nivel de riesgo</dt><dd className="mt-1 font-semibold text-ink">{riskLabel(opportunity.riskLevel)} · no regulatorio</dd></div>
+          </dl>
+        ) : null}
+        {showProgress ? (
+          <div className="mt-6">
+            <div className="mb-2 flex justify-between text-xs font-black uppercase tracking-[0.18em] text-charcoal/60"><span>Financiación</span><span>Capital cubierto · {progress}%</span></div>
+            <div className="h-2 rounded-full bg-frost"><div className="h-2 rounded-full bg-electric" style={{ width: `${progress}%` }} /></div>
+          </div>
+        ) : null}
+        <a href={`/oportunidades/${opportunity.slug}`} className="mt-6 inline-flex rounded-lg border border-frost px-4 py-3 text-xs font-black uppercase tracking-[0.16em] text-ink transition hover:border-electric hover:text-electric focus:outline-none focus-visible:ring-2 focus-visible:ring-electric">Ver proyecto</a>
       </div>
     </article>
   );

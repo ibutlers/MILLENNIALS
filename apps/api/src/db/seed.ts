@@ -29,147 +29,119 @@ type SeedOpportunity = {
   milestones: Array<{ title: string; description: string; plannedDate: string | null; completedAt?: string | null }>;
 };
 
-export const DEMO_OPPORTUNITY_DISCLAIMER = 'Datos ilustrativos de demostración. Los objetivos no están garantizados y no constituyen una oferta de inversión.';
+export const DEMO_OPPORTUNITY_DISCLAIMER = 'La información publicada tiene carácter informativo y preliminar. Las operaciones en estudio pueden sufrir modificaciones y su publicación no constituye una oferta de inversión.';
 
 export const seedOpportunities: SeedOpportunity[] = [
   {
-    slug: 'eixample-rehabilitacion-luminosa',
-    title: 'Rehabilitación luminosa en Eixample',
-    shortDescription: 'Activo residencial ficticio con mejora de eficiencia y reposicionamiento comercial.',
-    description: 'Oportunidad demo diseñada para validar el catálogo público de MILLENNIALS CONSTRUYEN | CAPITAL. Incluye hipótesis de rehabilitación, comercialización y seguimiento documental sin constituir oferta de inversión.',
-    city: 'Barcelona',
+    slug: 'promocion-9-viviendas-plaza-america-vigo',
+    title: 'Promoción de 9 viviendas en Plaza América',
+    shortDescription: 'Promoción residencial de un edificio de nueve viviendas en Travesía de la calle Coruña, en la zona de Plaza América, Vigo. La financiación está completamente cubierta y el proyecto se encuentra actualmente en ejecución.',
+    description: 'Promoción residencial de nueve viviendas en Travesía de la calle Coruña, en la zona de Plaza América, Vigo. El proyecto cuenta con financiación cerrada y se encuentra en fase de ejecución. Los datos financieros detallados no se publican en esta fase.',
+    city: 'Vigo',
     countryCode: 'ES',
-    district: 'Eixample',
-    assetType: 'Residencial urbano',
-    strategy: 'Rehabilitación energética',
-    status: 'funding',
+    district: 'Travesía de la calle Coruña · Plaza América',
+    assetType: 'Residencial',
+    strategy: 'Promoción residencial',
+    status: 'in_execution',
     visibility: 'public',
     currency: 'EUR',
-    targetAmountCents: 125000000,
-    committedAmountCents: 53000000,
-    minimumInvestmentCents: 1500000,
-    estimatedTermMonths: 18,
+    targetAmountCents: 1,
+    committedAmountCents: 1,
+    minimumInvestmentCents: 1,
+    estimatedTermMonths: 1,
     targetReturnType: 'target_annual_return',
-    targetReturnBps: 820,
+    targetReturnBps: null,
     riskLevel: 'medium',
-    closingDate: '2026-10-15',
-    publishedAt: '2026-06-01T08:00:00Z',
-    image: { url: '/images/opportunity-rehabilitacion.webp', altText: 'Composición arquitectónica generada para una rehabilitación residencial demo en Barcelona' },
-    highlights: [
-      { label: 'Uso', value: 'Residencial con mejora energética' },
-      { label: 'Documentación', value: 'Paquete técnico en preparación' },
-      { label: 'Seguimiento', value: 'Hitos mensuales previstos' }
-    ],
-    risks: [
-      { title: 'Riesgo de obra', description: 'El calendario podría variar por disponibilidad de contratistas o licencias.' },
-      { title: 'Riesgo comercial', description: 'La absorción final depende de demanda y condiciones de mercado.' }
-    ],
-    milestones: [
-      { title: 'Due diligence técnica', description: 'Revisión del estado del activo y alcance de intervención.', plannedDate: '2026-07-01', completedAt: null },
-      { title: 'Inicio de obra', description: 'Arranque previsto de trabajos de mejora.', plannedDate: '2026-09-01', completedAt: null }
-    ]
-  },
-  {
-    slug: 'malaga-patio-productivo',
-    title: 'Patio productivo en Málaga Este',
-    shortDescription: 'Proyecto demo de reposicionamiento de activo mixto con patio y usos flexibles.',
-    description: 'Caso ficticio para mostrar estados, riesgos y métricas públicas. Los importes son ilustrativos y no representan una captación real.',
-    city: 'Málaga',
-    countryCode: 'ES',
-    district: 'Málaga Este',
-    assetType: 'Mixto urbano',
-    strategy: 'Reposicionamiento operativo',
-    status: 'open',
-    visibility: 'public',
-    currency: 'EUR',
-    targetAmountCents: 88000000,
-    committedAmountCents: 17600000,
-    minimumInvestmentCents: 1000000,
-    estimatedTermMonths: 14,
-    targetReturnType: 'target_total_return',
-    targetReturnBps: 1050,
-    riskLevel: 'medium',
-    closingDate: '2026-09-20',
-    publishedAt: '2026-06-05T08:00:00Z',
-    image: { url: '/images/opportunity-patio.webp', altText: 'Composición arquitectónica generada para un activo con patio demo en Málaga' },
-    highlights: [
-      { label: 'Estrategia', value: 'Flexibilización de uso y mejora de patio' },
-      { label: 'Estado', value: 'Abierta en demo pública' }
-    ],
-    risks: [
-      { title: 'Riesgo de demanda', description: 'Los usos previstos podrían requerir ajustes si cambia la demanda local.' }
-    ],
-    milestones: [
-      { title: 'Validación comercial', description: 'Contraste de usos y demanda potencial.', plannedDate: '2026-07-20', completedAt: null }
-    ]
-  },
-  {
-    slug: 'valencia-cambio-uso-controlado',
-    title: 'Cambio de uso controlado en Valencia',
-    shortDescription: 'Oportunidad ficticia con estrategia de cambio de uso y calendario regulatorio visible.',
-    description: 'Proyecto demo para representar oportunidades con riesgo regulatorio superior y avance de financiación parcial.',
-    city: 'Valencia',
-    countryCode: 'ES',
-    district: 'Camins al Grau',
-    assetType: 'Terciario adaptable',
-    strategy: 'Cambio de uso',
-    status: 'coming_soon',
-    visibility: 'public',
-    currency: 'EUR',
-    targetAmountCents: 164000000,
-    committedAmountCents: 0,
-    minimumInvestmentCents: 2500000,
-    estimatedTermMonths: 24,
-    targetReturnType: 'target_irr',
-    targetReturnBps: 940,
-    riskLevel: 'high',
     closingDate: null,
-    publishedAt: '2026-06-08T08:00:00Z',
-    image: { url: '/images/opportunity-urbano.webp', altText: 'Composición arquitectónica generada para un cambio de uso demo en Valencia' },
+    publishedAt: '2026-06-16T08:00:00Z',
+    image: { url: '/images/opportunity-urbano.webp', altText: 'Imagen provisional. Promoción residencial de nueve viviendas en la zona de Plaza América, Vigo' },
     highlights: [
-      { label: 'Riesgo principal', value: 'Tramitación y calendario' },
-      { label: 'Visibilidad', value: 'Próximamente en demo' }
+      { label: 'Viviendas', value: '9 unidades' },
+      { label: 'Ubicación', value: 'Travesía de la calle Coruña · Plaza América' },
+      { label: 'Financiación', value: 'Capital cubierto · 100%' }
     ],
     risks: [
-      { title: 'Riesgo regulatorio', description: 'La estrategia depende de permisos y validación urbanística.' },
-      { title: 'Riesgo de plazo', description: 'El plazo estimado puede variar por tiempos administrativos.' }
+      { title: 'Riesgo de ejecución', description: 'El calendario de obra puede verse afectado por disponibilidad de materiales o condiciones meteorológicas.' },
+      { title: 'Riesgo de mercado', description: 'La velocidad de comercialización depende de la demanda local en el momento de finalización.' }
     ],
     milestones: [
-      { title: 'Consulta urbanística', description: 'Contraste inicial con criterios técnicos.', plannedDate: '2026-08-10', completedAt: null }
+      { title: 'Financiación cerrada', description: 'Capital completamente cubierto para la ejecución del proyecto.', plannedDate: '2026-03-01', completedAt: '2026-03-01T10:00:00Z' },
+      { title: 'Inicio de obra', description: 'Comienzo de los trabajos de construcción.', plannedDate: '2026-04-15', completedAt: '2026-04-15T10:00:00Z' },
+      { title: 'Finalización prevista', description: 'Entrega estimada de las viviendas.', plannedDate: '2027-06-30', completedAt: null }
     ]
   },
   {
-    slug: 'sevilla-corredor-ribera',
-    title: 'Corredor Ribera Sevilla',
-    shortDescription: 'Activo demo ya financiado para mostrar seguimiento público sin datos privados.',
-    description: 'Ficha ficticia de oportunidad financiada, útil para validar estados posteriores sin mostrar documentos ni inversores.',
-    city: 'Sevilla',
+    slug: 'promocion-25-viviendas-castrelos-vigo',
+    title: 'Promoción de 25 viviendas en Castrelos',
+    shortDescription: 'Proyecto de promoción residencial de veinticinco viviendas en Castrelos, actualmente en fase de estudio, análisis de viabilidad y definición del proyecto.',
+    description: 'Proyecto de promoción residencial de veinticinco viviendas en la zona de Castrelos, Vigo. La operación se encuentra en fase de estudio, con trabajos en curso de análisis de viabilidad urbanística, técnica y financiera, así como definición del anteproyecto.',
+    city: 'Vigo',
     countryCode: 'ES',
-    district: 'Ribera urbana',
-    assetType: 'Residencial compacto',
-    strategy: 'Compra y mejora selectiva',
-    status: 'funded',
+    district: 'Castrelos',
+    assetType: 'Residencial',
+    strategy: 'Promoción residencial',
+    status: 'in_study',
     visibility: 'public',
     currency: 'EUR',
-    targetAmountCents: 69000000,
-    committedAmountCents: 69000000,
-    minimumInvestmentCents: 1000000,
-    estimatedTermMonths: 12,
-    targetReturnType: 'target_roi',
-    targetReturnBps: 760,
-    riskLevel: 'low',
-    closingDate: '2026-08-01',
-    publishedAt: '2026-05-28T08:00:00Z',
-    image: { url: '/images/hero-architecture-640.webp', altText: 'Composición arquitectónica generada para una oportunidad demo financiada en Sevilla' },
+    targetAmountCents: 1,
+    committedAmountCents: 0,
+    minimumInvestmentCents: 1,
+    estimatedTermMonths: 1,
+    targetReturnType: 'target_annual_return',
+    targetReturnBps: null,
+    riskLevel: 'medium',
+    closingDate: null,
+    publishedAt: '2026-06-15T08:00:00Z',
+    image: { url: '/images/opportunity-patio.webp', altText: 'Imagen provisional. Proyecto residencial de veinticinco viviendas en Castrelos, Vigo' },
     highlights: [
-      { label: 'Estado', value: 'Financiada en entorno demo' },
-      { label: 'Objetivo', value: 'Validar seguimiento posterior' }
+      { label: 'Viviendas', value: '25 unidades' },
+      { label: 'Fase', value: 'Estudio y análisis de viabilidad' },
+      { label: 'Ubicación', value: 'Castrelos, Vigo' }
     ],
     risks: [
-      { title: 'Riesgo operativo', description: 'La ejecución puede desviarse por costes o tiempos de obra.' }
+      { title: 'Riesgo de viabilidad', description: 'El proyecto está en fase de estudio y los análisis urbanísticos, técnicos y financieros pueden concluir que no es viable en los términos actuales.' },
+      { title: 'Riesgo urbanístico', description: 'La viabilidad depende de la compatibilidad urbanística de la parcela con el programa de viviendas previsto.' }
     ],
     milestones: [
-      { title: 'Financiación completada', description: 'Hito demo de financiación completa.', plannedDate: '2026-06-15', completedAt: '2026-06-15T10:00:00Z' }
+      { title: 'Análisis de viabilidad', description: 'Estudio urbanístico, técnico y financiero del proyecto.', plannedDate: '2026-09-30', completedAt: null },
+      { title: 'Definición del anteproyecto', description: 'Elaboración del programa de viviendas y documento preliminar.', plannedDate: '2026-12-31', completedAt: null }
+    ]
+  },
+  {
+    slug: 'cambio-uso-hostal-maria-berdiales-vigo',
+    title: 'Cambio de uso en María Berdiales',
+    shortDescription: 'Proyecto de transformación de un edificio de uso residencial en un establecimiento de alojamiento tipo hostal en María Berdiales, Vigo. La operación se encuentra actualmente en fase de estudio y análisis de viabilidad.',
+    description: 'Proyecto de transformación de un edificio de uso residencial en un establecimiento de alojamiento tipo hostal en la zona de María Berdiales, Vigo. La operación contempla el cambio de uso del inmueble y se encuentra en fase de estudio, con análisis de viabilidad urbanística, adecuación normativa y modelo de explotación.',
+    city: 'Vigo',
+    countryCode: 'ES',
+    district: 'María Berdiales',
+    assetType: 'Residencial',
+    strategy: 'Cambio de uso',
+    status: 'in_study',
+    visibility: 'public',
+    currency: 'EUR',
+    targetAmountCents: 1,
+    committedAmountCents: 0,
+    minimumInvestmentCents: 1,
+    estimatedTermMonths: 1,
+    targetReturnType: 'target_annual_return',
+    targetReturnBps: null,
+    riskLevel: 'medium',
+    closingDate: null,
+    publishedAt: '2026-06-14T08:00:00Z',
+    image: { url: '/images/opportunity-rehabilitacion.webp', altText: 'Imagen provisional. Edificio objeto de estudio para cambio de uso a hostal en María Berdiales, Vigo' },
+    highlights: [
+      { label: 'Uso actual', value: 'Residencial' },
+      { label: 'Uso previsto', value: 'Alojamiento tipo hostal' },
+      { label: 'Fase', value: 'Estudio y análisis de viabilidad' }
+    ],
+    risks: [
+      { title: 'Riesgo normativo', description: 'El cambio de uso requiere cumplir la normativa urbanística y sectorial de alojamiento turístico.' },
+      { title: 'Riesgo de viabilidad', description: 'Los análisis pueden determinar que la operación no es viable en los términos estudiados inicialmente.' }
+    ],
+    milestones: [
+      { title: 'Estudio urbanístico', description: 'Verificación de la compatibilidad urbanística del cambio de uso.', plannedDate: '2026-10-31', completedAt: null },
+      { title: 'Análisis de explotación', description: 'Modelo de negocio y proyecciones del establecimiento.', plannedDate: '2026-12-31', completedAt: null }
     ]
   },
   {

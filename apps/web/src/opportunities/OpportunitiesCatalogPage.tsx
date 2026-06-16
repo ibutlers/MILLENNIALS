@@ -6,12 +6,12 @@ import { fetchPublicOpportunities, type OpportunityListParams } from './api';
 import { OpportunityCard } from './components';
 
 const statuses = [
-  ['','Todos los estados'], ['coming_soon','Próximamente'], ['open','Abierta'], ['funding','En financiación'], ['funded','Financiada'], ['in_execution','En ejecución'], ['commercializing','En comercialización'], ['closed','Cerrada']
+  ['','Todos los estados'], ['coming_soon','Próximamente'], ['open','Abierta'], ['funding','En financiación'], ['funded','Financiada'], ['in_execution','En ejecución'], ['in_study','En estudio'], ['commercializing','En comercialización'], ['closed','Cerrada']
 ];
 const risks = [['','Todos los riesgos'], ['low','Bajo'], ['medium','Medio'], ['high','Alto'], ['very_high','Muy alto']];
-const cities = [['','Todas las ciudades'], ['Barcelona','Barcelona'], ['Madrid','Madrid'], ['Valencia','Valencia'], ['Málaga','Málaga']];
-const assetTypes = [['','Todos los activos'], ['Residencial urbano','Residencial urbano'], ['Logístico','Logístico'], ['Retail urbano','Retail urbano'], ['Coliving','Coliving']];
-const strategies = [['','Todas las estrategias'], ['Rehabilitación energética','Rehabilitación energética'], ['Reposicionamiento','Reposicionamiento'], ['Renta estabilizada','Renta estabilizada'], ['Desarrollo ligero','Desarrollo ligero']];
+const cities = [['','Todas las ciudades'], ['Vigo','Vigo'], ['Barcelona','Barcelona'], ['Madrid','Madrid'], ['Valencia','Valencia'], ['Málaga','Málaga']];
+const assetTypes = [['','Todos los activos'], ['Residencial','Residencial'], ['Logístico','Logístico'], ['Retail urbano','Retail urbano'], ['Coliving','Coliving']];
+const strategies = [['','Todas las estrategias'], ['Promoción residencial','Promoción residencial'], ['Cambio de uso','Cambio de uso'], ['Rehabilitación energética','Rehabilitación energética'], ['Reposicionamiento','Reposicionamiento'], ['Renta estabilizada','Renta estabilizada'], ['Desarrollo ligero','Desarrollo ligero']];
 const sorts = [['publishedAt','Publicación'], ['closingDate','Cierre'], ['fundingProgress','Progreso'], ['minimumInvestment','Ticket mínimo'], ['targetAmount','Capital objetivo']];
 const directions = [['desc','Descendente'], ['asc','Ascendente']];
 const pageSize = 6;
@@ -33,9 +33,9 @@ function readParams(searchParams: URLSearchParams): OpportunityListParams {
 
 function SelectField({ label, name, value, options, onChange }: { label: string; name: string; value: string; options: string[][]; onChange: (value: string) => void }) {
   return (
-    <label className="grid gap-2 text-sm font-bold text-textLight" htmlFor={name}>
+    <label className="grid gap-2 text-sm font-bold text-ink" htmlFor={name}>
       <span>{label}</span>
-      <select id={name} value={value} onChange={(event) => onChange(event.target.value)} className="min-h-11 border border-border bg-carbon px-3 py-2 text-textLight focus:outline-none focus-visible:ring-2 focus-visible:ring-mineralHover">
+      <select id={name} value={value} onChange={(event) => onChange(event.target.value)} className="min-h-11 rounded-lg border border-frost bg-white px-3 py-2 text-ink focus:outline-none focus-visible:ring-2 focus-visible:ring-electric">
         {options.map(([optionValue, optionLabel]) => <option key={optionValue} value={optionValue}>{optionLabel}</option>)}
       </select>
     </label>
@@ -45,7 +45,7 @@ function SelectField({ label, name, value, options, onChange }: { label: string;
 export function OpportunitiesCatalogPage() {
   const [searchParams, setSearchParams] = useSearchParams();
   useEffect(() => {
-    setPageMetadata('Catálogo público de oportunidades | MILLENNIALS CONSTRUYEN', 'Oportunidades inmobiliarias demo de MILLENNIALS CONSTRUYEN con filtros, métricas públicas y objetivos no garantizados.');
+    setPageMetadata('Catálogo de proyectos | MILLENNIALS CONSTRUYEN', 'Proyectos inmobiliarios de MILLENNIALS CONSTRUYEN con información pública preliminar.');
   }, []);
   const params = readParams(searchParams);
   const query = useQuery({
@@ -73,21 +73,21 @@ export function OpportunitiesCatalogPage() {
   const currentOffset = params.offset ?? 0;
 
   return (
-    <div className="min-h-screen bg-carbon text-textLight">
+    <div className="min-h-screen bg-lavender text-ink">
       <main id="contenido" className="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
-        <nav aria-label="breadcrumb" className="text-sm text-muted"><Link className="hover:text-mineral focus:outline-none focus-visible:ring-2 focus-visible:ring-mineralHover" to="/">Inicio</Link> <span aria-hidden="true">/</span> <span>Oportunidades</span></nav>
+        <nav aria-label="breadcrumb" className="text-sm text-charcoal/60"><Link className="hover:text-electric focus:outline-none focus-visible:ring-2 focus-visible:ring-electric" to="/">Inicio</Link> <span aria-hidden="true">/</span> <span>Oportunidades</span></nav>
         <section className="grid gap-6 py-10 lg:grid-cols-[0.9fr_1.1fr] lg:items-end">
           <div>
-            <p className="text-xs font-black uppercase tracking-[0.28em] text-mineral">Catálogo público</p>
-            <h1 className="mt-5 font-serif text-5xl leading-tight tracking-[-0.045em] sm:text-7xl">Catálogo público de oportunidades inmobiliarias demo.</h1>
+            <p className="text-xs font-black uppercase tracking-[0.28em] text-electric">Catálogo público</p>
+            <h1 className="mt-5 font-serif text-5xl leading-tight tracking-[-0.045em] sm:text-7xl">Catálogo de proyectos inmobiliarios.</h1>
           </div>
-          <div className="space-y-4 text-muted">
-            <p className="text-lg leading-8">Consulta oportunidades públicas servidas desde PostgreSQL. La información es ilustrativa, no incluye documentos privados ni permite invertir.</p>
-            <p className="border border-bronze/50 bg-bronze/10 p-4 text-sm leading-6 text-textLight">Los objetivos no están garantizados y no constituyen una oferta de inversión. El riesgo mostrado es una clasificación interna demo, no una valoración regulatoria oficial.</p>
+          <div className="space-y-4">
+            <p className="text-lg leading-8 text-charcoal/80">Consulta los proyectos públicos de MILLENNIALS CONSTRUYEN. La información es preliminar y no incluye documentos privados ni permite invertir.</p>
+            <p className="rounded-lg border border-frost bg-white p-4 text-sm leading-6 text-charcoal/80">La información publicada tiene carácter informativo y preliminar. Las operaciones en estudio pueden sufrir modificaciones y su publicación no constituye una oferta de inversión.</p>
           </div>
         </section>
 
-        <section aria-label="Filtros del catálogo" className="grid gap-4 border border-border bg-petroleum p-4 md:grid-cols-2 lg:grid-cols-4 xl:grid-cols-7">
+        <section aria-label="Filtros del catálogo" className="grid gap-4 rounded-lg border border-frost bg-white p-4 md:grid-cols-2 lg:grid-cols-4 xl:grid-cols-7">
           <SelectField label="Estado" name="status" value={params.status ?? ''} options={statuses} onChange={(value) => updateParam('status', value)} />
           <SelectField label="Ciudad" name="city" value={params.city ?? ''} options={cities} onChange={(value) => updateParam('city', value)} />
           <SelectField label="Tipo de activo" name="assetType" value={params.assetType ?? ''} options={assetTypes} onChange={(value) => updateParam('assetType', value)} />
@@ -98,17 +98,17 @@ export function OpportunitiesCatalogPage() {
         </section>
 
         <section className="mt-8" aria-live="polite">
-          {query.isLoading ? <div className="border border-border bg-petroleum p-8" role="status">Cargando catálogo público…</div> : null}
-          {query.isError ? <div className="border border-warning bg-petroleum p-8" role="alert">No hemos podido cargar el catálogo. No mostramos oportunidades falsas si la API no responde.</div> : null}
-          {query.data && query.data.data.length === 0 ? <div className="border border-border bg-petroleum p-8">No hay oportunidades públicas para estos filtros.</div> : null}
+          {query.isLoading ? <div className="rounded-lg border border-frost bg-white p-8 text-charcoal/60" role="status">Cargando catálogo público…</div> : null}
+          {query.isError ? <div className="rounded-lg border border-warning/40 bg-warning/5 p-8 text-charcoal/80" role="alert">No hemos podido cargar el catálogo. No mostramos proyectos falsos si la API no responde.</div> : null}
+          {query.data && query.data.data.length === 0 ? <div className="rounded-lg border border-frost bg-white p-8 text-charcoal/60">No hay proyectos públicos para estos filtros.</div> : null}
           {query.data && query.data.data.length > 0 ? (
             <>
-              <div className="mb-4 flex flex-wrap items-center justify-between gap-3 text-sm text-muted"><span>{query.data.pagination.total} oportunidades públicas</span><span>{query.isPlaceholderData ? 'Actualizando resultados…' : query.data.meta.disclaimer}</span></div>
+              <div className="mb-4 flex flex-wrap items-center justify-between gap-3 text-sm text-charcoal/60"><span>{query.data.pagination.total} proyectos públicos</span><span>{query.isPlaceholderData ? 'Actualizando resultados…' : query.data.meta.disclaimer}</span></div>
               <div className="grid gap-5">{query.data.data.map((opportunity) => <OpportunityCard key={opportunity.slug} opportunity={opportunity} />)}</div>
               <div className="mt-8 flex items-center justify-between gap-4">
-                <button type="button" disabled={currentOffset === 0} onClick={() => page(-pageSize)} className="border border-border px-4 py-3 text-xs font-black uppercase tracking-[0.16em] disabled:cursor-not-allowed disabled:opacity-45 focus:outline-none focus-visible:ring-2 focus-visible:ring-mineralHover">Anterior</button>
-                <span className="text-sm text-muted">Página {Math.floor(currentOffset / pageSize) + 1}</span>
-                <button type="button" disabled={!query.data.pagination.hasMore} onClick={() => page(pageSize)} className="border border-border px-4 py-3 text-xs font-black uppercase tracking-[0.16em] disabled:cursor-not-allowed disabled:opacity-45 focus:outline-none focus-visible:ring-2 focus-visible:ring-mineralHover">Siguiente</button>
+                <button type="button" disabled={currentOffset === 0} onClick={() => page(-pageSize)} className="rounded-lg border border-frost px-4 py-3 text-xs font-black uppercase tracking-[0.16em] text-ink disabled:cursor-not-allowed disabled:opacity-45 focus:outline-none focus-visible:ring-2 focus-visible:ring-electric">Anterior</button>
+                <span className="text-sm text-charcoal/60">Página {Math.floor(currentOffset / pageSize) + 1}</span>
+                <button type="button" disabled={!query.data.pagination.hasMore} onClick={() => page(pageSize)} className="rounded-lg border border-frost px-4 py-3 text-xs font-black uppercase tracking-[0.16em] text-ink disabled:cursor-not-allowed disabled:opacity-45 focus:outline-none focus-visible:ring-2 focus-visible:ring-electric">Siguiente</button>
               </div>
             </>
           ) : null}
