@@ -13,7 +13,7 @@ const navigation = [
 
 const activityBlocks = [
   { number: '01', title: 'Selección rigurosa', desc: 'Evaluamos cada oportunidad antes de incorporarla a nuestra cartera de proyectos.' },
-  { number: '02', title: 'Análisis integral', desc: 'Revisamos sus variables técnicas, comerciales, jurídicas y financieras.' },
+  { number: '02', title: 'Análisis integral', desc: 'Realizamos una due diligence técnica, jurídica, comercial y financiera para identificar los principales riesgos y validar los supuestos de cada proyecto.' },
   { number: '03', title: 'Estructuración de la operación', desc: 'Definimos la estrategia, el horizonte y el marco de inversión de cada proyecto.' },
   { number: '04', title: 'Documentación clara', desc: 'Ordenamos la información relevante para facilitar una evaluación comprensible.' },
   { number: '05', title: 'Seguimiento operativo', desc: 'Monitorizamos hitos, riesgos y posibles desviaciones durante la ejecución.' },
