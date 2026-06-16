@@ -298,20 +298,20 @@ function Hero() {
     <section className="relative overflow-hidden bg-lavender">
       <div className="relative mx-auto flex max-w-[1440px] flex-col justify-center px-8 py-16 sm:px-12 lg:px-12 lg:py-20">
         <p className="mb-5 max-w-max border border-electric/20 bg-electric/5 px-3 py-2 text-xs font-black uppercase tracking-[0.26em] text-electric">
-          Private Real Estate Investment Club
+          Club privado de inversión inmobiliaria
         </p>
-        <h1 className="max-w-4xl font-serif text-5xl leading-[0.95] tracking-[-0.04em] text-ink sm:text-6xl md:text-7xl lg:text-8xl">
-          Inversión inmobiliaria con disciplina, datos y seguimiento operativo.
+        <h1 className="max-w-[1100px] font-serif text-5xl leading-[0.95] tracking-[-0.04em] text-ink sm:text-6xl md:text-7xl lg:text-8xl">
+          Invertir bien empieza por seleccionar mejor.
         </h1>
         <p className="mt-5 max-w-2xl text-base leading-8 text-charcoal/80 sm:text-lg">
-          Una base digital para presentar oportunidades, ordenar documentación y preparar una futura zona privada de inversores sin promesas grandilocuentes.
+          Seleccionamos proyectos capaces de generar valor mediante una estrategia inmobiliaria definida y una ejecución disciplinada.
         </p>
-        <div className="mt-7 grid gap-3 sm:flex">
-          <a href="/#proyectos" className="group inline-flex items-center justify-center gap-2 bg-electric px-6 py-3.5 text-sm font-bold uppercase tracking-[0.12em] text-white transition hover:bg-electric-hover focus:outline-none focus-visible:ring-2 focus-visible:ring-electric focus-visible:ring-offset-4 focus-visible:ring-offset-lavender">
-            Ver proyectos <span aria-hidden="true" className="transition group-hover:translate-x-1">→</span>
+        <div className="mt-7 flex flex-col gap-3 sm:flex-row">
+          <a href="/#coinvierte" className="inline-flex items-center justify-center bg-electric px-6 py-3.5 text-sm font-bold tracking-[0.12em] text-white transition hover:bg-electric-hover focus:outline-none focus-visible:ring-2 focus-visible:ring-electric focus-visible:ring-offset-4 focus-visible:ring-offset-lavender">
+            Coinvierte con nosotros
           </a>
-          <a href="/#nosotros" className="inline-flex items-center justify-center border border-charcoal/15 px-6 py-3.5 text-sm font-bold uppercase tracking-[0.12em] text-ink transition hover:border-electric hover:text-electric focus:outline-none focus-visible:ring-2 focus-visible:ring-electric focus-visible:ring-offset-4 focus-visible:ring-offset-lavender">
-            Nosotros
+          <a href="/#proyectos" className="inline-flex items-center justify-center border border-charcoal/15 px-6 py-3.5 text-sm font-bold tracking-[0.12em] text-ink transition hover:border-electric hover:text-electric focus:outline-none focus-visible:ring-2 focus-visible:ring-electric focus-visible:ring-offset-4 focus-visible:ring-offset-lavender">
+            Ver proyectos
           </a>
         </div>
       </div>
