@@ -3,6 +3,7 @@ import type { Pool } from 'pg';
 import type { LeadRequest } from './schemas.js';
 
 export type CreateLeadInput = ReturnType<typeof import('./schemas.js').normalizeLeadInput> & { privacyPolicyVersion: string };
+export type CreateContactInput = ReturnType<typeof import('./contact-schema.js').normalizeContactInput>;
 
 export class LeadRepository {
   constructor(private readonly pool: Pool) {}
@@ -65,5 +66,38 @@ export class LeadRepository {
       }
     }
     throw new Error('Unable to create lead reference');
+  }
+
+  async createContact(input: CreateContactInput) {
+    const now = new Date();
+    for (let attempt = 0; attempt < 3; attempt += 1) {
+      const reference = this.publicReference();
+      try {
+        const result = await this.pool.query<{ public_reference: string; status: 'new'; created_at: Date }>(
+          `INSERT INTO leads (
+            public_reference, kind, first_name, email, phone, subject, message, source_path,
+            privacy_accepted_at, status
+          ) VALUES (
+            $1,'general_contact',$2,$3,$4,$5,$6,$7,$8,'new'
+          ) RETURNING public_reference, status::text, created_at`,
+          [
+            reference,
+            input.name,
+            input.email,
+            input.phone ?? null,
+            input.subject,
+            input.message,
+            '/contacto',
+            now
+          ]
+        );
+        const row = result.rows[0];
+        return { publicReference: row.public_reference, status: row.status, createdAt: row.created_at.toISOString() };
+      } catch (error: unknown) {
+        if ((error as { code?: string }).code === '23505' && attempt < 2) continue;
+        throw error;
+      }
+    }
+    throw new Error('Unable to create contact reference');
   }
 }

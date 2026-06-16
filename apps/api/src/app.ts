@@ -26,7 +26,7 @@ import { createProviders, type ProviderSet } from './providers/index.js';
 export type AppDependencies = {
   pool?: Pool;
   opportunities?: OpportunityRepository;
-  leads?: Pick<LeadRepository, 'create'>;
+  leads?: Pick<LeadRepository, 'create' | 'createContact'>;
   auth?: {
     repo: AuthRepository;
     emailTransport: EmailTransport;
@@ -123,6 +123,13 @@ export function buildApp(dependencies: AppDependencies = {}): FastifyInstance {
       const body = publicError('invalid_request', 'Los parámetros de la solicitud no son válidos.');
       request.log.warn({ errorId: body.error.id, issues: error.issues }, 'invalid request');
       return reply.status(400).send(errorResponseSchema.parse(body));
+    }
+
+    // Fastify body-too-large → 413 (before route handler, never reaches createContact)
+    if ((error as { code?: string }).code === 'FST_ERR_CTP_BODY_TOO_LARGE' || (error as { statusCode?: number }).statusCode === 413) {
+      const body = publicError('payload_too_large', 'El contenido de la solicitud es demasiado grande.');
+      request.log.warn({ errorId: body.error.id }, 'payload too large');
+      return reply.status(413).send(errorResponseSchema.parse(body));
     }
 
     const body = publicError('internal_error', 'No hemos podido completar la solicitud en este momento.');
@@ -230,6 +237,37 @@ export function buildApp(dependencies: AppDependencies = {}): FastifyInstance {
         return reply.status(400).send(errorResponseSchema.parse(body));
       }
       throw error;
+    }
+  });
+
+  // ── Contact form ──
+  app.post('/api/contact', async (request, reply) => {
+    const { contactRequestSchema, normalizeContactInput, contactCreatedResponseSchema } = await import('./leads/contact-schema.js');
+
+    const origin = request.ip || 'unknown';
+    const rate = leadRateLimiter.check(origin);
+    if (!rate.allowed) {
+      const body = publicError('rate_limited', 'Hemos recibido demasiadas solicitudes. Inténtalo más tarde.');
+      return reply.status(429).send(errorResponseSchema.parse(body));
+    }
+
+    const parsed = contactRequestSchema.parse(request.body);
+    const normalized = normalizeContactInput(parsed);
+    try {
+      const created = await leads.createContact(normalized);
+      request.log.info({ contactReference: created.publicReference }, 'contact request created');
+      return reply.status(201).send(contactCreatedResponseSchema.parse({
+        data: {
+          publicReference: created.publicReference,
+          status: 'new',
+          createdAt: created.createdAt,
+          message: 'Mensaje enviado. Gracias por contactar con nosotros. Revisaremos tu consulta y te responderemos lo antes posible.'
+        }
+      }));
+    } catch (error) {
+      request.log.error({ err: error }, 'contact creation failed');
+      const body = publicError('internal_error', 'No hemos podido enviar el mensaje. Revisa los datos e inténtalo de nuevo.');
+      return reply.status(500).send(errorResponseSchema.parse(body));
     }
   });
 

@@ -1,7 +1,6 @@
 import { FormEvent, useEffect, useRef, useState } from 'react';
-import { Link } from 'react-router';
 import { fetchPublicOpportunities, returnTypeLabel, riskLabel, statusLabel, type PublicOpportunity } from './opportunities/api';
-import { fetchLeadSettings, submitLead, type LeadCreated } from './leads/api';
+import { submitContact, type ContactCreated } from './leads/api';
 
 const navigation = [
   { label: 'Nosotros', href: '/#nosotros' },
@@ -58,10 +57,6 @@ const faqs = [
   {
     question: '¿La rentabilidad está garantizada?',
     answer: 'No. Toda inversión inmobiliaria implica riesgos y puede producir pérdidas. Las cifras, objetivos o escenarios que se presenten son estimaciones, no resultados garantizados.'
-  },
-  {
-    question: '¿Los proyectos mostrados actualmente son oportunidades reales?',
-    answer: 'Actualmente, los proyectos visibles tienen carácter demostrativo e ilustrativo. Se utilizan para mostrar cómo se presentará la información antes de incorporar oportunidades reales debidamente analizadas.'
   },
   {
     question: '¿Cómo puedo mostrar mi interés en coinvertir?',
@@ -597,32 +592,30 @@ function Faq() {
 
 // ── Contacto (integrated form) ──
 
+const CONTACT_SUBJECTS = ['Consulta general', 'Presentar un proyecto', 'Colaboración profesional', 'Otro'] as const;
+
 type Errors = Record<string, string>;
 
 function ContactSection() {
   const mountedAt = useRef(Date.now());
-  const errorRef = useRef<HTMLDivElement>(null);
+  const successRef = useRef<HTMLDivElement>(null);
   const [errors, setErrors] = useState<Errors>({});
-  const [result, setResult] = useState<LeadCreated | null>(null);
+  const [result, setResult] = useState<ContactCreated | null>(null);
   const [submitting, setSubmitting] = useState(false);
-  const settings = useRef<{ enabled: boolean } | null>(null);
-  const [disabled, setDisabled] = useState<string | null>(null);
-
-  useEffect(() => {
-    fetchLeadSettings(new AbortController().signal)
-      .then((s) => { settings.current = s; if (!s.enabled) setDisabled('Las solicitudes todavía no están habilitadas porque faltan datos legales reales del responsable o el canal de privacidad.'); })
-      .catch(() => setDisabled('Las solicitudes todavía no están habilitadas porque faltan datos legales reales del responsable o el canal de privacidad.'));
-  }, []);
-
-  useEffect(() => { if (Object.keys(errors).length) errorRef.current?.focus(); }, [errors]);
 
   function validate(form: HTMLFormElement): { data?: FormData; errors: Errors } {
     const data = new FormData(form);
     const next: Errors = {};
-    for (const name of ['firstName', 'lastName', 'email']) if (!String(data.get(name) ?? '').trim()) next[name] = 'Campo obligatorio.';
-    if (!String(data.get('email') ?? '').includes('@')) next.email = 'Introduce un email válido.';
-    if (String(data.get('message') ?? '').length > 2000) next.message = 'El mensaje no puede superar 2000 caracteres.';
-    if (data.get('privacyAccepted') !== 'on') next.privacyAccepted = 'Debes aceptar la información de privacidad para que podamos responder.';
+    if (!String(data.get('name') ?? '').trim()) next.name = 'Campo obligatorio.';
+    const email = String(data.get('email') ?? '').trim();
+    if (!email) next.email = 'Campo obligatorio.';
+    else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) next.email = 'Introduce un email válido.';
+    if (!data.get('subject')) next.subject = 'Selecciona un motivo.';
+    const message = String(data.get('message') ?? '').trim();
+    if (!message) next.message = 'Campo obligatorio.';
+    else if (message.length < 20) next.message = 'El mensaje debe tener al menos 20 caracteres.';
+    else if (message.length > 2000) next.message = 'El mensaje no puede superar 2000 caracteres.';
+    if (data.get('consent') !== 'on') next.consent = 'Debes aceptar el uso de tus datos para atender esta consulta.';
     if (String(data.get('website') ?? '').trim()) next.website = 'No se pudo procesar la solicitud.';
     return { data, errors: next };
   }
@@ -632,67 +625,100 @@ function ContactSection() {
     const form = event.currentTarget;
     const { data, errors: nextErrors } = validate(form);
     setErrors(nextErrors);
+    setResult(null);
     if (!data || Object.keys(nextErrors).length) return;
     setSubmitting(true);
     try {
-      const search = new URLSearchParams(window.location.search);
-      const created = await submitLead({
-        kind: 'general_contact',
-        firstName: String(data.get('firstName') ?? ''),
-        lastName: String(data.get('lastName') ?? ''),
-        email: String(data.get('email') ?? ''),
-        phone: String(data.get('phone') ?? '') || undefined,
-        countryCode: String(data.get('countryCode') ?? '') || undefined,
-        message: String(data.get('message') ?? '') || undefined,
-        sourcePath: window.location.pathname,
-        referrer: document.referrer || undefined,
-        utmSource: search.get('utm_source') ?? undefined,
-        utmMedium: search.get('utm_medium') ?? undefined,
-        utmCampaign: search.get('utm_campaign') ?? undefined,
-        privacyAccepted: true,
-        marketingOptIn: data.get('marketingOptIn') === 'on',
+      const created = await submitContact({
+        name: String(data.get('name') ?? '').trim(),
+        email: String(data.get('email') ?? '').trim(),
+        phone: String(data.get('phone') ?? '').trim() || undefined,
+        subject: String(data.get('subject') ?? '') as typeof CONTACT_SUBJECTS[number],
+        message: String(data.get('message') ?? '').trim(),
+        consent: true,
         submittedAfterMs: Date.now() - mountedAt.current,
         website: String(data.get('website') ?? '')
       });
       setResult(created);
       form.reset();
+      requestAnimationFrame(() => { successRef.current?.focus(); });
     } catch (error) {
-      const message = error instanceof Error && error.message === 'disabled'
-        ? 'La captación todavía no está habilitada. No hemos guardado la solicitud.'
-        : error instanceof Error && error.message === 'rate_limited'
-          ? 'Demasiados intentos. Inténtalo más tarde.'
-          : 'No hemos podido enviar la solicitud. Revisa los datos e inténtalo de nuevo.';
+      const message = error instanceof Error && error.message === 'rate_limited'
+        ? 'Demasiados intentos. Inténtalo más tarde.'
+        : 'No hemos podido enviar el mensaje. Revisa los datos e inténtalo de nuevo.';
       setErrors({ form: message });
     } finally { setSubmitting(false); }
   }
 
   return (
-    <section id="contacto" className="bg-lavender py-16 sm:py-24">
+    <section id="contacto" className="bg-lavender py-12 sm:py-20">
       <div className="mx-auto max-w-5xl px-4 sm:px-6 lg:px-8">
-        <div className="grid gap-8 lg:grid-cols-[0.9fr_1.1fr]">
+        <div className="grid gap-8 lg:grid-cols-[1fr_1.1fr]">
           <div>
             <p className="text-xs font-black uppercase tracking-[0.28em] text-electric">Contacto</p>
-            <h2 className="mt-5 font-serif text-4xl leading-tight tracking-[-0.03em] text-ink sm:text-6xl">
-              Contactar con MILLENNIALS CONSTRUYEN
+            <h2 className="mt-5 font-serif text-4xl leading-tight tracking-[-0.03em] text-ink sm:text-5xl">
+              Conversemos.
             </h2>
-            <p className="mt-5 text-lg leading-8 text-charcoal/80">
-              Usa este canal para consultas generales sobre la firma o la plataforma.
+            <p className="mt-5 leading-8 text-charcoal/80">
+              Para consultas generales, colaboraciones o propuestas inmobiliarias, envíanos un mensaje. Revisaremos tu solicitud y responderemos personalmente.
+            </p>
+            <p className="mt-4 text-sm leading-6 text-charcoal/60">
+              Para solicitar acceso como coinversor, utiliza la sección{' '}
+              <a href="/#coinvierte" className="font-semibold text-electric underline hover:text-electric-hover focus:outline-none focus-visible:ring-2 focus-visible:ring-electric">Coinvierte</a>.
             </p>
           </div>
-          <div className="rounded-lg border border-frost bg-white p-5">
-            {disabled ? <div role="status" className="border border-warning/40 bg-warning/5 p-4 text-sm font-bold text-charcoal/80">{disabled}</div> : null}
-            {Object.keys(errors).length ? <div ref={errorRef} tabIndex={-1} role="alert" className="mt-4 rounded-lg border border-warning/40 bg-warning/5 p-4"><p className="font-bold text-charcoal/80">Revisa el formulario</p><ul className="mt-2 list-disc pl-5 text-charcoal/80">{Object.entries(errors).map(([k, v]) => <li key={k}>{v}</li>)}</ul></div> : null}
-            {result ? <div role="status" className="mt-4 rounded-lg border border-frost bg-white p-4"><p className="font-bold text-ink">Solicitud recibida</p><p className="text-sm text-charcoal/80">Referencia pública: <strong>{result.publicReference}</strong></p><p className="text-sm text-charcoal/80">{result.message}</p></div> : null}
-            <form className="mt-5 grid gap-4" onSubmit={onSubmit} noValidate>
-              <div className="hidden" aria-hidden="true"><label>Website <input name="website" tabIndex={-1} autoComplete="off" /></label></div>
-              <label className="grid gap-1 text-sm font-bold text-ink">Nombre<input name="firstName" className="min-h-11 rounded-lg border border-frost px-3 py-2 text-ink focus:outline-none focus-visible:ring-2 focus-visible:ring-electric" autoComplete="given-name" disabled={Boolean(disabled) || submitting} /></label>
-              <label className="grid gap-1 text-sm font-bold text-ink">Apellidos<input name="lastName" className="min-h-11 rounded-lg border border-frost px-3 py-2 text-ink focus:outline-none focus-visible:ring-2 focus-visible:ring-electric" autoComplete="family-name" disabled={Boolean(disabled) || submitting} /></label>
-              <label className="grid gap-1 text-sm font-bold text-ink">Email<input name="email" type="email" className="min-h-11 rounded-lg border border-frost px-3 py-2 text-ink focus:outline-none focus-visible:ring-2 focus-visible:ring-electric" autoComplete="email" disabled={Boolean(disabled) || submitting} /></label>
-              <label className="grid gap-1 text-sm font-bold text-ink">Teléfono opcional<input name="phone" className="min-h-11 rounded-lg border border-frost px-3 py-2 text-ink focus:outline-none focus-visible:ring-2 focus-visible:ring-electric" autoComplete="tel" disabled={Boolean(disabled) || submitting} /></label>
-              <label className="grid gap-1 text-sm font-bold text-ink">Mensaje opcional<textarea name="message" rows={4} maxLength={2000} className="rounded-lg border border-frost px-3 py-2 text-ink focus:outline-none focus-visible:ring-2 focus-visible:ring-electric" disabled={Boolean(disabled) || submitting} /></label>
-              <label className="flex gap-3 text-sm text-charcoal/80"><input name="privacyAccepted" type="checkbox" disabled={Boolean(disabled) || submitting} /> <span>Acepto la <Link to="/privacidad" className="underline hover:text-electric">información de privacidad provisional</Link> para que MILLENNIALS CONSTRUYEN pueda responder.</span></label>
-              <label className="flex gap-3 text-sm text-charcoal/80"><input name="marketingOptIn" type="checkbox" disabled={Boolean(disabled) || submitting} /> <span>Acepto recibir comunicaciones comerciales futuras. Opcional y separado.</span></label>
-              <button type="submit" disabled={Boolean(disabled) || submitting} className="rounded-lg bg-electric px-5 py-4 text-sm font-black uppercase tracking-[0.16em] text-white transition hover:bg-electric-hover disabled:cursor-not-allowed disabled:opacity-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-electric">{submitting ? 'Enviando…' : 'Enviar consulta'}</button>
+          <div>
+            {Object.keys(errors).length ? (
+              <div role="alert" tabIndex={-1} className="mb-5 rounded-lg border border-warning/40 bg-warning/5 p-4">
+                <p className="font-bold text-charcoal/80">Revisa el formulario</p>
+                <ul className="mt-2 list-disc pl-5 text-sm text-charcoal/80">
+                  {Object.entries(errors).map(([k, v]) => <li key={k}>{v}</li>)}
+                </ul>
+              </div>
+            ) : null}
+            {result ? (
+              <div ref={successRef} role="status" tabIndex={-1} className="mb-5 rounded-lg border border-frost bg-white p-4">
+                <p className="font-bold text-ink">Mensaje enviado</p>
+                <p className="mt-1 text-sm leading-6 text-charcoal/80">{result.message}</p>
+              </div>
+            ) : null}
+            <form className="grid gap-4" onSubmit={onSubmit} noValidate>
+              <div className="hidden" aria-hidden="true">
+                <label>Website <input name="website" tabIndex={-1} autoComplete="off" /></label>
+              </div>
+              <label className="grid gap-1 text-sm font-bold text-ink">
+                Nombre <span className="font-normal text-charcoal/50">*</span>
+                <input name="name" className="min-h-[44px] rounded-lg border border-frost px-3 py-2 text-ink placeholder:text-charcoal/40 focus:outline-none focus-visible:ring-2 focus-visible:ring-electric" autoComplete="name" maxLength={100} disabled={submitting} required />
+              </label>
+              <label className="grid gap-1 text-sm font-bold text-ink">
+                Email <span className="font-normal text-charcoal/50">*</span>
+                <input name="email" type="email" className="min-h-[44px] rounded-lg border border-frost px-3 py-2 text-ink placeholder:text-charcoal/40 focus:outline-none focus-visible:ring-2 focus-visible:ring-electric" autoComplete="email" maxLength={254} disabled={submitting} required />
+              </label>
+              <label className="grid gap-1 text-sm font-bold text-ink">
+                Teléfono <span className="font-normal text-charcoal/50">(opcional)</span>
+                <input name="phone" className="min-h-[44px] rounded-lg border border-frost px-3 py-2 text-ink placeholder:text-charcoal/40 focus:outline-none focus-visible:ring-2 focus-visible:ring-electric" autoComplete="tel" maxLength={30} disabled={submitting} />
+              </label>
+              <label className="grid gap-1 text-sm font-bold text-ink">
+                Motivo <span className="font-normal text-charcoal/50">*</span>
+                <select name="subject" className="min-h-[44px] rounded-lg border border-frost px-3 py-2 text-ink focus:outline-none focus-visible:ring-2 focus-visible:ring-electric" disabled={submitting} required>
+                  <option value="">Selecciona una opción</option>
+                  {CONTACT_SUBJECTS.map((s) => <option key={s} value={s}>{s}</option>)}
+                </select>
+              </label>
+              <label className="grid gap-1 text-sm font-bold text-ink">
+                Mensaje <span className="font-normal text-charcoal/50">*</span>
+                <textarea name="message" rows={5} maxLength={2000} minLength={20} className="min-h-[120px] rounded-lg border border-frost px-3 py-2 text-ink placeholder:text-charcoal/40 focus:outline-none focus-visible:ring-2 focus-visible:ring-electric" disabled={submitting} required />
+              </label>
+              <label className="flex gap-3 text-sm leading-6 text-charcoal/80">
+                <input name="consent" type="checkbox" className="mt-0.5 flex-shrink-0" disabled={submitting} required />
+                <span>Acepto que los datos facilitados se utilicen exclusivamente para atender esta consulta.</span>
+              </label>
+              <p className="-mt-2 pl-7 text-xs leading-5 text-charcoal/50">
+                No utilizaremos estos datos para comunicaciones comerciales sin consentimiento adicional.
+              </p>
+              <button type="submit" disabled={submitting} className="rounded-lg bg-electric px-5 py-3.5 text-sm font-black uppercase tracking-[0.16em] text-white transition hover:bg-electric-hover disabled:cursor-not-allowed disabled:opacity-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-electric focus-visible:ring-offset-4 focus-visible:ring-offset-lavender">
+                {submitting ? 'Enviando…' : 'Enviar mensaje'}
+              </button>
             </form>
           </div>
         </div>
