@@ -75,7 +75,7 @@ export function OpportunitiesCatalogPage() {
   return (
     <div className="min-h-screen bg-lavender text-ink">
       <main id="contenido" className="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
-        <nav aria-label="breadcrumb" className="text-sm text-charcoal/60"><Link className="hover:text-electric focus:outline-none focus-visible:ring-2 focus-visible:ring-electric" to="/">Inicio</Link> <span aria-hidden="true">/</span> <span>Oportunidades</span></nav>
+        <nav aria-label="breadcrumb" className="text-sm text-charcoal/60"><Link className="hover:text-electric focus:outline-none focus-visible:ring-2 focus-visible:ring-electric" to="/">Inicio</Link> <span aria-hidden="true">/</span> <span>Proyectos</span></nav>
         <section className="grid gap-6 py-10 lg:grid-cols-[0.9fr_1.1fr] lg:items-end">
           <div>
             <p className="text-xs font-black uppercase tracking-[0.28em] text-electric">Catálogo público</p>

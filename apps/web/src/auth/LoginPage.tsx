@@ -103,10 +103,10 @@ export function LoginPage() {
             </p>
             <div className="mt-6 grid gap-3 sm:flex">
               <Link
-                to="/solicitar-acceso"
+                to="/coinvierte"
                 className="inline-flex items-center justify-center bg-mineral px-5 py-3 text-sm font-black uppercase tracking-[0.18em] text-textDark transition hover:bg-mineralHover focus:outline-none focus-visible:ring-2 focus-visible:ring-mineralHover focus-visible:ring-offset-4 focus-visible:ring-offset-carbon"
               >
-                Solicitar acceso
+                Coinvierte con nosotros
               </Link>
               <Link
                 to="/contacto"

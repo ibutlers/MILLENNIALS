@@ -55,8 +55,8 @@ export function AuthStatus() {
             Estamos preparando la zona privada. Si quieres que te avisemos, solicita acceso anticipado o contacta con nosotros.
           </p>
           <div className="mt-3 flex gap-3">
-            <Link to="/solicitar-acceso" className="text-xs font-bold uppercase tracking-[0.14em] text-mineral underline hover:text-mineralHover">
-              Solicitar acceso
+            <Link to="/coinvierte" className="text-xs font-bold uppercase tracking-[0.14em] text-mineral underline hover:text-mineralHover">
+              Coinvierte con nosotros
             </Link>
             <Link to="/contacto" className="text-xs font-bold uppercase tracking-[0.14em] text-muted underline hover:text-mineral">
               Contactar

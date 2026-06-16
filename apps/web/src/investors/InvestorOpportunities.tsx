@@ -102,7 +102,7 @@ export function InvestorOpportunities() {
                 <p className="mt-2 text-sm text-muted">{[opportunity.city, opportunity.district].filter(Boolean).join(' · ')}</p>
                 <p className="mt-3 line-clamp-2 text-sm leading-6 text-muted">{opportunity.shortDescription}</p>
                 <Link
-                  to={`/oportunidades/${opportunity.slug}`}
+                  to={`/proyectos/${opportunity.slug}`}
                   className="mt-4 inline-flex border border-border px-3 py-2 text-xs font-black uppercase tracking-[0.14em] text-textLight transition hover:border-mineral hover:text-mineral focus:outline-none focus-visible:ring-2 focus-visible:ring-mineralHover"
                 >
                   Ver detalle público

@@ -16,7 +16,7 @@ export function OpportunityDetailPage() {
     staleTime: 30_000
   });
 
-  const backHref = `/oportunidades${searchParams.toString() ? `?${searchParams.toString()}` : ''}`;
+  const backHref = `/proyectos${searchParams.toString() ? `?${searchParams.toString()}` : ''}`;
 
   useEffect(() => {
     if (query.data?.data) {
@@ -35,7 +35,7 @@ export function OpportunityDetailPage() {
           <p className="border border-warning/40 px-3 py-2 text-xs font-black uppercase tracking-[0.2em] text-warning">404</p>
           <h1 className="mt-6 font-serif text-5xl tracking-[-0.04em]">Proyecto no encontrado.</h1>
           <p className="mt-4 leading-8 text-charcoal/80">El proyecto solicitado no está publicado, no existe o no está disponible en el catálogo público.</p>
-          <Link to="/oportunidades" className="mt-8 inline-flex rounded-lg bg-electric px-5 py-4 text-sm font-black uppercase tracking-[0.16em] text-white transition hover:bg-electric-hover focus:outline-none focus-visible:ring-2 focus-visible:ring-electric">Volver al catálogo</Link>
+          <Link to="/proyectos" className="mt-8 inline-flex rounded-lg bg-electric px-5 py-4 text-sm font-black uppercase tracking-[0.16em] text-white transition hover:bg-electric-hover focus:outline-none focus-visible:ring-2 focus-visible:ring-electric">Volver a proyectos</Link>
         </div>
       </main>
     );
@@ -60,7 +60,7 @@ export function OpportunityDetailPage() {
           <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
             <nav aria-label="breadcrumb" className="text-sm text-charcoal/60">
               <Link to="/" className="hover:text-electric focus:outline-none focus-visible:ring-2 focus-visible:ring-electric">Inicio</Link> <span aria-hidden="true">/</span>{' '}
-              <Link to={backHref} className="hover:text-electric focus:outline-none focus-visible:ring-2 focus-visible:ring-electric">Oportunidades</Link> <span aria-hidden="true">/</span>{' '}
+              <Link to={backHref} className="hover:text-electric focus:outline-none focus-visible:ring-2 focus-visible:ring-electric">Proyectos</Link> <span aria-hidden="true">/</span>{' '}
               <span>{opportunity.title}</span>
             </nav>
             <div className="grid gap-8 py-8 lg:grid-cols-[0.9fr_1.1fr] lg:items-end">
@@ -136,8 +136,8 @@ export function OpportunityDetailPage() {
                 <h2 className="font-serif text-3xl tracking-[-0.035em]">Próximos pasos</h2>
                 <p className="mt-3 text-sm leading-6 text-charcoal/80">Solicita información o acceso futuro para recibir documentación cuando la zona privada esté disponible. No hay inversión ni formulario transaccional en este hito.</p>
                 <div className="mt-5 grid gap-3">
-                  <Link to={`/oportunidades/${opportunity.slug}/solicitar-informacion`} onMouseEnter={() => queryClient.prefetchQuery({ queryKey: ['opportunities', 'prefetch'], queryFn: ({ signal }) => fetch('/api/v1/opportunities?limit=3', { signal }).then((r) => r.json()) })} className="rounded-lg bg-electric px-5 py-4 text-center text-sm font-black uppercase tracking-[0.16em] text-white transition hover:bg-electric-hover focus:outline-none focus-visible:ring-2 focus-visible:ring-electric">Solicitar información</Link>
-                  <Link to="/solicitar-acceso" className="rounded-lg border border-frost px-5 py-4 text-center text-sm font-black uppercase tracking-[0.16em] text-ink transition hover:border-electric hover:text-electric focus:outline-none focus-visible:ring-2 focus-visible:ring-electric">Solicitar acceso</Link>
+                  <Link to={`/proyectos/${opportunity.slug}/solicitar-informacion`} onMouseEnter={() => queryClient.prefetchQuery({ queryKey: ['opportunities', 'prefetch'], queryFn: ({ signal }) => fetch('/api/v1/opportunities?limit=3', { signal }).then((r) => r.json()) })} className="rounded-lg bg-electric px-5 py-4 text-center text-sm font-black uppercase tracking-[0.16em] text-white transition hover:bg-electric-hover focus:outline-none focus-visible:ring-2 focus-visible:ring-electric">Solicitar información</Link>
+                  <Link to="/coinvierte" className="rounded-lg border border-frost px-5 py-4 text-center text-sm font-black uppercase tracking-[0.16em] text-ink transition hover:border-electric hover:text-electric focus:outline-none focus-visible:ring-2 focus-visible:ring-electric">Coinvierte con nosotros</Link>
                 </div>
               </section>
             </aside>

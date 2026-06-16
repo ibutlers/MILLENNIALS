@@ -48,7 +48,7 @@ export function FundingProgress({ value, dark = false }: { value: number; dark?:
 
 export function OpportunityCard({ opportunity, preserveSearch = true }: { opportunity: PublicOpportunity; preserveSearch?: boolean }) {
   const location = [opportunity.city, opportunity.district].filter(Boolean).join(' · ');
-  const detailHref = `/oportunidades/${opportunity.slug}${preserveSearch && typeof window !== 'undefined' ? window.location.search : ''}`;
+  const detailHref = `/proyectos/${opportunity.slug}${preserveSearch && typeof window !== 'undefined' ? window.location.search : ''}`;
   const showFinancials = (opportunity.targetAmount?.cents ?? 0) > 1;
   const progress = Math.max(0, Math.min(100, opportunity.fundingProgress));
   const showProgress = progress === 100 || (progress > 0 && (opportunity.committedAmount?.cents ?? 0) > 0);

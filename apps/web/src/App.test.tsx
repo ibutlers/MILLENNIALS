@@ -57,7 +57,7 @@ describe('MILLENNIALS CONSTRUYEN landing', () => {
     ).toBeInTheDocument();
     expect(screen.queryByText(/scaffold|entorno preparado/i)).not.toBeInTheDocument();
     expect(screen.getByRole('navigation', { name: /navegación principal/i })).toBeInTheDocument();
-    await screen.findByRole('article', { name: /oportunidad pública/i });
+    await screen.findByRole('article', { name: /proyecto:/i });
 
     const forbiddenClaims = /capital gestionado|rentabilidad histórica|proyectos ejecutados|oficinas internacionales|propiedades analizadas al mes|retorno histórico/i;
     expect(document.body).not.toHaveTextContent(forbiddenClaims);
@@ -67,7 +67,7 @@ describe('MILLENNIALS CONSTRUYEN landing', () => {
     render(<App />);
 
     expect(screen.getByRole('status')).toHaveTextContent(/cargando oportunidades públicas/i);
-    const opportunities = await screen.findAllByRole('article', { name: /oportunidad pública/i });
+    const opportunities = await screen.findAllByRole('article', { name: /proyecto:/i });
     expect(opportunities).toHaveLength(1);
 
     const card = opportunities[0];
@@ -76,7 +76,7 @@ describe('MILLENNIALS CONSTRUYEN landing', () => {
     expect(within(card).getByText('8,2%')).toBeInTheDocument();
     expect(within(card).getByText(/1\.250\.000\s*€/)).toBeInTheDocument();
     expect(within(card).getByText(/medio · no regulatorio/i)).toBeInTheDocument();
-    expect(within(card).getByRole('link', { name: /ver oportunidad/i })).toHaveAttribute('href', '/oportunidades/eixample-rehabilitacion-luminosa');
+    expect(within(card).getByRole('link', { name: /ver proyecto/i })).toHaveAttribute('href', '/proyectos/eixample-rehabilitacion-luminosa');
     expect(screen.getByText(/los objetivos no están garantizados/i)).toBeInTheDocument();
   });
 
@@ -86,7 +86,7 @@ describe('MILLENNIALS CONSTRUYEN landing', () => {
 
     await screen.findByRole('alert');
     expect(screen.getByText(/no mostramos datos falsos como si fueran reales/i)).toBeInTheDocument();
-    expect(screen.queryByRole('article', { name: /oportunidad pública/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole('article', { name: /proyecto:/i })).not.toBeInTheDocument();
   });
 
   it('shows an empty state when the API returns no public opportunities', async () => {
@@ -94,18 +94,18 @@ describe('MILLENNIALS CONSTRUYEN landing', () => {
     render(<App />);
 
     await screen.findByText(/no hay oportunidades públicas disponibles/i);
-    expect(screen.queryByRole('article', { name: /oportunidad pública/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole('article', { name: /proyecto:/i })).not.toBeInTheDocument();
   });
 
   it('presents corporate narrative, methodology and technology sections before opportunities', async () => {
     render(<App />);
-    await screen.findByRole('article', { name: /oportunidad pública/i });
+    await screen.findByRole('article', { name: /proyecto:/i });
 
     const mainText = screen.getByRole('main').textContent ?? '';
-    expect(mainText.indexOf('Tesis de inversión')).toBeGreaterThan(-1);
-    expect(mainText.indexOf('Metodología')).toBeGreaterThan(mainText.indexOf('Tesis de inversión'));
-    expect(mainText.indexOf('Tecnología y análisis')).toBeGreaterThan(mainText.indexOf('Metodología'));
-    expect(mainText.indexOf('Oportunidades actuales')).toBeGreaterThan(mainText.indexOf('Tecnología y análisis'));
+    expect(mainText.indexOf('Nuestra actividad')).toBeGreaterThan(-1);
+    expect(mainText.indexOf('Cómo trabajamos')).toBeGreaterThan(mainText.indexOf('Nuestra actividad'));
+    expect(mainText.indexOf('Tecnología y análisis')).toBeGreaterThan(mainText.indexOf('Cómo trabajamos'));
+    expect(mainText.indexOf('Proyectos destacados')).toBeGreaterThan(mainText.indexOf('Tecnología y análisis'));
     expect(screen.getAllByText(/documentación estructurada/i).length).toBeGreaterThan(0);
     expect(screen.getByText(/actualización de avance/i)).toBeInTheDocument();
   });
@@ -120,9 +120,7 @@ describe('MILLENNIALS CONSTRUYEN landing', () => {
     const dialog = screen.getByRole('dialog', { name: /menú de navegación/i });
     expect(dialog).toBeInTheDocument();
     expect(within(dialog).getByRole('button', { name: /cerrar menú/i })).toBeInTheDocument();
-    expect(within(dialog).getByRole('link', { name: /solicitar acceso/i })).toBeInTheDocument();
-    expect(within(dialog).getByRole('link', { name: /acceso inversores/i })).toBeInTheDocument();
-    expect(within(dialog).getByRole('button', { name: /idioma español seleccionado/i })).toBeInTheDocument();
+    expect(within(dialog).getByRole('link', { name: /coinvierte con nosotros/i })).toBeInTheDocument();
     expect(document.body.style.overflow).toBe('hidden');
 
     fireEvent.keyDown(document, { key: 'Escape' });

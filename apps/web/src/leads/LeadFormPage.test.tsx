@@ -4,9 +4,9 @@ import { MemoryRouter, Route, Routes } from 'react-router';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { LeadFormPage } from './LeadFormPage';
 
-function renderPage(path = '/solicitar-acceso', kind: 'access_request' | 'general_contact' | 'opportunity_inquiry' = 'access_request') {
+function renderPage(path = '/coinvierte', kind: 'access_request' | 'general_contact' | 'opportunity_inquiry' = 'access_request') {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } });
-  return render(<QueryClientProvider client={client}><MemoryRouter initialEntries={[path]}><Routes><Route path="/solicitar-acceso" element={<LeadFormPage kind={kind} />} /><Route path="/contacto" element={<LeadFormPage kind="general_contact" />} /></Routes></MemoryRouter></QueryClientProvider>);
+  return render(<QueryClientProvider client={client}><MemoryRouter initialEntries={[path]}><Routes><Route path="/coinvierte" element={<LeadFormPage kind={kind} />} /><Route path="/contacto" element={<LeadFormPage kind="general_contact" />} /></Routes></MemoryRouter></QueryClientProvider>);
 }
 
 function mockFetch(settingsEnabled: boolean, postOk = true) {

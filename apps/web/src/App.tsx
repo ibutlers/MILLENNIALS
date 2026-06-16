@@ -2,11 +2,11 @@ import { useEffect, useRef, useState } from 'react';
 import { fetchPublicOpportunities, returnTypeLabel, riskLabel, statusLabel, type PublicOpportunity } from './opportunities/api';
 
 const navigation = [
-  { label: 'Nosotros', href: '#firma' },
-  { label: 'Nuestra actividad', href: '#metodologia' },
-  { label: 'Proyectos', href: '/oportunidades' },
-  { label: 'FAQ', href: '#faq' },
-  { label: 'Contacto', href: '/contacto' }
+  { label: 'NOSOTROS', href: '/nosotros' },
+  { label: 'NUESTRA ACTIVIDAD', href: '/actividad' },
+  { label: 'PROYECTOS', href: '/proyectos' },
+  { label: 'FAQ', href: '/faq' },
+  { label: 'CONTACTO', href: '/contacto' }
 ];
 
 const processIndicators = [
@@ -21,7 +21,7 @@ const processIndicators = [
 const methodology = [
   {
     eyebrow: '01',
-    title: 'Tesis de inversión',
+    title: 'Nuestra actividad',
     text: 'Definimos ubicación, demanda, estado del activo, liquidez esperada y horizonte antes de presentar una oportunidad.'
   },
   {
@@ -135,7 +135,7 @@ function Header() {
             <button type="button" aria-label="Idioma español seleccionado" className="border border-frost px-3 py-2 text-xs font-black uppercase tracking-[0.18em] text-charcoal/60">
               ES / EN
             </button>
-            <a href="/solicitar-acceso" className="border border-frost px-4 py-2 text-xs font-black uppercase tracking-[0.16em] text-charcoal/80 transition hover:border-electric hover:text-electric focus:outline-none focus-visible:ring-2 focus-visible:ring-electric focus-visible:ring-offset-2 focus-visible:ring-offset-white">
+            <a href="/coinvierte" className="border border-frost px-4 py-2 text-xs font-black uppercase tracking-[0.16em] text-charcoal/80 transition hover:border-electric hover:text-electric focus:outline-none focus-visible:ring-2 focus-visible:ring-electric focus-visible:ring-offset-2 focus-visible:ring-offset-white">
               Coinvierte con nosotros
             </a>
           </div>
@@ -175,7 +175,7 @@ function Header() {
               ))}
             </nav>
             <div className="grid gap-4">
-              <a href="/solicitar-acceso" onClick={() => setIsOpen(false)} className="border border-electric bg-electric px-5 py-4 text-center text-sm font-black uppercase tracking-[0.18em] text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-electric">Coinvierte con nosotros</a>
+              <a href="/coinvierte" onClick={() => setIsOpen(false)} className="border border-electric bg-electric px-5 py-4 text-center text-sm font-black uppercase tracking-[0.18em] text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-electric">Coinvierte con nosotros</a>
             </div>
           </div>
         </div>
@@ -198,11 +198,11 @@ function Hero() {
           Una base digital para presentar oportunidades, ordenar documentación y preparar una futura zona privada de inversores sin promesas grandilocuentes.
         </p>
         <div className="mt-8 grid gap-3 sm:flex">
-          <a href="/oportunidades" className="group inline-flex items-center justify-center gap-3 bg-electric px-6 py-4 text-sm font-black uppercase tracking-[0.18em] text-white transition hover:bg-electric-hover focus:outline-none focus-visible:ring-2 focus-visible:ring-electric focus-visible:ring-offset-4 focus-visible:ring-offset-lavender">
-            Ver oportunidades demo <span aria-hidden="true" className="transition group-hover:translate-x-1">→</span>
+          <a href="/proyectos" className="group inline-flex items-center justify-center gap-3 bg-electric px-6 py-4 text-sm font-black uppercase tracking-[0.18em] text-white transition hover:bg-electric-hover focus:outline-none focus-visible:ring-2 focus-visible:ring-electric focus-visible:ring-offset-4 focus-visible:ring-offset-lavender">
+            Ver proyectos <span aria-hidden="true" className="transition group-hover:translate-x-1">→</span>
           </a>
-          <a href="#firma" className="inline-flex items-center justify-center border border-frost px-6 py-4 text-sm font-black uppercase tracking-[0.18em] text-ink transition hover:border-electric hover:text-electric focus:outline-none focus-visible:ring-2 focus-visible:ring-electric focus-visible:ring-offset-4 focus-visible:ring-offset-lavender">
-            Nuestra firma
+          <a href="/nosotros" className="inline-flex items-center justify-center border border-frost px-6 py-4 text-sm font-black uppercase tracking-[0.18em] text-ink transition hover:border-electric hover:text-electric focus:outline-none focus-visible:ring-2 focus-visible:ring-electric focus-visible:ring-offset-4 focus-visible:ring-offset-lavender">
+            Nosotros
           </a>
         </div>
       </div>
@@ -212,10 +212,10 @@ function Hero() {
 
 function FirmNarrative() {
   return (
-    <section id="firma" className="bg-white py-16 sm:py-24">
+    <section id="nosotros" className="bg-white py-16 sm:py-24">
       <div className="mx-auto grid max-w-7xl gap-10 px-4 sm:px-6 lg:grid-cols-[0.85fr_1.15fr] lg:px-8">
         <div>
-          <p className="text-xs font-black uppercase tracking-[0.28em] text-electric">Sobre la firma</p>
+          <p className="text-xs font-black uppercase tracking-[0.28em] text-electric">Nosotros</p>
           <h2 className="mt-5 font-serif text-4xl leading-tight tracking-[-0.03em] text-ink sm:text-6xl">
             Selección rigurosa antes que volumen.
           </h2>
@@ -235,11 +235,11 @@ function FirmNarrative() {
 
 function ProcessSection() {
   return (
-    <section id="tesis" className="bg-lavender py-16 sm:py-24">
+    <section id="actividad" className="bg-lavender py-16 sm:py-24">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <div className="grid gap-8 lg:grid-cols-[0.8fr_1.2fr]">
           <div>
-            <p className="text-xs font-black uppercase tracking-[0.28em] text-electric">Tesis de inversión</p>
+            <p className="text-xs font-black uppercase tracking-[0.28em] text-electric">Nuestra actividad</p>
             <h2 className="mt-5 font-serif text-4xl leading-tight tracking-[-0.03em] text-ink sm:text-6xl">
               Menos ruido, más trazabilidad.
             </h2>
@@ -260,10 +260,10 @@ function ProcessSection() {
 
 function Methodology() {
   return (
-    <section id="metodologia" className="bg-white py-16 sm:py-24">
+    <section id="como-trabajamos" className="bg-white py-16 sm:py-24">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <div className="max-w-3xl">
-          <p className="text-xs font-black uppercase tracking-[0.28em] text-electric">Metodología</p>
+          <p className="text-xs font-black uppercase tracking-[0.28em] text-electric">Cómo trabajamos</p>
           <h2 className="mt-5 font-serif text-4xl leading-tight tracking-[-0.03em] text-ink sm:text-6xl">
             Una arquitectura tecnológica visible desde el primer contacto.
           </h2>
@@ -324,7 +324,7 @@ function OpportunityCard({ opportunity }: { opportunity: PublicOpportunity }) {
             <div className="h-2 rounded-full bg-frost"><div className="h-2 rounded-full bg-electric" style={{ width: `${progress}%` }} /></div>
           </div>
         ) : null}
-        <a href={`/oportunidades/${opportunity.slug}`} className="mt-6 inline-flex rounded-lg border border-frost px-4 py-3 text-xs font-black uppercase tracking-[0.16em] text-ink transition hover:border-electric hover:text-electric focus:outline-none focus-visible:ring-2 focus-visible:ring-electric">Ver proyecto</a>
+        <a href={`/proyectos/${opportunity.slug}`} className="mt-6 inline-flex rounded-lg border border-frost px-4 py-3 text-xs font-black uppercase tracking-[0.16em] text-ink transition hover:border-electric hover:text-electric focus:outline-none focus-visible:ring-2 focus-visible:ring-electric">Ver proyecto</a>
       </div>
     </article>
   );
@@ -366,11 +366,11 @@ function Opportunities() {
   const opportunitiesState = usePublicOpportunities();
 
   return (
-    <section id="oportunidades" className="bg-lavender py-16 sm:py-24">
+    <section id="proyectos" className="bg-lavender py-16 sm:py-24">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <div className="grid gap-6 lg:grid-cols-[0.9fr_1.1fr] lg:items-end">
           <div>
-            <p className="text-xs font-black uppercase tracking-[0.28em] text-electric">Oportunidades actuales</p>
+            <p className="text-xs font-black uppercase tracking-[0.28em] text-electric">Proyectos destacados</p>
             <h2 className="mt-5 font-serif text-4xl leading-tight tracking-[-0.03em] text-ink sm:text-6xl">
               Información pública resumida desde PostgreSQL, sin exponer contenido privado.
             </h2>
@@ -429,16 +429,16 @@ function Faq() {
 
 function AccessCta() {
   return (
-    <section id="acceso" className="bg-electric py-16 text-white sm:py-24">
+    <section id="coinvierte" className="bg-electric py-16 text-white sm:py-24">
       <div className="mx-auto grid max-w-7xl gap-8 px-4 sm:px-6 lg:grid-cols-[1fr_auto] lg:items-center lg:px-8">
         <div>
-          <p className="text-xs font-black uppercase tracking-[0.28em] text-white/70">Acceso privado futuro</p>
+          <p className="text-xs font-black uppercase tracking-[0.28em] text-white/70">Coinvierte con nosotros</p>
           <h2 className="mt-5 font-serif text-4xl leading-tight tracking-[-0.03em] text-white sm:text-6xl">
             Preparado para documentación, hitos y seguimiento de inversores.
           </h2>
         </div>
         <div className="grid gap-3 sm:flex lg:grid">
-          <a href="/solicitar-acceso" className="bg-white px-6 py-4 text-center text-sm font-black uppercase tracking-[0.18em] text-electric transition hover:bg-frost focus:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-4 focus-visible:ring-offset-electric">Solicitar acceso</a>
+          <a href="/coinvierte" className="bg-white px-6 py-4 text-center text-sm font-black uppercase tracking-[0.18em] text-electric transition hover:bg-frost focus:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-4 focus-visible:ring-offset-electric">Coinvierte con nosotros</a>
           <a href="/contacto" className="border border-white/30 px-6 py-4 text-center text-sm font-black uppercase tracking-[0.18em] text-white transition hover:border-white hover:text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-4 focus-visible:ring-offset-electric">Contactar</a>
         </div>
       </div>

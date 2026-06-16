@@ -6,14 +6,14 @@ import { OpportunitiesCatalogPage } from './OpportunitiesCatalogPage';
 import { OpportunityDetailPage } from './OpportunityDetailPage';
 import { opportunitiesResponse, opportunityDetailResponse } from './test-fixtures';
 
-function renderWithProviders(path = '/oportunidades') {
+function renderWithProviders(path = '/proyectos') {
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false, staleTime: 0 } } });
   return render(
     <QueryClientProvider client={queryClient}>
       <MemoryRouter initialEntries={[path]}>
         <Routes>
-          <Route path="/oportunidades" element={<OpportunitiesCatalogPage />} />
-          <Route path="/oportunidades/:slug" element={<OpportunityDetailPage />} />
+          <Route path="/proyectos" element={<OpportunitiesCatalogPage />} />
+          <Route path="/proyectos/:slug" element={<OpportunityDetailPage />} />
         </Routes>
       </MemoryRouter>
     </QueryClientProvider>
@@ -33,10 +33,10 @@ describe('public opportunities catalog', () => {
 
   it('renders cards, badges, financial metrics, progress and disclaimer from the API', async () => {
     mockFetch(() => ({ body: opportunitiesResponse }));
-    renderWithProviders('/oportunidades');
+    renderWithProviders('/proyectos');
 
     expect(screen.getByRole('status')).toHaveTextContent(/cargando catálogo/i);
-    const cards = await screen.findAllByRole('article', { name: /oportunidad pública/i });
+    const cards = await screen.findAllByRole('article', { name: /proyecto público/i });
     expect(cards).toHaveLength(2);
     const card = cards[0];
     expect(within(card).getByRole('img', { name: /patio rehabilitado demo/i })).toHaveAttribute('loading', 'lazy');
@@ -53,13 +53,13 @@ describe('public opportunities catalog', () => {
     expect(within(card).getByText(/18 meses/i)).toBeInTheDocument();
     expect(within(card).getByText(/rentabilidad anual objetivo estimada/i)).toBeInTheDocument();
     expect(within(card).getByText(/cierre/i)).toBeInTheDocument();
-    expect(within(card).getByRole('link', { name: /ver oportunidad/i })).toHaveAttribute('href', '/oportunidades/eixample-rehabilitacion-luminosa');
+    expect(within(card).getByRole('link', { name: /ver proyecto/i })).toHaveAttribute('href', '/proyectos/eixample-rehabilitacion-luminosa');
     expect(screen.getAllByText(/objetivos no están garantizados/i).length).toBeGreaterThan(0);
   });
 
   it('syncs filters, sort and pagination with the URL and only sends allowed query params', async () => {
     mockFetch(() => ({ body: opportunitiesResponse }));
-    renderWithProviders('/oportunidades?city=Barcelona&riskLevel=medium&sort=fundingProgress&direction=desc&offset=6');
+    renderWithProviders('/proyectos?city=Barcelona&riskLevel=medium&sort=fundingProgress&direction=desc&offset=6');
     await screen.findByRole('heading', { name: /catálogo público/i });
 
     expect(screen.getByLabelText(/ciudad/i)).toHaveValue('Barcelona');
@@ -74,14 +74,14 @@ describe('public opportunities catalog', () => {
 
   it('shows error and empty states honestly without private opportunities', async () => {
     mockFetch(() => ({ ok: false, status: 503, body: { error: { code: 'temporary_unavailable' } } }));
-    renderWithProviders('/oportunidades');
+    renderWithProviders('/proyectos');
     expect(await screen.findByRole('alert')).toHaveTextContent(/no hemos podido cargar/i);
-    expect(screen.queryByRole('article', { name: /oportunidad pública/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole('article', { name: /proyecto público/i })).not.toBeInTheDocument();
 
     vi.unstubAllGlobals();
     mockFetch(() => ({ body: { ...opportunitiesResponse, data: [], pagination: { limit: 6, offset: 0, total: 0, hasMore: false } } }));
-    renderWithProviders('/oportunidades');
-    expect(await screen.findByText(/no hay oportunidades públicas/i)).toBeInTheDocument();
+    renderWithProviders('/proyectos');
+    expect(await screen.findByText(/no hay proyectos públicos/i)).toBeInTheDocument();
     expect(document.body).not.toHaveTextContent(/privada demo no pública/i);
   });
 });
@@ -91,7 +91,7 @@ describe('public opportunity detail', () => {
 
   it('renders a visual opportunity sheet without inventing absent private content', async () => {
     mockFetch(() => ({ body: opportunityDetailResponse }));
-    renderWithProviders('/oportunidades/eixample-rehabilitacion-luminosa');
+    renderWithProviders('/proyectos/eixample-rehabilitacion-luminosa');
 
     expect(await screen.findByRole('heading', { name: /rehabilitación luminosa en eixample/i })).toBeInTheDocument();
     expect(screen.getByRole('navigation', { name: /breadcrumb/i })).toBeInTheDocument();
@@ -108,15 +108,15 @@ describe('public opportunity detail', () => {
     expect(screen.getByRole('heading', { name: /hitos/i })).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: /media disponible/i })).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: /próximos pasos/i })).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: /solicitar información/i })).toHaveAttribute('href', '/oportunidades/eixample-rehabilitacion-luminosa/solicitar-informacion');
-    expect(screen.getByRole('link', { name: /solicitar acceso/i })).toHaveAttribute('href', '/solicitar-acceso');
+    expect(screen.getByRole('link', { name: /solicitar información/i })).toHaveAttribute('href', '/proyectos/eixample-rehabilitacion-luminosa/solicitar-informacion');
+    expect(screen.getByRole('link', { name: /coinvierte con nosotros/i })).toHaveAttribute('href', '/coinvierte');
     expect(document.body).not.toHaveTextContent(/invertir ahora|simulador|orden de inversión/i);
   });
 
   it('renders a safe not-found state for unknown slugs', async () => {
     mockFetch(() => ({ ok: false, status: 404, body: { error: { code: 'not_found' } } }));
-    renderWithProviders('/oportunidades/no-existe');
-    expect(await screen.findByRole('heading', { name: /oportunidad no encontrada/i })).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: /volver al catálogo/i })).toHaveAttribute('href', '/oportunidades');
+    renderWithProviders('/proyectos/no-existe');
+    expect(await screen.findByRole('heading', { name: /proyecto no encontrado/i })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: /volver a proyectos/i })).toHaveAttribute('href', '/proyectos');
   });
 });

@@ -8,8 +8,8 @@ import { fetchLeadSettings, submitLead, type LeadCreated, type LeadKind } from '
 type Errors = Record<string, string>;
 
 const labels = {
-  access_request: { title: 'Solicitar acceso a MILLENNIALS CONSTRUYEN', eyebrow: 'Acceso privado futuro', intro: 'Déjanos tus datos para valorar una futura invitación cuando la zona privada esté disponible.', cta: 'Enviar solicitud de acceso' },
-  opportunity_inquiry: { title: 'Solicitar información de oportunidad', eyebrow: 'Información pública', intro: 'Solicitar información no implica invertir ni reservar participación.', cta: 'Solicitar información' },
+  access_request: { title: 'Coinvierte con nosotros', eyebrow: 'Coinvierte con nosotros', intro: 'Déjanos tus datos para valorar una futura invitación cuando la zona privada esté disponible.', cta: 'Enviar solicitud de acceso' },
+  opportunity_inquiry: { title: 'Solicitar información del proyecto', eyebrow: 'Información pública', intro: 'Solicitar información no implica invertir ni reservar participación.', cta: 'Solicitar información' },
   general_contact: { title: 'Contactar con MILLENNIALS CONSTRUYEN', eyebrow: 'Contacto general', intro: 'Usa este canal para consultas generales sobre la firma o la plataforma.', cta: 'Enviar consulta' }
 };
 
