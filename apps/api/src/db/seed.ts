@@ -54,7 +54,7 @@ export const seedOpportunities: SeedOpportunity[] = [
     riskLevel: 'medium',
     closingDate: null,
     publishedAt: '2026-06-16T08:00:00Z',
-    image: { url: '/images/opportunity-urbano.webp', altText: 'Imagen provisional. Promoción residencial de nueve viviendas en la zona de Plaza América, Vigo' },
+    image: { url: '/images/plaza-america.jpg', altText: 'Fachada del edificio en Plaza América, Vigo' },
     highlights: [
       { label: 'Viviendas', value: '9 unidades' },
       { label: 'Ubicación', value: 'Travesía de la calle Coruña · Plaza América' },
