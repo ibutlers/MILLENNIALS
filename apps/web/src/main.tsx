@@ -9,6 +9,7 @@ import './styles.css';
 
 // ── Existing lazy pages ──
 const PlannedAccess = lazy(() => import('./PlannedAccess').then((module) => ({ default: module.PlannedAccess })));
+const PrivateAccessPage = lazy(() => import('./PrivateAccessPage').then((module) => ({ default: module.PrivateAccessPage })));
 const OpportunityDetailPage = lazy(() => import('./opportunities/OpportunityDetailPage').then((module) => ({ default: module.OpportunityDetailPage })));
 const LeadFormPage = lazy(() => import('./leads/LeadFormPage').then((module) => ({ default: module.LeadFormPage })));
 const PrivacyPage = lazy(() => import('./leads/PrivacyPage').then((module) => ({ default: module.PrivacyPage })));
@@ -85,7 +86,7 @@ const router = createBrowserRouter([
   { path: '/solicitar-acceso', loader: redirectTo('/coinvierte'), element: null as unknown as React.ReactNode },
 
   // ── Auth routes ──
-  { path: '/acceso', element: lazyPage(<LoginPage />) },
+  { path: '/acceso', element: lazyPage(<PrivateAccessPage />) },
   { path: '/registro', element: lazyPage(<RegisterPage />) },
   { path: '/verificar-email', element: lazyPage(<VerifyEmailPage />) },
   { path: '/recuperar-acceso', element: lazyPage(<RecoverAccessPage />) },
