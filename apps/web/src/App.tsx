@@ -431,7 +431,7 @@ function OpportunityCard({ opportunity }: { opportunity: PublicOpportunity }) {
         ) : (
           <div className="h-full w-full" role="img" aria-label="Imagen pendiente de publicar" />
         )}
-        <span className="absolute bottom-2 right-2 bg-ink/50 px-2 py-0.5 text-[0.58rem] font-medium uppercase tracking-[0.12em] text-white/80 backdrop-blur-sm">Imagen provisional</span>
+        {!opportunity.primaryImage ? <span className="absolute bottom-2 right-2 bg-ink/50 px-2 py-0.5 text-[0.58rem] font-medium uppercase tracking-[0.12em] text-white/80 backdrop-blur-sm">IMAGEN PROVISIONAL</span> : null}
       </div>
       <div className="flex flex-1 flex-col p-5 sm:p-6">
         <div className="flex flex-wrap items-center gap-1.5">
