@@ -40,16 +40,32 @@ const methodology = [
 
 const faqs = [
   {
-    question: '¿Qué publica MILLENNIALS CONSTRUYEN en abierto?',
-    answer: 'Información resumida, naturaleza ilustrativa de oportunidades demo y criterios de análisis. La documentación privada llegará en una zona segura.'
+    question: '¿Qué es MILLENNIALS CONSTRUYEN?',
+    answer: 'Es un club privado de coinversión inmobiliaria que selecciona, analiza y estructura oportunidades con una estrategia definida y un seguimiento activo de su ejecución.'
   },
   {
-    question: '¿Las cifras de oportunidades son reales?',
-    answer: 'No. En este hito son datos demo marcados como ilustrativos para validar el diseño antes de conectar datos reales.'
+    question: '¿Cómo se accede al club?',
+    answer: 'El acceso no es automático. Cada solicitud se revisa para conocer el perfil, los intereses y la adecuación del potencial coinversor. La incorporación está sujeta a invitación o validación previa.'
   },
   {
-    question: '¿Qué se construirá después?',
-    answer: 'Modelo de datos, API de catálogo, detalle de oportunidad, captación de leads y, más adelante, acceso privado para inversores.'
+    question: '¿Cómo se seleccionan los proyectos?',
+    answer: 'Analizamos cada oportunidad desde una perspectiva técnica, jurídica, comercial y financiera. Solo avanzamos con aquellos proyectos que superan nuestros criterios de selección y presentan una estrategia comprensible.'
+  },
+  {
+    question: '¿Qué es la due diligence de un proyecto?',
+    answer: 'Es una revisión previa destinada a contrastar la información disponible, validar los principales supuestos e identificar riesgos. La due diligence reduce la incertidumbre, pero no elimina los riesgos propios de una inversión inmobiliaria.'
+  },
+  {
+    question: '¿La rentabilidad está garantizada?',
+    answer: 'No. Toda inversión inmobiliaria implica riesgos y puede producir pérdidas. Las cifras, objetivos o escenarios que se presenten son estimaciones, no resultados garantizados.'
+  },
+  {
+    question: '¿Los proyectos mostrados actualmente son oportunidades reales?',
+    answer: 'Actualmente, los proyectos visibles tienen carácter demostrativo e ilustrativo. Se utilizan para mostrar cómo se presentará la información antes de incorporar oportunidades reales debidamente analizadas.'
+  },
+  {
+    question: '¿Cómo puedo mostrar mi interés en coinvertir?',
+    answer: 'Puedes completar la solicitud de la sección Coinvierte. Revisaremos la información facilitada y, si existe encaje, contactaremos contigo para explicarte los siguientes pasos. Enviar la solicitud no implica ningún compromiso de inversión.'
   }
 ];
 
@@ -540,21 +556,39 @@ function ProjectsSection() {
 // ── FAQ ──
 
 function Faq() {
+  const [openIndex, setOpenIndex] = useState<number | null>(0);
+
   return (
-    <section id="faq" className="bg-white py-16 sm:py-24">
-      <div className="mx-auto max-w-5xl px-4 sm:px-6 lg:px-8">
+    <section id="faq" className="bg-white py-12 sm:py-20">
+      <div className="mx-auto max-w-[880px] px-4 sm:px-6">
         <p className="text-xs font-black uppercase tracking-[0.28em] text-electric">FAQ</p>
         <h2 className="mt-5 font-serif text-4xl tracking-[-0.03em] text-ink sm:text-6xl">Preguntas frecuentes</h2>
-        <div className="mt-10 divide-y divide-frost border-y border-frost">
-          {faqs.map((item) => (
-            <details key={item.question} className="group py-6">
-              <summary className="flex cursor-pointer list-none items-center justify-between gap-6 text-xl font-semibold text-ink focus:outline-none focus-visible:ring-2 focus-visible:ring-electric">
-                {item.question}
-                <span aria-hidden="true" className="text-3xl text-electric transition group-open:rotate-45">+</span>
-              </summary>
-              <p className="mt-4 max-w-3xl leading-8 text-charcoal/80">{item.answer}</p>
-            </details>
-          ))}
+        <div className="mt-8 divide-y divide-frost border-y border-frost">
+          {faqs.map((item, i) => {
+            const isOpen = openIndex === i;
+            return (
+              <div key={item.question}>
+                <h3>
+                  <button
+                    type="button"
+                    aria-expanded={isOpen}
+                    className="flex w-full items-center justify-between gap-4 py-4 text-left text-lg font-semibold text-ink transition hover:text-electric focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-electric"
+                    onClick={() => setOpenIndex(isOpen ? null : i)}
+                  >
+                    {item.question}
+                    <span aria-hidden="true" className="flex-shrink-0 text-xl text-electric/70 transition-transform" style={{ transform: isOpen ? 'rotate(45deg)' : 'rotate(0deg)' }}>
+                      +
+                    </span>
+                  </button>
+                </h3>
+                {isOpen ? (
+                  <div className="pb-5 pr-10 leading-7 text-charcoal/70">
+                    {item.answer}
+                  </div>
+                ) : null}
+              </div>
+            );
+          })}
         </div>
       </div>
     </section>
