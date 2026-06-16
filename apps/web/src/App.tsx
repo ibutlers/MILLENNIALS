@@ -211,7 +211,7 @@ function Header() {
         >
           Saltar al contenido
         </a>
-        <div className="mx-auto flex h-24 max-w-[1440px] items-center px-8 lg:px-12">
+        <div className="mx-auto flex h-24 max-w-[1440px] items-center px-6">
           {/* Brand */}
           <a href="/" className="flex-shrink-0" style={{ maxWidth: 'min(280px, 25%)' }}>
             <span className="flex items-center gap-3 focus:outline-none focus-visible:ring-2 focus-visible:ring-electric focus-visible:ring-offset-2">
@@ -244,7 +244,7 @@ function Header() {
           </nav>
 
           {/* Right: Lang + CTA */}
-          <div className="hidden lg:flex flex-shrink-0 items-center gap-6">
+          <div className="hidden lg:flex items-center gap-6">
             <button type="button" aria-label="Idioma español seleccionado" className="text-[12px] font-semibold uppercase tracking-[0.10em] text-charcoal/55 hover:text-electric transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-electric">
               <span className="text-electric font-bold">ES</span> · EN
             </button>
