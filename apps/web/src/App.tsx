@@ -417,26 +417,26 @@ function OpportunityCard({ opportunity }: { opportunity: PublicOpportunity }) {
   const isFunded = progress === 100 && showProgress;
 
   return (
-    <article aria-label={`Proyecto: ${opportunity.title}`} className="overflow-hidden rounded-lg border border-frost bg-white">
-      <div className="relative">
+    <article className="group relative flex flex-col overflow-hidden rounded-lg border border-frost bg-white transition hover:border-electric/30 focus-within:border-electric/30">
+      <div className="relative aspect-[4/3] overflow-hidden bg-electric/5">
         {opportunity.primaryImage ? (
-          <img src={opportunity.primaryImage.url} alt={opportunity.primaryImage.altText} width="900" height="600" loading="lazy" className="h-52 w-full object-cover" />
+          <img src={opportunity.primaryImage.url} alt={opportunity.primaryImage.altText} width="900" height="675" loading="lazy" className="h-full w-full object-cover transition group-hover:scale-[1.03]" />
         ) : (
-          <div className="h-52 w-full bg-electric/5" role="img" aria-label="Imagen pendiente de publicar" />
+          <div className="h-full w-full" role="img" aria-label="Imagen pendiente de publicar" />
         )}
-        <span className="absolute bottom-2 right-2 border border-white/30 bg-ink/60 px-2 py-0.5 text-[0.60rem] font-medium uppercase tracking-[0.14em] text-white backdrop-blur-sm">Imagen provisional</span>
+        <span className="absolute bottom-2 right-2 bg-ink/50 px-2 py-0.5 text-[0.58rem] font-medium uppercase tracking-[0.12em] text-white/80 backdrop-blur-sm">Imagen provisional</span>
       </div>
-      <div className="p-5 sm:p-6">
-        <div className="flex flex-wrap items-center gap-2">
-          <span className="border border-electric/30 px-2.5 py-1 text-[0.68rem] font-black uppercase tracking-[0.18em] text-electric">{statusLabel(opportunity.status)}</span>
-          {isFunded ? <span className="border border-electric/30 px-2.5 py-1 text-[0.68rem] font-black uppercase tracking-[0.18em] text-electric">Financiación cerrada</span> : null}
-          {opportunity.strategy === 'Cambio de uso' ? <span className="border border-frost px-2.5 py-1 text-[0.68rem] font-bold uppercase tracking-[0.18em] text-charcoal/60">Cambio de uso</span> : null}
+      <div className="flex flex-1 flex-col p-5 sm:p-6">
+        <div className="flex flex-wrap items-center gap-1.5">
+          <span className="border border-electric/25 px-2 py-0.5 text-[0.62rem] font-black uppercase tracking-[0.16em] text-electric">{statusLabel(opportunity.status)}</span>
+          {isFunded ? <span className="border border-electric/25 px-2 py-0.5 text-[0.62rem] font-black uppercase tracking-[0.16em] text-electric">Financiación cerrada</span> : null}
+          {opportunity.strategy === 'Cambio de uso' ? <span className="border border-frost px-2 py-0.5 text-[0.62rem] font-semibold uppercase tracking-[0.14em] text-charcoal/50">Cambio de uso</span> : null}
         </div>
-        <h3 className="mt-5 font-serif text-3xl leading-tight tracking-[-0.03em] text-ink">{opportunity.title}</h3>
-        <p className="mt-2 text-sm font-semibold uppercase tracking-[0.18em] text-charcoal/60">{location}</p>
-        <p className="mt-4 leading-7 text-charcoal/80">{opportunity.shortDescription}</p>
+        <h3 className="mt-4 font-serif text-2xl leading-tight tracking-[-0.02em] text-ink line-clamp-3">{opportunity.title}</h3>
+        <p className="mt-1.5 text-sm font-semibold uppercase tracking-[0.16em] text-charcoal/50">{location}</p>
+        <p className="mt-3 leading-7 text-charcoal/70 line-clamp-4">{opportunity.shortDescription}</p>
         {showFinancials ? (
-          <dl className="mt-6 grid grid-cols-2 gap-px overflow-hidden rounded-lg border border-frost bg-frost text-sm">
+          <dl className="mt-5 grid grid-cols-2 gap-px overflow-hidden rounded-lg border border-frost bg-frost text-sm">
             <div className="bg-white p-3"><dt className="text-charcoal/60">{returnTypeLabel(opportunity.targetReturnType)}</dt><dd className="mt-1 font-serif text-2xl text-ink">{opportunity.targetReturn.formatted ?? '—'}</dd></div>
             <div className="bg-white p-3"><dt className="text-charcoal/60">Plazo estimado</dt><dd className="mt-1 font-semibold text-ink">{opportunity.estimatedTermMonths} meses</dd></div>
             <div className="bg-white p-3"><dt className="text-charcoal/60">Ticket mínimo</dt><dd className="mt-1 font-semibold text-ink">{opportunity.minimumInvestment?.formatted ?? '—'}</dd></div>
@@ -446,13 +446,20 @@ function OpportunityCard({ opportunity }: { opportunity: PublicOpportunity }) {
           </dl>
         ) : null}
         {showProgress ? (
-          <div className="mt-6">
-            <div className="mb-2 flex justify-between text-xs font-black uppercase tracking-[0.18em] text-charcoal/60"><span>Financiación</span><span>Capital cubierto · {progress}%</span></div>
-            <div className="h-2 rounded-full bg-frost"><div className="h-2 rounded-full bg-electric" style={{ width: `${progress}%` }} /></div>
+          <div className="mt-5">
+            <div className="mb-2 flex justify-between text-xs font-black uppercase tracking-[0.16em] text-charcoal/50"><span>Financiación</span><span>Capital cubierto · {progress}%</span></div>
+            <div className="h-1.5 rounded-full bg-frost"><div className="h-1.5 rounded-full bg-electric" style={{ width: `${progress}%` }} /></div>
           </div>
         ) : null}
-        <a href={`/proyectos/${opportunity.slug}`} className="mt-6 inline-flex rounded-lg border border-frost px-4 py-3 text-xs font-black uppercase tracking-[0.16em] text-ink transition hover:border-electric hover:text-electric focus:outline-none focus-visible:ring-2 focus-visible:ring-electric">Ver proyecto</a>
+        <div className="mt-auto pt-5">
+          <a href={`/proyectos/${opportunity.slug}`} className="inline-flex items-center gap-1 text-xs font-black uppercase tracking-[0.14em] text-ink transition group-hover:text-electric focus:outline-none">
+            Ver proyecto <span aria-hidden="true">→</span>
+          </a>
+        </div>
       </div>
+      <a href={`/proyectos/${opportunity.slug}`} className="absolute inset-0 z-10" aria-label={`Ver proyecto: ${opportunity.title}`}>
+        <span className="sr-only">Ver proyecto: {opportunity.title}</span>
+      </a>
     </article>
   );
 }
@@ -495,15 +502,13 @@ function ProjectsSection() {
   return (
     <section id="proyectos" className="bg-lavender py-16 sm:py-24">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-        <div className="grid gap-6 lg:grid-cols-[0.9fr_1.1fr] lg:items-end">
-          <div>
-            <p className="text-xs font-black uppercase tracking-[0.28em] text-electric">Proyectos destacados</p>
-            <h2 className="mt-5 font-serif text-4xl leading-tight tracking-[-0.03em] text-ink sm:text-6xl">
-              Información pública resumida desde PostgreSQL, sin exponer contenido privado.
-            </h2>
-          </div>
-          <p className="leading-8 text-charcoal/80">
-            Las oportunidades proceden de la API pública de MILLENNIALS CONSTRUYEN. Los objetivos son estimaciones no garantizadas y no representan una oferta pública ni resultados pasados.
+        <div className="max-w-3xl">
+          <p className="text-xs font-black uppercase tracking-[0.28em] text-electric">Proyectos seleccionados</p>
+          <h2 className="mt-5 font-serif text-4xl leading-tight tracking-[-0.03em] text-ink sm:text-6xl">
+            Proyectos con una estrategia clara desde el inicio.
+          </h2>
+          <p className="mt-5 max-w-prose leading-8 text-charcoal/80">
+            Presentamos una selección de oportunidades inmobiliarias analizadas y estructuradas para comprender su situación, su estrategia y sus principales riesgos.
           </p>
         </div>
 
@@ -512,19 +517,19 @@ function ProjectsSection() {
         ) : null}
 
         {state.status === 'error' ? (
-          <div className="mt-10 rounded-lg border border-warning/40 bg-warning/5 p-8 text-charcoal/80" role="alert">No hemos podido cargar los proyectos públicos. La API no está disponible temporalmente; no mostramos datos falsos como si fueran reales.</div>
+          <div className="mt-10 rounded-lg border border-warning/40 bg-warning/5 p-8 text-charcoal/80" role="alert">No hemos podido cargar los proyectos en este momento. No mostramos datos falsos como si fueran reales.</div>
         ) : null}
 
         {state.status === 'empty' ? (
-          <div className="mt-10 rounded-lg border border-frost bg-white p-8 text-charcoal/60">No hay proyectos públicos disponibles en este momento.</div>
+          <div className="mt-10 rounded-lg border border-frost bg-white p-8 text-charcoal/60">No hay proyectos disponibles en este momento.</div>
         ) : null}
 
         {state.status === 'success' ? (
           <>
-            <div className="mt-10 grid gap-5 lg:grid-cols-3">
+            <div className="mt-10 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
               {state.data.map((opportunity) => <OpportunityCard key={opportunity.slug} opportunity={opportunity} />)}
             </div>
-            <p className="mt-6 text-sm leading-7 text-charcoal/60">{state.disclaimer}</p>
+            <p className="mt-8 text-sm leading-7 text-charcoal/50 max-w-3xl">{state.disclaimer}</p>
           </>
         ) : null}
       </div>
