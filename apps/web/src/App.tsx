@@ -23,18 +23,18 @@ const activityBlocks = [
 const methodology = [
   {
     eyebrow: '01',
-    title: 'Nuestra actividad',
-    text: 'Definimos ubicación, demanda, estado del activo, liquidez esperada y horizonte antes de presentar una oportunidad.'
+    title: 'Analizamos la oportunidad',
+    text: 'Estudiamos la ubicación, la demanda, el activo, los costes, los riesgos y el escenario de salida antes de avanzar.'
   },
   {
     eyebrow: '02',
-    title: 'Metodología',
-    text: 'Ordenamos documentación, supuestos y riesgos para que cada decisión pueda revisarse con trazabilidad.'
+    title: 'Estructuramos la inversión',
+    text: 'Definimos la estrategia, el horizonte, la documentación y las condiciones necesarias para comprender cada operación.'
   },
   {
     eyebrow: '03',
-    title: 'Tecnología y análisis',
-    text: 'La capa digital prepara datos, estados, hitos y comunicación para una futura zona privada de inversores.'
+    title: 'Acompañamos la ejecución',
+    text: 'Seguimos los hitos, las posibles desviaciones y la evolución del proyecto, comunicando sus avances de forma periódica.'
   }
 ];
 
@@ -387,15 +387,18 @@ function Methodology() {
         <div className="max-w-3xl">
           <p className="text-xs font-black uppercase tracking-[0.28em] text-electric">Cómo trabajamos</p>
           <h2 className="mt-5 font-serif text-4xl leading-tight tracking-[-0.03em] text-ink sm:text-6xl">
-            Una arquitectura tecnológica visible desde el primer contacto.
+            De la oportunidad al seguimiento.
           </h2>
+          <p className="mt-5 max-w-prose leading-8 text-charcoal/80">
+            Aplicamos un proceso claro para analizar cada proyecto, estructurar la inversión y acompañar su ejecución.
+          </p>
         </div>
         <div className="mt-10 grid gap-px overflow-hidden rounded-lg border border-frost bg-frost lg:grid-cols-3">
           {methodology.map((item) => (
-            <article key={item.title} className="bg-white p-6 sm:p-8">
-              <p className="text-sm font-black uppercase tracking-[0.24em] text-electric">{item.eyebrow}</p>
-              <h3 className="mt-8 font-serif text-3xl tracking-[-0.03em] text-ink">{item.title}</h3>
-              <p className="mt-5 leading-8 text-charcoal/80">{item.text}</p>
+            <article key={item.title} className="flex flex-col bg-white p-6 sm:p-7">
+              <p className="text-sm font-black tracking-[0.16em] text-electric">{item.eyebrow}</p>
+              <h3 className="mt-3 font-serif text-2xl tracking-[-0.02em] text-ink">{item.title}</h3>
+              <p className="mt-2 leading-7 text-charcoal/70">{item.text}</p>
             </article>
           ))}
         </div>
