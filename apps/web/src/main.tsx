@@ -9,9 +9,6 @@ import './styles.css';
 
 // ── Existing lazy pages ──
 const PlannedAccess = lazy(() => import('./PlannedAccess').then((module) => ({ default: module.PlannedAccess })));
-const NosotrosPage = lazy(() => import('./NosotrosPage').then((module) => ({ default: module.NosotrosPage })));
-const ActividadPage = lazy(() => import('./ActividadPage').then((module) => ({ default: module.ActividadPage })));
-const OpportunitiesCatalogPage = lazy(() => import('./opportunities/OpportunitiesCatalogPage').then((module) => ({ default: module.OpportunitiesCatalogPage })));
 const OpportunityDetailPage = lazy(() => import('./opportunities/OpportunityDetailPage').then((module) => ({ default: module.OpportunityDetailPage })));
 const LeadFormPage = lazy(() => import('./leads/LeadFormPage').then((module) => ({ default: module.LeadFormPage })));
 const PrivacyPage = lazy(() => import('./leads/PrivacyPage').then((module) => ({ default: module.PrivacyPage })));
@@ -53,29 +50,39 @@ const queryClient = new QueryClient();
 function PageLoader() { return <main className="min-h-screen bg-carbon p-8 text-textLight" role="status">Cargando página…</main>; }
 function lazyPage(element: React.ReactNode) { return <Suspense fallback={<PageLoader />}>{element}</Suspense>; }
 
-// Onboarding routes still go to PlannedAccess
+// Helper: redirect preserving search + hash
+function redirectTo(path: string) {
+  return ({ request }: { request: Request }) => {
+    const url = new URL(request.url);
+    return Response.redirect(new URL(`${path}${url.search}${url.hash}`, url.origin), 301);
+  };
+}
+
 const plannedAccessRoutes = ['/onboarding', '/onboarding/perfil', '/onboarding/elegibilidad', '/onboarding/identidad', '/onboarding/fiscalidad', '/onboarding/riesgos', '/onboarding/completado'];
 
 const router = createBrowserRouter([
   { path: '/', element: <App /> },
 
-  // ── New canonical public routes ──
-  { path: '/nosotros', element: lazyPage(<NosotrosPage />) },
-  { path: '/actividad', element: lazyPage(<ActividadPage />) },
-  { path: '/proyectos', element: lazyPage(<OpportunitiesCatalogPage />) },
+  // ── Landing section redirects (pages that now live on /) ──
+  { path: '/nosotros', loader: redirectTo('/#nosotros'), element: null as unknown as React.ReactNode },
+  { path: '/actividad', loader: redirectTo('/#actividad'), element: null as unknown as React.ReactNode },
+  { path: '/proyectos', loader: redirectTo('/#proyectos'), element: null as unknown as React.ReactNode },
+  { path: '/faq', loader: redirectTo('/#faq'), element: null as unknown as React.ReactNode },
+  { path: '/contacto', loader: redirectTo('/#contacto'), element: null as unknown as React.ReactNode },
+
+  // ── Standalone pages ──
   { path: '/proyectos/:slug', element: lazyPage(<OpportunityDetailPage />) },
   { path: '/coinvierte', element: lazyPage(<LeadFormPage kind="access_request" />) },
-  { path: '/contacto', element: lazyPage(<LeadFormPage kind="general_contact" />) },
   { path: '/proyectos/:slug/solicitar-informacion', element: lazyPage(<LeadFormPage kind="opportunity_inquiry" />) },
   { path: '/privacidad', element: lazyPage(<PrivacyPage />) },
 
-  // ── Legacy redirects (preserve slugs and query params) ──
-  { path: '/firma', loader: ({ request }) => { const url = new URL(request.url); return Response.redirect(new URL(`/nosotros${url.search}${url.hash}`, url.origin), 301); }, element: null as unknown as React.ReactNode },
-  { path: '/metodologia', loader: ({ request }) => { const url = new URL(request.url); return Response.redirect(new URL(`/actividad${url.search}${url.hash}`, url.origin), 301); }, element: null as unknown as React.ReactNode },
-  { path: '/oportunidades', loader: ({ request }) => { const url = new URL(request.url); return Response.redirect(new URL(`/proyectos${url.search}${url.hash}`, url.origin), 301); }, element: null as unknown as React.ReactNode },
+  // ── Legacy redirects ──
+  { path: '/firma', loader: redirectTo('/#nosotros'), element: null as unknown as React.ReactNode },
+  { path: '/metodologia', loader: redirectTo('/#actividad'), element: null as unknown as React.ReactNode },
+  { path: '/oportunidades', loader: redirectTo('/#proyectos'), element: null as unknown as React.ReactNode },
   { path: '/oportunidades/:slug', loader: ({ request, params }) => { const url = new URL(request.url); const slug = params.slug ?? ''; return Response.redirect(new URL(`/proyectos/${slug}${url.search}${url.hash}`, url.origin), 301); }, element: null as unknown as React.ReactNode },
   { path: '/oportunidades/:slug/solicitar-informacion', loader: ({ request, params }) => { const url = new URL(request.url); const slug = params.slug ?? ''; return Response.redirect(new URL(`/proyectos/${slug}/solicitar-informacion${url.search}${url.hash}`, url.origin), 301); }, element: null as unknown as React.ReactNode },
-  { path: '/solicitar-acceso', loader: ({ request }) => { const url = new URL(request.url); return Response.redirect(new URL(`/coinvierte${url.search}${url.hash}`, url.origin), 301); }, element: null as unknown as React.ReactNode },
+  { path: '/solicitar-acceso', loader: redirectTo('/coinvierte'), element: null as unknown as React.ReactNode },
 
   // ── Auth routes ──
   { path: '/acceso', element: lazyPage(<LoginPage />) },

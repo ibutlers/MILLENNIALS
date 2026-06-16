@@ -34,7 +34,12 @@ const apiResponse = {
 };
 
 function mockFetch(body: unknown, ok = true) {
-  vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok, json: async () => body }));
+  vi.stubGlobal('fetch', vi.fn((url: string) => {
+    if (url.includes('/api/v1/lead-settings')) {
+      return Promise.resolve({ ok: true, json: async () => ({ enabled: false }) });
+    }
+    return Promise.resolve({ ok, json: async () => body });
+  }));
 }
 
 describe('MILLENNIALS CONSTRUYEN landing', () => {
@@ -66,7 +71,7 @@ describe('MILLENNIALS CONSTRUYEN landing', () => {
   it('shows loading and then API-backed opportunity cards with disclaimer and financial formatting', async () => {
     render(<App />);
 
-    expect(screen.getByRole('status')).toHaveTextContent(/cargando oportunidades públicas/i);
+    expect(screen.getByRole('status')).toHaveTextContent(/cargando proyectos/i);
     const opportunities = await screen.findAllByRole('article', { name: /proyecto:/i });
     expect(opportunities).toHaveLength(1);
 
@@ -74,7 +79,7 @@ describe('MILLENNIALS CONSTRUYEN landing', () => {
     expect(within(card).getByText(/datos ilustrativos/i)).toBeInTheDocument();
     expect(within(card).getByText(/rentabilidad anual objetivo estimada/i)).toBeInTheDocument();
     expect(within(card).getByText('8,2%')).toBeInTheDocument();
-    expect(within(card).getByText(/1\.250\.000\s*€/)).toBeInTheDocument();
+    expect(within(card).getByText(/1\\.250\\.000\\s*€/)).toBeInTheDocument();
     expect(within(card).getByText(/medio · no regulatorio/i)).toBeInTheDocument();
     expect(within(card).getByRole('link', { name: /ver proyecto/i })).toHaveAttribute('href', '/proyectos/eixample-rehabilitacion-luminosa');
     expect(screen.getByText(/los objetivos no están garantizados/i)).toBeInTheDocument();
@@ -93,7 +98,7 @@ describe('MILLENNIALS CONSTRUYEN landing', () => {
     mockFetch({ ...apiResponse, data: [], pagination: { limit: 3, offset: 0, total: 0, hasMore: false } });
     render(<App />);
 
-    await screen.findByText(/no hay oportunidades públicas disponibles/i);
+    await screen.findByText(/no hay proyectos públicos disponibles/i);
     expect(screen.queryByRole('article', { name: /proyecto:/i })).not.toBeInTheDocument();
   });
 

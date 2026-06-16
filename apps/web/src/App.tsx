@@ -1,12 +1,14 @@
-import { useEffect, useRef, useState } from 'react';
+import { FormEvent, useEffect, useRef, useState } from 'react';
+import { Link } from 'react-router';
 import { fetchPublicOpportunities, returnTypeLabel, riskLabel, statusLabel, type PublicOpportunity } from './opportunities/api';
+import { fetchLeadSettings, submitLead, type LeadCreated } from './leads/api';
 
 const navigation = [
-  { label: 'NOSOTROS', href: '/nosotros' },
-  { label: 'NUESTRA ACTIVIDAD', href: '/actividad' },
-  { label: 'PROYECTOS', href: '/proyectos' },
-  { label: 'FAQ', href: '/faq' },
-  { label: 'CONTACTO', href: '/contacto' }
+  { label: 'NOSOTROS', href: '/#nosotros' },
+  { label: 'NUESTRA ACTIVIDAD', href: '/#actividad' },
+  { label: 'PROYECTOS', href: '/#proyectos' },
+  { label: 'FAQ', href: '/#faq' },
+  { label: 'CONTACTO', href: '/#contacto' }
 ];
 
 const processIndicators = [
@@ -50,6 +52,51 @@ const faqs = [
     answer: 'Modelo de datos, API de catálogo, detalle de oportunidad, captación de leads y, más adelante, acceso privado para inversores.'
   }
 ];
+
+// ── Smooth scroll + header offset ──
+
+function scrollToHash(hash: string) {
+  const el = document.getElementById(hash.replace('#', ''));
+  if (!el) return;
+  const prefersReduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const headerHeight = 73;
+  el.setAttribute('tabindex', '-1');
+  el.focus({ preventScroll: true });
+  el.style.outline = 'none';
+  if (prefersReduced) {
+    window.scrollTo(0, el.offsetTop - headerHeight);
+  } else {
+    window.scrollTo({ top: el.offsetTop - headerHeight, behavior: 'smooth' });
+  }
+}
+
+function useHashScroll() {
+  useEffect(() => {
+    function handleClick(event: MouseEvent) {
+      const target = event.target as HTMLElement;
+      const anchor = target.closest('a[href^="/#"]');
+      if (!anchor) return;
+      const href = anchor.getAttribute('href');
+      if (!href) return;
+      const hashPart = href.slice(href.indexOf('#'));
+      if (window.location.pathname === '/' || window.location.pathname === '') {
+        event.preventDefault();
+        history.replaceState(null, '', `/${hashPart}`);
+        scrollToHash(hashPart);
+      }
+    }
+
+    document.addEventListener('click', handleClick);
+
+    if (window.location.hash) {
+      requestAnimationFrame(() => scrollToHash(window.location.hash));
+    }
+
+    return () => document.removeEventListener('click', handleClick);
+  }, []);
+}
+
+// ── Mobile menu ──
 
 function useMobileMenu() {
   const [isOpen, setIsOpen] = useState(false);
@@ -184,6 +231,8 @@ function Header() {
   );
 }
 
+// ── Hero ──
+
 function Hero() {
   return (
     <section className="relative overflow-hidden bg-lavender">
@@ -198,10 +247,10 @@ function Hero() {
           Una base digital para presentar oportunidades, ordenar documentación y preparar una futura zona privada de inversores sin promesas grandilocuentes.
         </p>
         <div className="mt-8 grid gap-3 sm:flex">
-          <a href="/proyectos" className="group inline-flex items-center justify-center gap-3 bg-electric px-6 py-4 text-sm font-black uppercase tracking-[0.18em] text-white transition hover:bg-electric-hover focus:outline-none focus-visible:ring-2 focus-visible:ring-electric focus-visible:ring-offset-4 focus-visible:ring-offset-lavender">
+          <a href="/#proyectos" className="group inline-flex items-center justify-center gap-3 bg-electric px-6 py-4 text-sm font-black uppercase tracking-[0.18em] text-white transition hover:bg-electric-hover focus:outline-none focus-visible:ring-2 focus-visible:ring-electric focus-visible:ring-offset-4 focus-visible:ring-offset-lavender">
             Ver proyectos <span aria-hidden="true" className="transition group-hover:translate-x-1">→</span>
           </a>
-          <a href="/nosotros" className="inline-flex items-center justify-center border border-frost px-6 py-4 text-sm font-black uppercase tracking-[0.18em] text-ink transition hover:border-electric hover:text-electric focus:outline-none focus-visible:ring-2 focus-visible:ring-electric focus-visible:ring-offset-4 focus-visible:ring-offset-lavender">
+          <a href="/#nosotros" className="inline-flex items-center justify-center border border-frost px-6 py-4 text-sm font-black uppercase tracking-[0.18em] text-ink transition hover:border-electric hover:text-electric focus:outline-none focus-visible:ring-2 focus-visible:ring-electric focus-visible:ring-offset-4 focus-visible:ring-offset-lavender">
             Nosotros
           </a>
         </div>
@@ -209,6 +258,8 @@ function Hero() {
     </section>
   );
 }
+
+// ── Nosotros ──
 
 function FirmNarrative() {
   return (
@@ -232,6 +283,8 @@ function FirmNarrative() {
     </section>
   );
 }
+
+// ── Nuestra actividad ──
 
 function ProcessSection() {
   return (
@@ -258,6 +311,8 @@ function ProcessSection() {
   );
 }
 
+// ── Cómo trabajamos ──
+
 function Methodology() {
   return (
     <section id="como-trabajamos" className="bg-white py-16 sm:py-24">
@@ -281,6 +336,8 @@ function Methodology() {
     </section>
   );
 }
+
+// ── Opportunity card ──
 
 function OpportunityCard({ opportunity }: { opportunity: PublicOpportunity }) {
   const progress = Math.max(0, Math.min(100, opportunity.fundingProgress));
@@ -330,14 +387,14 @@ function OpportunityCard({ opportunity }: { opportunity: PublicOpportunity }) {
   );
 }
 
-type OpportunitiesState =
-  | { status: 'loading'; data: PublicOpportunity[]; disclaimer: string | null }
-  | { status: 'success'; data: PublicOpportunity[]; disclaimer: string }
-  | { status: 'error'; data: PublicOpportunity[]; disclaimer: string | null }
-  | { status: 'empty'; data: PublicOpportunity[]; disclaimer: string | null };
+// ── Proyectos (3 Vigo cards, no filters/search/pagination) ──
 
-function usePublicOpportunities(): OpportunitiesState {
-  const [state, setState] = useState<OpportunitiesState>({ status: 'loading', data: [], disclaimer: null });
+function usePublicOpportunities() {
+  const [state, setState] = useState<{
+    status: 'loading' | 'success' | 'error' | 'empty';
+    data: PublicOpportunity[];
+    disclaimer: string | null;
+  }>({ status: 'loading', data: [], disclaimer: null });
 
   useEffect(() => {
     const controller = new AbortController();
@@ -362,8 +419,8 @@ function usePublicOpportunities(): OpportunitiesState {
   return state;
 }
 
-function Opportunities() {
-  const opportunitiesState = usePublicOpportunities();
+function ProjectsSection() {
+  const state = usePublicOpportunities();
 
   return (
     <section id="proyectos" className="bg-lavender py-16 sm:py-24">
@@ -380,30 +437,32 @@ function Opportunities() {
           </p>
         </div>
 
-        {opportunitiesState.status === 'loading' ? (
-          <div className="mt-10 rounded-lg border border-frost bg-white p-8 text-charcoal/60" role="status">Cargando oportunidades públicas…</div>
+        {state.status === 'loading' ? (
+          <div className="mt-10 rounded-lg border border-frost bg-white p-8 text-charcoal/60" role="status">Cargando proyectos…</div>
         ) : null}
 
-        {opportunitiesState.status === 'error' ? (
-          <div className="mt-10 rounded-lg border border-warning/40 bg-warning/5 p-8 text-charcoal/80" role="alert">No hemos podido cargar las oportunidades públicas. La API no está disponible temporalmente; no mostramos datos falsos como si fueran reales.</div>
+        {state.status === 'error' ? (
+          <div className="mt-10 rounded-lg border border-warning/40 bg-warning/5 p-8 text-charcoal/80" role="alert">No hemos podido cargar los proyectos públicos. La API no está disponible temporalmente; no mostramos datos falsos como si fueran reales.</div>
         ) : null}
 
-        {opportunitiesState.status === 'empty' ? (
-          <div className="mt-10 rounded-lg border border-frost bg-white p-8 text-charcoal/60">No hay oportunidades públicas disponibles en este momento.</div>
+        {state.status === 'empty' ? (
+          <div className="mt-10 rounded-lg border border-frost bg-white p-8 text-charcoal/60">No hay proyectos públicos disponibles en este momento.</div>
         ) : null}
 
-        {opportunitiesState.status === 'success' ? (
+        {state.status === 'success' ? (
           <>
             <div className="mt-10 grid gap-5 lg:grid-cols-3">
-              {opportunitiesState.data.map((opportunity) => <OpportunityCard key={opportunity.slug} opportunity={opportunity} />)}
+              {state.data.map((opportunity) => <OpportunityCard key={opportunity.slug} opportunity={opportunity} />)}
             </div>
-            <p className="mt-6 text-sm leading-7 text-charcoal/60">{opportunitiesState.disclaimer}</p>
+            <p className="mt-6 text-sm leading-7 text-charcoal/60">{state.disclaimer}</p>
           </>
         ) : null}
       </div>
     </section>
   );
 }
+
+// ── FAQ ──
 
 function Faq() {
   return (
@@ -427,6 +486,114 @@ function Faq() {
   );
 }
 
+// ── Contacto (integrated form) ──
+
+type Errors = Record<string, string>;
+
+function ContactSection() {
+  const mountedAt = useRef(Date.now());
+  const errorRef = useRef<HTMLDivElement>(null);
+  const [errors, setErrors] = useState<Errors>({});
+  const [result, setResult] = useState<LeadCreated | null>(null);
+  const [submitting, setSubmitting] = useState(false);
+  const settings = useRef<{ enabled: boolean } | null>(null);
+  const [disabled, setDisabled] = useState<string | null>(null);
+
+  useEffect(() => {
+    fetchLeadSettings(new AbortController().signal)
+      .then((s) => { settings.current = s; if (!s.enabled) setDisabled('Las solicitudes todavía no están habilitadas porque faltan datos legales reales del responsable o el canal de privacidad.'); })
+      .catch(() => setDisabled('Las solicitudes todavía no están habilitadas porque faltan datos legales reales del responsable o el canal de privacidad.'));
+  }, []);
+
+  useEffect(() => { if (Object.keys(errors).length) errorRef.current?.focus(); }, [errors]);
+
+  function validate(form: HTMLFormElement): { data?: FormData; errors: Errors } {
+    const data = new FormData(form);
+    const next: Errors = {};
+    for (const name of ['firstName', 'lastName', 'email']) if (!String(data.get(name) ?? '').trim()) next[name] = 'Campo obligatorio.';
+    if (!String(data.get('email') ?? '').includes('@')) next.email = 'Introduce un email válido.';
+    if (String(data.get('message') ?? '').length > 2000) next.message = 'El mensaje no puede superar 2000 caracteres.';
+    if (data.get('privacyAccepted') !== 'on') next.privacyAccepted = 'Debes aceptar la información de privacidad para que podamos responder.';
+    if (String(data.get('website') ?? '').trim()) next.website = 'No se pudo procesar la solicitud.';
+    return { data, errors: next };
+  }
+
+  async function onSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const form = event.currentTarget;
+    const { data, errors: nextErrors } = validate(form);
+    setErrors(nextErrors);
+    if (!data || Object.keys(nextErrors).length) return;
+    setSubmitting(true);
+    try {
+      const search = new URLSearchParams(window.location.search);
+      const created = await submitLead({
+        kind: 'general_contact',
+        firstName: String(data.get('firstName') ?? ''),
+        lastName: String(data.get('lastName') ?? ''),
+        email: String(data.get('email') ?? ''),
+        phone: String(data.get('phone') ?? '') || undefined,
+        countryCode: String(data.get('countryCode') ?? '') || undefined,
+        message: String(data.get('message') ?? '') || undefined,
+        sourcePath: window.location.pathname,
+        referrer: document.referrer || undefined,
+        utmSource: search.get('utm_source') ?? undefined,
+        utmMedium: search.get('utm_medium') ?? undefined,
+        utmCampaign: search.get('utm_campaign') ?? undefined,
+        privacyAccepted: true,
+        marketingOptIn: data.get('marketingOptIn') === 'on',
+        submittedAfterMs: Date.now() - mountedAt.current,
+        website: String(data.get('website') ?? '')
+      });
+      setResult(created);
+      form.reset();
+    } catch (error) {
+      const message = error instanceof Error && error.message === 'disabled'
+        ? 'La captación todavía no está habilitada. No hemos guardado la solicitud.'
+        : error instanceof Error && error.message === 'rate_limited'
+          ? 'Demasiados intentos. Inténtalo más tarde.'
+          : 'No hemos podido enviar la solicitud. Revisa los datos e inténtalo de nuevo.';
+      setErrors({ form: message });
+    } finally { setSubmitting(false); }
+  }
+
+  return (
+    <section id="contacto" className="bg-lavender py-16 sm:py-24">
+      <div className="mx-auto max-w-5xl px-4 sm:px-6 lg:px-8">
+        <div className="grid gap-8 lg:grid-cols-[0.9fr_1.1fr]">
+          <div>
+            <p className="text-xs font-black uppercase tracking-[0.28em] text-electric">Contacto</p>
+            <h2 className="mt-5 font-serif text-4xl leading-tight tracking-[-0.03em] text-ink sm:text-6xl">
+              Contactar con MILLENNIALS CONSTRUYEN
+            </h2>
+            <p className="mt-5 text-lg leading-8 text-charcoal/80">
+              Usa este canal para consultas generales sobre la firma o la plataforma.
+            </p>
+          </div>
+          <div className="rounded-lg border border-frost bg-white p-5">
+            {disabled ? <div role="status" className="border border-warning/40 bg-warning/5 p-4 text-sm font-bold text-charcoal/80">{disabled}</div> : null}
+            {Object.keys(errors).length ? <div ref={errorRef} tabIndex={-1} role="alert" className="mt-4 rounded-lg border border-warning/40 bg-warning/5 p-4"><p className="font-bold text-charcoal/80">Revisa el formulario</p><ul className="mt-2 list-disc pl-5 text-charcoal/80">{Object.entries(errors).map(([k, v]) => <li key={k}>{v}</li>)}</ul></div> : null}
+            {result ? <div role="status" className="mt-4 rounded-lg border border-frost bg-white p-4"><p className="font-bold text-ink">Solicitud recibida</p><p className="text-sm text-charcoal/80">Referencia pública: <strong>{result.publicReference}</strong></p><p className="text-sm text-charcoal/80">{result.message}</p></div> : null}
+            <form className="mt-5 grid gap-4" onSubmit={onSubmit} noValidate>
+              <div className="hidden" aria-hidden="true"><label>Website <input name="website" tabIndex={-1} autoComplete="off" /></label></div>
+              <label className="grid gap-1 text-sm font-bold text-ink">Nombre<input name="firstName" className="min-h-11 rounded-lg border border-frost px-3 py-2 text-ink focus:outline-none focus-visible:ring-2 focus-visible:ring-electric" autoComplete="given-name" disabled={Boolean(disabled) || submitting} /></label>
+              <label className="grid gap-1 text-sm font-bold text-ink">Apellidos<input name="lastName" className="min-h-11 rounded-lg border border-frost px-3 py-2 text-ink focus:outline-none focus-visible:ring-2 focus-visible:ring-electric" autoComplete="family-name" disabled={Boolean(disabled) || submitting} /></label>
+              <label className="grid gap-1 text-sm font-bold text-ink">Email<input name="email" type="email" className="min-h-11 rounded-lg border border-frost px-3 py-2 text-ink focus:outline-none focus-visible:ring-2 focus-visible:ring-electric" autoComplete="email" disabled={Boolean(disabled) || submitting} /></label>
+              <label className="grid gap-1 text-sm font-bold text-ink">Teléfono opcional<input name="phone" className="min-h-11 rounded-lg border border-frost px-3 py-2 text-ink focus:outline-none focus-visible:ring-2 focus-visible:ring-electric" autoComplete="tel" disabled={Boolean(disabled) || submitting} /></label>
+              <label className="grid gap-1 text-sm font-bold text-ink">Mensaje opcional<textarea name="message" rows={4} maxLength={2000} className="rounded-lg border border-frost px-3 py-2 text-ink focus:outline-none focus-visible:ring-2 focus-visible:ring-electric" disabled={Boolean(disabled) || submitting} /></label>
+              <label className="flex gap-3 text-sm text-charcoal/80"><input name="privacyAccepted" type="checkbox" disabled={Boolean(disabled) || submitting} /> <span>Acepto la <Link to="/privacidad" className="underline hover:text-electric">información de privacidad provisional</Link> para que MILLENNIALS CONSTRUYEN pueda responder.</span></label>
+              <label className="flex gap-3 text-sm text-charcoal/80"><input name="marketingOptIn" type="checkbox" disabled={Boolean(disabled) || submitting} /> <span>Acepto recibir comunicaciones comerciales futuras. Opcional y separado.</span></label>
+              <button type="submit" disabled={Boolean(disabled) || submitting} className="rounded-lg bg-electric px-5 py-4 text-sm font-black uppercase tracking-[0.16em] text-white transition hover:bg-electric-hover disabled:cursor-not-allowed disabled:opacity-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-electric">{submitting ? 'Enviando…' : 'Enviar consulta'}</button>
+            </form>
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+// ── Coinvierte CTA ──
+
 function AccessCta() {
   return (
     <section id="coinvierte" className="bg-electric py-16 text-white sm:py-24">
@@ -439,12 +606,14 @@ function AccessCta() {
         </div>
         <div className="grid gap-3 sm:flex lg:grid">
           <a href="/coinvierte" className="bg-white px-6 py-4 text-center text-sm font-black uppercase tracking-[0.18em] text-electric transition hover:bg-frost focus:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-4 focus-visible:ring-offset-electric">Coinvierte con nosotros</a>
-          <a href="/contacto" className="border border-white/30 px-6 py-4 text-center text-sm font-black uppercase tracking-[0.18em] text-white transition hover:border-white hover:text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-4 focus-visible:ring-offset-electric">Contactar</a>
+          <a href="/#contacto" className="border border-white/30 px-6 py-4 text-center text-sm font-black uppercase tracking-[0.18em] text-white transition hover:border-white hover:text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-4 focus-visible:ring-offset-electric">Contactar</a>
         </div>
       </div>
     </section>
   );
 }
+
+// ── Footer ──
 
 function Footer() {
   return (
@@ -463,7 +632,11 @@ function Footer() {
   );
 }
 
+// ── App ──
+
 export function App() {
+  useHashScroll();
+
   return (
     <div className="min-h-screen bg-lavender text-ink antialiased">
       <Header />
@@ -472,8 +645,9 @@ export function App() {
         <FirmNarrative />
         <ProcessSection />
         <Methodology />
-        <Opportunities />
+        <ProjectsSection />
         <Faq />
+        <ContactSection />
         <AccessCta />
       </main>
       <Footer />
