@@ -56,7 +56,9 @@ else
   LIMIT $LIMIT"
 fi
 
-docker exec "$CONTAINER" psql -U postgres -d realstate -c "$QUERY" 2>/dev/null || {
-  echo "Error: no se pudo conectar a PostgreSQL" >&2
-  exit 1
+docker exec "$CONTAINER" psql -U realstate -d realstate -c "$QUERY" 2>/dev/null || {
+  docker exec "$CONTAINER" psql -U postgres -d realstate -c "$QUERY" 2>/dev/null || {
+    echo "Error: no se pudo conectar a PostgreSQL" >&2
+    exit 1
+  }
 }
