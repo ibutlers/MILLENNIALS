@@ -349,7 +349,236 @@ def main():
         _check(du == '', 'filas duplicadas: ' + du)
         print('  concurrency: OK (9 migraciones, 0 duplicados)')
 
-        # teardown
+        # ─────────────────────────────────────────────────────────────────
+        # Backup/restore auth tables
+        # ─────────────────────────────────────────────────────────────────
+        print('  backup/restore auth...')
+
+        # 1. Insert test data into all auth tables
+        _psql(cn, sec, """
+            INSERT INTO auth."user" (id, email, "emailVerified", name, created_at, updated_at) VALUES
+            ('ba-restore-active', 'active@restore.test', true, 'Active User', now(), now()),
+            ('ba-restore-suspended', 'suspended@restore.test', true, 'Suspended User', now(), now()),
+            ('ba-restore-revoked', 'revoked@restore.test', true, 'Revoked User', now(), now()),
+            ('ba-restore-pending', 'pending@restore.test', false, 'Pending User', now(), now());
+        """)
+
+        _psql(cn, sec, """
+            INSERT INTO auth."session" (id, "userId", token, "expiresAt", created_at, updated_at) VALUES
+            ('sess-restore-1', 'ba-restore-active', 'tok_abc', now() + interval '8 hours', now(), now()),
+            ('sess-restore-2', 'ba-restore-active', 'tok_def', now() - interval '1 hour', now(), now()),
+            ('sess-restore-3', 'ba-restore-suspended', 'tok_ghi', now() + interval '8 hours', now(), now());
+        """)
+
+        _psql(cn, sec, """
+            INSERT INTO auth."account" (id, "userId", "providerId", "accountId", created_at, updated_at) VALUES
+            ('acct-restore-1', 'ba-restore-active', 'email', 'active@restore.test', now(), now());
+        """)
+
+        _psql(cn, sec, """
+            INSERT INTO auth."verification" (id, identifier, value, "expiresAt", created_at, updated_at) VALUES
+            ('verif-restore-1', 'active@restore.test', 'verify_token_1', now() + interval '30 minutes', now(), now()),
+            ('verif-restore-2', 'pending@restore.test', 'verify_token_2', now() - interval '1 hour', now(), now());
+        """)
+
+        _psql(cn, sec, """
+            INSERT INTO auth."twoFactor" (id, "userId", secret, enabled, created_at, updated_at) VALUES
+            ('2fa-restore-1', 'ba-restore-active', 'BASE32SECRET1', true, now(), now()),
+            ('2fa-restore-2', 'ba-restore-suspended', 'BASE32SECRET2', false, now(), now());
+        """)
+
+        _psql(cn, sec, """
+            INSERT INTO auth."organization" (id, name, slug, created_at) VALUES
+            ('org-restore-1', 'MILLENNIALS CONSTRUYEN', 'millennials-construyen', now());
+        """)
+
+        _psql(cn, sec, """
+            INSERT INTO auth."member" (id, "organizationId", "userId", role, created_at) VALUES
+            ('mbr-restore-1', 'org-restore-1', 'ba-restore-active', 'member', now());
+        """)
+
+        _psql(cn, sec, """
+            INSERT INTO auth."invitation" (id, "organizationId", email, status, role, "expiresAt", created_at) VALUES
+            ('inv-restore-pending', 'org-restore-1', 'invited@restore.test', 'pending', 'member', now() + interval '48 hours', now()),
+            ('inv-restore-expired', 'org-restore-1', 'expired@restore.test', 'expired', 'member', now() - interval '1 hour', now()),
+            ('inv-restore-revoked', 'org-restore-1', 'revoked@restore.test', 'revoked', 'member', now() + interval '24 hours', now());
+        """)
+
+        # Business tables
+        _psql(cn, sec, """
+            INSERT INTO app_users (id, better_auth_user_id, email_normalized, display_name, role, status, email_verified_at, mfa_enabled_at, activated_at, created_at, updated_at) VALUES
+            (gen_random_uuid(), 'ba-restore-active', 'active@restore.test', 'Active', 'investor', 'active', now(), now(), now(), now(), now()),
+            (gen_random_uuid(), 'ba-restore-suspended', 'suspended@restore.test', 'Suspended', 'investor', 'suspended', now(), now(), now(), now(), now()),
+            (gen_random_uuid(), 'ba-restore-revoked', 'revoked@restore.test', 'Revoked', 'investor', 'revoked', now(), now(), now(), now(), now()),
+            (gen_random_uuid(), 'ba-restore-pending', 'pending@restore.test', 'Pending', 'investor', 'pending_email', NULL, NULL, NULL, now(), now());
+        """)
+
+        # Get project IDs for access grants
+        opp_ids = _psql(cn, sec, "SELECT id FROM opportunities LIMIT 2").stdout.strip().split(chr(10))
+        active_uid = _psql(cn, sec, "SELECT id FROM app_users WHERE status = 'active' LIMIT 1").stdout.strip()
+        if opp_ids and active_uid:
+            oid = opp_ids[0].strip()
+            _psql(cn, sec, f"""
+                INSERT INTO project_user_access (app_user_id, opportunity_id, status) VALUES
+                ('{active_uid}', '{oid}', 'active');
+            """)
+            if len(opp_ids) > 1:
+                oid2 = opp_ids[1].strip()
+                suspended_uid = _psql(cn, sec, "SELECT id FROM app_users WHERE status = 'suspended' LIMIT 1").stdout.strip()
+                _psql(cn, sec, f"""
+                    INSERT INTO project_user_access (app_user_id, opportunity_id, status) VALUES
+                    ('{suspended_uid}', '{oid2}', 'revoked');
+                """)
+
+        # Insert invitation rows into access_invitations
+        _psql(cn, sec, """
+            INSERT INTO access_invitations (email_normalized, token_hash, intended_role, status, expires_at, created_at, revoked_at) VALUES
+            ('expired_inv@restore.test', 'hash_exp_999', 'investor', 'expired', now() - interval '1 hour', now() - interval '49 hours', NULL),
+            ('revoked_inv@restore.test', 'hash_rev_999', 'investor', 'revoked', now() + interval '48 hours', now(), now()),
+            ('pending_inv@restore.test', 'hash_pend_999', 'investor', 'pending', now() + interval '48 hours', now(), NULL);
+        """)
+
+        # Insert audit events
+        _psql(cn, sec, """
+            INSERT INTO auth_audit_events (action, actor_id, subject_id, result, metadata, created_at) VALUES
+            ('user_activated', 'ba-restore-active', 'ba-restore-active', 'success', '{"email":"active@restore.test"}', now()),
+            ('user_suspended', 'ba-restore-active', 'ba-restore-suspended', 'success', '{"email":"suspended@restore.test"}', now()),
+            ('user_revoked', 'ba-restore-active', 'ba-restore-revoked', 'success', '{"email":"revoked@restore.test"}', now());
+        """)
+
+        # Count before dump
+        c_user_before = _psql(cn, sec, "SELECT count(*) FROM auth.\"user\"").stdout.strip()
+        c_sess_before = _psql(cn, sec, "SELECT count(*) FROM auth.\"session\"").stdout.strip()
+        c_inv_before = _psql(cn, sec, "SELECT count(*) FROM access_invitations").stdout.strip()
+        print(f'    before dump: users={c_user_before} sessions={c_sess_before} invs={c_inv_before}')
+
+        # 2. Dump
+        dump_file = f'/tmp/realstate-auth-test-{rid}.sql'
+        r = _run('docker', 'exec', '-e', 'PGPASSWORD=' + sec, cn,
+                 'pg_dump', '-U', 'realstate', '-h', '127.0.0.1', '-d', 'realstate_test',
+                 '--schema=auth', '--schema=public', '--no-owner', '--no-privileges',
+                 '-f', dump_file)
+        _check(r.returncode == 0, 'pg_dump fallo: ' + r.stderr.strip())
+        _check(os.path.getsize(dump_file) > 500,
+               'dump demasiado pequeno: ' + str(os.path.getsize(dump_file)))
+        print(f'    dump: {os.path.getsize(dump_file)} bytes')
+
+        # Copy dump out of container
+        docker_cp = _run('docker', 'cp', f'{cn}:{dump_file}', dump_file)
+        _check(docker_cp.returncode == 0, 'docker cp fallo: ' + docker_cp.stderr.strip())
+
+        # 3. Destroy PostgreSQL
+        _run('docker', 'rm', '-f', cn)
+        _run('docker', 'volume', 'rm', '-f', vol)
+
+        # 4. Create new PostgreSQL
+        rid2 = rid + 'r'
+        cn2 = 'realstate-test-db-' + rid2
+        net2 = 'realstate-test-net-' + rid2
+        vol2 = 'realstate-test-vol-' + rid2
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
+            sock.bind(('127.0.0.1', 0))
+            port2 = str(sock.getsockname()[1])
+        sec2 = ''.join(secrets.choice(chars) for _ in range(24))
+
+        _run('docker', 'rm', '-f', cn2)
+        _run('docker', 'network', 'rm', '-f', net2)
+        _run('docker', 'volume', 'rm', '-f', vol2)
+        _run('docker', 'network', 'create', net2)
+        _run('docker', 'volume', 'create', vol2)
+
+        run_pg2 = _run('docker', 'run', '--rm', '-d',
+                       '--name', cn2, '--network', net2,
+                       '-v', vol2 + ':/var/lib/postgresql/data',
+                       '-e', 'POSTGRES_USER=realstate',
+                       '-e', 'POSTGRES_PASSWORD=' + sec2,
+                       '-e', 'POSTGRES_DB=realstate_test',
+                       '-p', '127.0.0.1:' + port2 + ':5432',
+                       'postgres:16-alpine')
+        _check(run_pg2.returncode == 0, 'docker run #2 fallo')
+
+        ok2 = False
+        for _ in range(60):
+            r = _run('docker', 'exec', '-e', 'PGPASSWORD=' + sec2, cn2,
+                     'psql', '-U', 'realstate', '-h', '127.0.0.1', '-d', 'realstate_test', '-c', 'SELECT 1')
+            if r.returncode == 0:
+                ok2 = True
+                break
+            time.sleep(1)
+        _check(ok2, 'PostgreSQL #2 no arranco en 60 s')
+
+        # Copy dump into new container
+        _run('docker', 'cp', dump_file, f'{cn2}:{dump_file}')
+
+        # 5. Restore
+        r = _run('docker', 'exec', '-e', 'PGPASSWORD=' + sec2, cn2,
+                 'psql', '-U', 'realstate', '-h', '127.0.0.1', '-d', 'realstate_test',
+                 '-f', dump_file)
+        _check(r.returncode == 0, 'pg_restore fallo: ' + r.stderr.strip())
+
+        # 6. Validate restored state
+        c_user_after = _run('docker', 'exec', '-e', 'PGPASSWORD=' + sec2, cn2,
+                            'psql', '-U', 'realstate', '-h', '127.0.0.1', '-d', 'realstate_test',
+                            '-t', '-A', '-c', "SELECT count(*) FROM auth.\"user\"").stdout.strip()
+        _check(c_user_after == c_user_before,
+               f'user count mismatch: before={c_user_before} after={c_user_after}')
+
+        c_sess_after = _run('docker', 'exec', '-e', 'PGPASSWORD=' + sec2, cn2,
+                            'psql', '-U', 'realstate', '-h', '127.0.0.1', '-d', 'realstate_test',
+                            '-t', '-A', '-c', "SELECT count(*) FROM auth.\"session\"").stdout.strip()
+        _check(c_sess_after == c_sess_before,
+               f'session count mismatch: before={c_sess_before} after={c_sess_after}')
+
+        # Check revoked stays revoked
+        revoked_status = _run('docker', 'exec', '-e', 'PGPASSWORD=' + sec2, cn2,
+                              'psql', '-U', 'realstate', '-h', '127.0.0.1', '-d', 'realstate_test',
+                              '-t', '-A', '-c',
+                              "SELECT status FROM app_users WHERE email_normalized = 'revoked@restore.test'").stdout.strip()
+        _check(revoked_status == 'revoked',
+               f'revoked user should stay revoked, got: {revoked_status}')
+
+        # Check suspended stays suspended
+        suspended_status = _run('docker', 'exec', '-e', 'PGPASSWORD=' + sec2, cn2,
+                                'psql', '-U', 'realstate', '-h', '127.0.0.1', '-d', 'realstate_test',
+                                '-t', '-A', '-c',
+                                "SELECT status FROM app_users WHERE email_normalized = 'suspended@restore.test'").stdout.strip()
+        _check(suspended_status == 'suspended',
+               f'suspended user should stay suspended, got: {suspended_status}')
+
+        # Check expired invitation stays expired
+        expired_status = _run('docker', 'exec', '-e', 'PGPASSWORD=' + sec2, cn2,
+                              'psql', '-U', 'realstate', '-h', '127.0.0.1', '-d', 'realstate_test',
+                              '-t', '-A', '-c',
+                              "SELECT status FROM access_invitations WHERE email_normalized = 'expired_inv@restore.test'").stdout.strip()
+        _check(expired_status == 'expired',
+               f'expired invitation should stay expired, got: {expired_status}')
+
+        # Check revoked invitation stays revoked
+        revoked_inv_status = _run('docker', 'exec', '-e', 'PGPASSWORD=' + sec2, cn2,
+                                  'psql', '-U', 'realstate', '-h', '127.0.0.1', '-d', 'realstate_test',
+                                  '-t', '-A', '-c',
+                                  "SELECT status FROM access_invitations WHERE email_normalized = 'revoked_inv@restore.test'").stdout.strip()
+        _check(revoked_inv_status == 'revoked',
+               f'revoked invitation should stay revoked, got: {revoked_inv_status}')
+
+        # Check organization not duplicated
+        org_count = _run('docker', 'exec', '-e', 'PGPASSWORD=' + sec2, cn2,
+                         'psql', '-U', 'realstate', '-h', '127.0.0.1', '-d', 'realstate_test',
+                         '-t', '-A', '-c',
+                         "SELECT count(*) FROM auth.\"organization\" WHERE slug = 'millennials-construyen'").stdout.strip()
+        _check(org_count == '1',
+               f'organization should not duplicate, got: {org_count}')
+
+        # Cleanup second PostgreSQL
+        _run('docker', 'rm', '-f', cn2)
+        _run('docker', 'network', 'rm', '-f', net2)
+        _run('docker', 'volume', 'rm', '-f', vol2)
+        os.unlink(dump_file)
+
+        print('  backup/restore auth: OK (restored, states preserved, no dupes)')
+
+        # ─────────────────────────────────────────────────────────────────
+        # Teardown
         print('=== test-database: teardown ===')
         cleanup()
 
