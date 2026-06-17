@@ -20,6 +20,8 @@ const RegisterPage = lazy(() => import('./auth/RegisterPage').then((module) => (
 const VerifyEmailPage = lazy(() => import('./auth/VerifyEmailPage').then((module) => ({ default: module.VerifyEmailPage })));
 const RecoverAccessPage = lazy(() => import('./auth/RecoverAccessPage').then((module) => ({ default: module.RecoverAccessPage })));
 const ResetPasswordPage = lazy(() => import('./auth/ResetPasswordPage').then((module) => ({ default: module.ResetPasswordPage })));
+const ActivationPage = lazy(() => import('./auth/ActivationPage').then((module) => ({ default: module.ActivationPage })));
+const TwoFactorPage = lazy(() => import('./auth/TwoFactorPage').then((module) => ({ default: module.TwoFactorPage })));
 
 // ── Investor pages ──
 const InvestorLayout = lazy(() => import('./investors/InvestorLayout').then((module) => ({ default: module.InvestorLayout })));
@@ -87,6 +89,12 @@ const router = createBrowserRouter([
 
   // ── Auth routes ──
   { path: '/acceso', element: lazyPage(<PrivateAccessPage />) },
+  { path: '/acceso/login', element: lazyPage(<LoginPage />) },
+  { path: '/acceso/activar', element: lazyPage(<ActivationPage />) },
+  { path: '/acceso/verificar', element: lazyPage(<VerifyEmailPage />) },
+  { path: '/acceso/recuperar', element: lazyPage(<RecoverAccessPage />) },
+  { path: '/acceso/restablecer', element: lazyPage(<ResetPasswordPage />) },
+  { path: '/acceso/2fa', element: lazyPage(<TwoFactorPage />) },
   { path: '/registro', element: lazyPage(<RegisterPage />) },
   { path: '/verificar-email', element: lazyPage(<VerifyEmailPage />) },
   { path: '/recuperar-acceso', element: lazyPage(<RecoverAccessPage />) },
@@ -114,6 +122,23 @@ const router = createBrowserRouter([
       { path: 'oportunidades', element: lazyPage(<InvestorOpportunities />) },
       { path: 'cuenta', element: lazyPage(<InvestorAccount />) },
       { path: 'seguridad', element: lazyPage(<InvestorSecurity />) },
+    ],
+  },
+  // ── /inversor alias (canonical private area path) ──
+  {
+    path: '/inversor',
+    element: lazyPage(
+      <Suspense fallback={<PageLoader />}>
+        <RequireAuth>
+          <InvestorLayout />
+        </RequireAuth>
+      </Suspense>
+    ),
+    children: [
+      { index: true, element: lazyPage(<InvestorDashboard />) },
+      { path: 'proyectos', element: lazyPage(<InvestorOpportunities />) },
+      { path: 'proyectos/:id', element: lazyPage(<InvestorOpportunities />) },
+      { path: 'perfil', element: lazyPage(<InvestorProfile />) },
     ],
   },
 
