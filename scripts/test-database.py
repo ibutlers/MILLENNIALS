@@ -376,7 +376,7 @@ def main():
         r = _psql(cn, sec, "INSERT INTO auth.\"member\" (id, organization_id, user_id, role, created_at) VALUES ('mbr-restore-1', 'org-restore-1', 'ba-restore-active', 'member', now())")
         _check(r.returncode == 0, 'insert auth.member fallo: ' + r.stderr.strip()[:200])
 
-        r = _psql(cn, sec, "INSERT INTO auth.\"invitation\" (id, organization_id, email, status, role, expires_at, created_at) VALUES ('inv-restore-pending', 'org-restore-1', 'invited@restore.test', 'pending', 'member', now() + interval '48 hours', now()), ('inv-restore-expired', 'org-restore-1', 'expired@restore.test', 'expired', 'member', now() - interval '1 hour', now()), ('inv-restore-revoked', 'org-restore-1', 'revoked@restore.test', 'revoked', 'member', now() + interval '24 hours', now())")
+        r = _psql(cn, sec, "INSERT INTO auth.\"invitation\" (id, organization_id, email, status, role, expires_at, created_at, inviter_id) VALUES ('inv-restore-pending', 'org-restore-1', 'invited@restore.test', 'pending', 'member', now() + interval '48 hours', now(), 'ba-restore-active'), ('inv-restore-expired', 'org-restore-1', 'expired@restore.test', 'expired', 'member', now() - interval '1 hour', now(), 'ba-restore-active'), ('inv-restore-revoked', 'org-restore-1', 'revoked@restore.test', 'revoked', 'member', now() + interval '24 hours', now(), 'ba-restore-active')")
         _check(r.returncode == 0, 'insert auth.invitation fallo: ' + r.stderr.strip()[:200])
 
         # Business tables
