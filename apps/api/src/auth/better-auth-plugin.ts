@@ -169,7 +169,21 @@ export async function betterAuthPlugin(
 
       await webResponseToFastifyReply(webResponse, reply);
     } catch (error) {
-      request.log.error({ err: error }, 'better-auth handler error');
+      const err = error as Error & { cause?: Error & { code?: string; constraint?: string; table?: string; column?: string; detail?: string } };
+      const diagnosticInfo: Record<string, unknown> = {
+        errorName: err.name,
+        errorMessage: err.message,
+        causeName: err.cause?.name,
+        causeMessage: err.cause?.message,
+        causeCode: err.cause?.code,
+        causeConstraint: err.cause?.constraint,
+        causeTable: err.cause?.table,
+        causeColumn: err.cause?.column,
+        causeDetail: err.cause?.detail,
+        requestUrl: request.url,
+        requestId: request.id,
+      };
+      request.log.error({ err: error, diagnostic: diagnosticInfo }, 'better-auth handler error');
       return reply.status(500).send({
         error: {
           id: `err_${Date.now().toString(36)}`,
