@@ -355,24 +355,33 @@ def main():
         print('  backup/restore auth...')
 
         # 1. Insert test data — one INSERT per _psql call (psql -c only handles 1 statement)
-        _psql(cn, sec, "INSERT INTO auth.\"user\" (id, name, email, email_verified, two_factor_enabled, created_at, updated_at) VALUES ('ba-restore-active', 'active@restore.test', true, 'Active User', now(), now()), ('ba-restore-suspended', 'suspended@restore.test', true, 'Suspended User', now(), now()), ('ba-restore-revoked', 'revoked@restore.test', true, 'Revoked User', now(), now()), ('ba-restore-pending', 'pending@restore.test', false, 'Pending User', now(), now())")
+        r = _psql(cn, sec, "INSERT INTO auth.\"user\" (id, name, email, email_verified, two_factor_enabled, created_at, updated_at) VALUES ('ba-restore-active', 'Active User', 'active@restore.test', true, true, now(), now()), ('ba-restore-suspended', 'Suspended User', 'suspended@restore.test', true, false, now(), now()), ('ba-restore-revoked', 'Revoked User', 'revoked@restore.test', true, false, now(), now()), ('ba-restore-pending', 'Pending User', 'pending@restore.test', false, false, now(), now())")
+        _check(r.returncode == 0, 'insert auth.user fallo: ' + r.stderr.strip()[:200])
 
-        _psql(cn, sec, "INSERT INTO auth.\"session\" (id, expires_at, token, created_at, updated_at, ip_address, user_agent, user_id) VALUES ('sess-restore-1', now() + interval '8 hours', 'tok_abc', now(), now(), '127.0.0.1', 'test-agent', 'ba-restore-active'), ('sess-restore-2', now() - interval '1 hour', 'tok_def', now(), now(), '127.0.0.1', 'test-agent', 'ba-restore-active'), ('sess-restore-3', now() + interval '8 hours', 'tok_ghi', now(), now(), '127.0.0.1', 'test-agent', 'ba-restore-suspended')")
+        r = _psql(cn, sec, "INSERT INTO auth.\"session\" (id, expires_at, token, created_at, updated_at, ip_address, user_agent, user_id) VALUES ('sess-restore-1', now() + interval '8 hours', 'tok_abc', now(), now(), '127.0.0.1', 'test-agent', 'ba-restore-active'), ('sess-restore-2', now() - interval '1 hour', 'tok_def', now(), now(), '127.0.0.1', 'test-agent', 'ba-restore-active'), ('sess-restore-3', now() + interval '8 hours', 'tok_ghi', now(), now(), '127.0.0.1', 'test-agent', 'ba-restore-suspended')")
+        _check(r.returncode == 0, 'insert auth.session fallo: ' + r.stderr.strip()[:200])
 
-        _psql(cn, sec, "INSERT INTO auth.\"account\" (id, account_id, provider_id, user_id, created_at, updated_at) VALUES ('acct-restore-1', 'active@restore.test', 'email', 'ba-restore-active', now(), now())")
+        r = _psql(cn, sec, "INSERT INTO auth.\"account\" (id, account_id, provider_id, user_id, created_at, updated_at) VALUES ('acct-restore-1', 'active@restore.test', 'email', 'ba-restore-active', now(), now())")
+        _check(r.returncode == 0, 'insert auth.account fallo: ' + r.stderr.strip()[:200])
 
-        _psql(cn, sec, "INSERT INTO auth.\"verification\" (id, identifier, value, expires_at, created_at, updated_at) VALUES ('verif-restore-1', 'active@restore.test', 'verify_token_1', now() + interval '30 minutes', now(), now()), ('verif-restore-2', 'pending@restore.test', 'verify_token_2', now() - interval '1 hour', now(), now())")
+        r = _psql(cn, sec, "INSERT INTO auth.\"verification\" (id, identifier, value, expires_at, created_at, updated_at) VALUES ('verif-restore-1', 'active@restore.test', 'verify_token_1', now() + interval '30 minutes', now(), now()), ('verif-restore-2', 'pending@restore.test', 'verify_token_2', now() - interval '1 hour', now(), now())")
+        _check(r.returncode == 0, 'insert auth.verification fallo: ' + r.stderr.strip()[:200])
 
-        _psql(cn, sec, "INSERT INTO auth.\"two_factor\" (id, \"user_id\", secret, verified) VALUES ('2fa-restore-1', 'ba-restore-active', 'BASE32SECRET1', true), ('2fa-restore-2', 'ba-restore-suspended', 'BASE32SECRET2', false)")
+        r = _psql(cn, sec, "INSERT INTO auth.\"two_factor\" (id, \"user_id\", secret, verified) VALUES ('2fa-restore-1', 'ba-restore-active', 'BASE32SECRET1', true), ('2fa-restore-2', 'ba-restore-suspended', 'BASE32SECRET2', false)")
+        _check(r.returncode == 0, 'insert auth.two_factor fallo: ' + r.stderr.strip()[:200])
 
-        _psql(cn, sec, "INSERT INTO auth.\"organization\" (id, name, slug, created_at) VALUES ('org-restore-1', 'MILLENNIALS CONSTRUYEN', 'millennials-construyen', now())")
+        r = _psql(cn, sec, "INSERT INTO auth.\"organization\" (id, name, slug, created_at) VALUES ('org-restore-1', 'MILLENNIALS CONSTRUYEN', 'millennials-construyen', now())")
+        _check(r.returncode == 0, 'insert auth.organization fallo: ' + r.stderr.strip()[:200])
 
-        _psql(cn, sec, "INSERT INTO auth.\"member\" (id, organization_id, user_id, role, created_at) VALUES ('mbr-restore-1', 'org-restore-1', 'ba-restore-active', 'member', now())")
+        r = _psql(cn, sec, "INSERT INTO auth.\"member\" (id, organization_id, user_id, role, created_at) VALUES ('mbr-restore-1', 'org-restore-1', 'ba-restore-active', 'member', now())")
+        _check(r.returncode == 0, 'insert auth.member fallo: ' + r.stderr.strip()[:200])
 
-        _psql(cn, sec, "INSERT INTO auth.\"invitation\" (id, organization_id, email, status, role, expires_at, created_at) VALUES ('inv-restore-pending', 'org-restore-1', 'invited@restore.test', 'pending', 'member', now() + interval '48 hours', now()), ('inv-restore-expired', 'org-restore-1', 'expired@restore.test', 'expired', 'member', now() - interval '1 hour', now()), ('inv-restore-revoked', 'org-restore-1', 'revoked@restore.test', 'revoked', 'member', now() + interval '24 hours', now())")
+        r = _psql(cn, sec, "INSERT INTO auth.\"invitation\" (id, organization_id, email, status, role, expires_at, created_at) VALUES ('inv-restore-pending', 'org-restore-1', 'invited@restore.test', 'pending', 'member', now() + interval '48 hours', now()), ('inv-restore-expired', 'org-restore-1', 'expired@restore.test', 'expired', 'member', now() - interval '1 hour', now()), ('inv-restore-revoked', 'org-restore-1', 'revoked@restore.test', 'revoked', 'member', now() + interval '24 hours', now())")
+        _check(r.returncode == 0, 'insert auth.invitation fallo: ' + r.stderr.strip()[:200])
 
         # Business tables
-        _psql(cn, sec, "INSERT INTO app_users (id, better_auth_user_id, email_normalized, display_name, role, status, email_verified_at, mfa_enabled_at, activated_at, created_at, updated_at) VALUES (gen_random_uuid(), 'ba-restore-active', 'active@restore.test', 'Active', 'investor', 'active', now(), now(), now(), now(), now()), (gen_random_uuid(), 'ba-restore-suspended', 'suspended@restore.test', 'Suspended', 'investor', 'suspended', now(), now(), now(), now(), now()), (gen_random_uuid(), 'ba-restore-revoked', 'revoked@restore.test', 'Revoked', 'investor', 'revoked', now(), now(), now(), now(), now()), (gen_random_uuid(), 'ba-restore-pending', 'pending@restore.test', 'Pending', 'investor', 'pending_email', NULL, NULL, NULL, now(), now())")
+        r = _psql(cn, sec, "INSERT INTO app_users (id, better_auth_user_id, email_normalized, display_name, role, status, email_verified_at, mfa_enabled_at, activated_at, created_at, updated_at) VALUES (gen_random_uuid(), 'ba-restore-active', 'active@restore.test', 'Active', 'investor', 'active', now(), now(), now(), now(), now()), (gen_random_uuid(), 'ba-restore-suspended', 'suspended@restore.test', 'Suspended', 'investor', 'suspended', now(), now(), now(), now(), now()), (gen_random_uuid(), 'ba-restore-revoked', 'revoked@restore.test', 'Revoked', 'investor', 'revoked', now(), now(), now(), now(), now()), (gen_random_uuid(), 'ba-restore-pending', 'pending@restore.test', 'Pending', 'investor', 'pending_email', NULL, NULL, NULL, now(), now())")
+        _check(r.returncode == 0, 'insert app_users fallo: ' + r.stderr.strip()[:200])
 
         # Get project IDs for access grants
         opp_ids = _psql(cn, sec, "SELECT id FROM opportunities LIMIT 2").stdout.strip().split(chr(10))
