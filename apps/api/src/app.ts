@@ -26,6 +26,7 @@ import { createProviders, type ProviderSet } from './providers/index.js';
 import { betterAuthPlugin, setBetterAuthServer } from './auth/better-auth-plugin.js';
 import { createBetterAuthServer } from './auth/better-auth-server.js';
 import { createAuthEmailProvider } from './auth/email-provider.js';
+import { InvitationRepository } from './auth/invitations.js';
 import { registerInvitationRoutes } from './auth/invitation-routes.js';
 
 export type AppDependencies = {
@@ -112,8 +113,9 @@ export function buildApp(dependencies: AppDependencies = {}): FastifyInstance {
   // ── Better Auth initialization ──
   if (isBetterAuthEnabled(config)) {
     const authEmailProvider = createAuthEmailProvider(config.authEmailMode);
+    const invitations = new InvitationRepository(pool as Pool);
     try {
-      const betterAuth = createBetterAuthServer(pool as Pool, config, authEmailProvider);
+      const betterAuth = createBetterAuthServer(pool as Pool, config, authEmailProvider, invitations);
       setBetterAuthServer(betterAuth as any);
       app.log.info('better-auth server initialized');
     } catch (error) {

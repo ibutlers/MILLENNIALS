@@ -6,12 +6,14 @@
  * - TOTP two-factor authentication (mandatory)
  * - Organization plugin (single org: MILLENNIALS CONSTRUYEN)
  * - PostgreSQL adapter with schema isolation (auth.*)
+ * - Sign-up protection via X-Invitation-Token header
  *
  * Schema isolation: Better Auth stores its tables in the `auth` schema.
  * Business tables remain in `public`. The pg Pool passed here has
  * `search_path=auth,public` so bare table references resolve to auth.*.
  *
- * IMPORTANT: This server is only created when AUTH_MODE=*** In AUTH_MODE=*** no Better Auth instance exists and no cookies are emitted.
+ * IMPORTANT: This server is only created when AUTH_MODE=better-auth.
+ * In AUTH_MODE=disabled, no Better Auth instance exists and no cookies are emitted.
  */
 import { betterAuth } from 'better-auth';
 import { twoFactor } from 'better-auth/plugins';
@@ -19,11 +21,13 @@ import { organization } from 'better-auth/plugins';
 import type { Pool } from 'pg';
 import type { AppConfig } from '../config.js';
 import type { AuthEmailProvider } from './email-provider.js';
+import type { InvitationRepository } from './invitations.js';
 
 export function createBetterAuthServer(
   pool: Pool,
   config: AppConfig,
   emailProvider: AuthEmailProvider,
+  invitations?: InvitationRepository,
 ) {
   const baseURL = config.betterAuthUrl || config.appBaseUrl;
 
@@ -37,7 +41,7 @@ export function createBetterAuthServer(
     // ── Email + Password ──
     emailAndPassword: {
       enabled: true,
-      disableSignUp: false,
+      disableSignUp: false, // Protected by databaseHooks.user.create.before
       requireEmailVerification: true,
       autoSignIn: false,
       minPasswordLength: config.authPasswordMinLength,
@@ -149,10 +153,49 @@ export function createBetterAuthServer(
     databaseHooks: {
       user: {
         create: {
-          before: async (user) => {
+          before: async (user, context) => {
+            // Email normalization (always applied)
             if (typeof user.email === 'string') {
               user.email = user.email.toLowerCase().trim();
             }
+
+            // ── Invitation validation ──
+            // Context is present for HTTP requests (sign-up), null for internal operations.
+            // Skip validation when no invitation repo is configured (dev/test safety).
+            if (context && invitations) {
+              // Read X-Invitation-Token from request headers
+              const requestHeaders = (context as any).headers;
+              const rawToken =
+                (requestHeaders instanceof Headers
+                  ? requestHeaders.get('x-invitation-token')
+                  : null) ||
+                (typeof requestHeaders?.get === 'function'
+                  ? requestHeaders.get('X-Invitation-Token')
+                  : null) ||
+                (requestHeaders?.['x-invitation-token'] as string | undefined) ||
+                (requestHeaders?.['X-Invitation-Token'] as string | undefined);
+
+              if (!rawToken || typeof rawToken !== 'string') {
+                throw Object.assign(
+                  new Error('Se requiere un token de invitación válido para registrarse.'),
+                  { statusCode: 403, code: 'invitation_required' },
+                );
+              }
+
+              const email = typeof user.email === 'string' ? user.email : '';
+              const result = await invitations.validateToken(rawToken, email);
+
+              if (!result.valid) {
+                throw Object.assign(
+                  new Error('La invitación no es válida, ha expirado o ya ha sido utilizada.'),
+                  { statusCode: 403, code: 'invalid_invitation' },
+                );
+              }
+
+              // Store validated invitation for post-creation linking
+              (context as any).validatedInvitation = result.invitation;
+            }
+
             return true;
           },
         },

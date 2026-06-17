@@ -145,8 +145,21 @@ async function webResponseToFastifyReply(
   });
 
   // Set cookies (multiple Set-Cookie headers)
-  for (const cookie of setCookieHeaders) {
-    reply.header('set-cookie', cookie);
+  // Fastify's reply.header() overwrites when called repeatedly with the same name.
+  // Use reply.raw.setHeader() which supports append via array.
+  // @fastify/cookie serializes cookies; raw headers bypass it for Better Auth compatibility.
+  if (setCookieHeaders.length === 1) {
+    reply.header('set-cookie', setCookieHeaders[0]);
+  } else if (setCookieHeaders.length > 1) {
+    // Force multiple Set-Cookie via raw Node.js response
+    const raw = reply.raw;
+    const existing = raw.getHeader('set-cookie');
+    if (!existing) {
+      raw.setHeader('set-cookie', setCookieHeaders);
+    } else {
+      const existingArr: string[] = Array.isArray(existing) ? existing.map(String) : [String(existing)];
+      raw.setHeader('set-cookie', existingArr.concat(setCookieHeaders));
+    }
   }
 
   // Read body
