@@ -1,27 +1,127 @@
-# Better Auth Setup
+# Better Auth — Configuración y Setup
 
-## Activar autenticación
+Versión: **Better Auth v1.6.19** (pin exacto, no flotante)
+Fecha de revisión: 2026-06-17
+Plugins activos: two-factor, organization
 
-1. Configurar dominio y HTTPS
-2. Generar secret: `openssl rand -base64 48`
-3. Configurar SMTP
-4. En `shared/.env`:
-   ```
-   AUTH_MODE=***   BETTER_AUTH_SECRET=<secret>
-   BETTER_AUTH_URL=***   AUTH_EMAIL_MODE=***   SMTP_HOST=...
-   ```
-5. Desplegar: `./scripts/deploy.sh`
-6. Verificar: `curl https://DOMINIO/api/config/public` → `{"authEnabled":true}`
+## Activar/Desactivar autenticación
 
-## Desactivar autenticación
+La autenticación se controla mediante `AUTH_MODE` en `shared/.env`:
 
-1. En `shared/.env`: `AUTH_MODE=*** Desplegar: `./scripts/deploy.sh`
-3. Las sesiones existentes quedan invalidadas
-4. Los usuarios y datos de autorización se conservan
+```bash
+# Autenticación deshabilitada (por defecto, segura)
+AUTH_MODE=disabled
 
-## Rotar BETTER_AUTH_SECRET
+# Autenticación con Better Auth
+AUTH_MODE=better-auth
+```
 
-1. Generar nuevo secret: `openssl rand -base64 48`
-2. Actualizar `BETTER_AUTH_SECRET` en `shared/.env`
-3. Desplegar: `./scripts/deploy.sh`
-4. Todas las sesiones existentes quedan invalidadas
+**⚠️ No activar `AUTH_MODE=better-auth` en producción hasta tener:**
+- Dominio definitivo con HTTPS
+- `BETTER_AUTH_SECRET` con al menos 32 caracteres de entropía
+- SMTP configurado y verificado
+- SPF, DKIM y DMARC configurados
+- Dos cuentas administrativas creadas
+- Backup verificado de tablas `auth.*` y `public.app_users`
+
+## Variables requeridas para Better Auth
+
+```bash
+# Obligatorias
+AUTH_MODE=better-auth
+BETTER_AUTH_SECRET=<generar con: openssl rand -base64 48>
+BETTER_AUTH_URL=https://<dominio-definitivo>
+BETTER_AUTH_TRUSTED_ORIGINS=https://<dominio-definitivo>
+
+# Email (requerido para producción)
+AUTH_EMAIL_MODE=smtp
+AUTH_EMAIL_FROM=no-reply@<dominio>
+SMTP_HOST=<host>
+SMTP_PORT=587
+SMTP_SECURE=false
+SMTP_USER=<user>
+SMTP_PASSWORD=<password>
+
+# Opcionales con defaults seguros
+AUTH_INVITATION_TTL_HOURS=48
+AUTH_SESSION_EXPIRES_HOURS=8
+AUTH_PASSWORD_MIN_LENGTH=12
+BETTER_AUTH_COOKIE_PREFIX=mc
+BETTER_AUTH_REQUIRE_2FA=true
+```
+
+## Esquema PostgreSQL
+
+Better Auth usa el esquema `auth` (separado de `public`):
+
+```
+auth.user         — Identidad Better Auth
+auth.session      — Sesiones (cookies)
+auth.account      — Métodos de auth (email+password)
+auth.verification — Tokens de verificación/reset
+auth.two_factor   — Configuración TOTP
+auth.organization — Organización "MILLENNIALS CONSTRUYEN"
+auth.member       — Pertenencia a organización
+auth.invitation   — Invitaciones de organización (framework)
+```
+
+La autorización local usa tablas en `public`:
+- `app_users` — Usuarios internos vinculados 1:1 con auth.user
+- `access_invitations` — Invitaciones de acceso (puerta de entrada)
+- `project_user_access` — Concesiones de acceso a proyectos
+- `auth_audit_events` — Auditoría append-only
+
+## Pool de conexiones
+
+Cada pool PostgreSQL usa `search_path` adecuado:
+
+- **Pool de negocio**: `search_path=public` — consultas de `app_users`, `leads`, `opportunities`, etc.
+- **Pool Better Auth**: `search_path=auth,public` — Better Auth resuelve sus tablas primero en `auth.*`
+
+Ambos pools comparten el mismo usuario PostgreSQL (`realstate`) y base de datos.
+
+## Migraciones
+
+Las migraciones están en `apps/api/src/db/migrations/`:
+- `0008_add_better_auth_schema.sql` — Esquema `auth` generado desde `getAuthTables()` de v1.6.19
+- `0009_add_private_access_authorization.sql` — Autorización local
+
+Se ejecutan automáticamente en `./scripts/deploy.sh` a través del migrador estándar.
+
+**Regla IRON**: Nunca modificar 0001-0007 (checksums registrados). Los cambios van en nuevas migraciones.
+
+## Endpoints
+
+Con `AUTH_MODE=better-auth`:
+- `POST /api/auth/*` — Handler Better Auth (sign-up, sign-in, sign-out, etc.)
+- `POST /api/auth/sign-up/email` — Protegido: requiere `X-Invitation-Token`
+- `GET /api/investor/dashboard` — Dashboard privado del inversor
+- `GET /api/investor/projects` — Proyectos autorizados
+- `GET /api/investor/projects/:id` — Detalle con autorización SQL
+- `GET /api/investor/projects/:id/documents` — Documentos privados
+- `GET /api/investor/profile` — Perfil del inversor
+- `POST /api/v1/invitations` — Crear invitación (staff/admin)
+- `GET /api/v1/invitations` — Listar invitaciones (staff/admin)
+- `POST /api/v1/invitations/validate` — Validar invitación (público, sin autenticación)
+- `POST /api/v1/invitations/:ref/revoke` — Revocar invitación (staff/admin)
+
+## Actualización de Better Auth
+
+1. Revisar changelog y breaking changes
+2. Fijar nueva versión exacta en `apps/api/package.json` y `apps/web/package.json`
+3. Regenerar esquema: `npx tsx gen-better-auth-schema.ts` (crear temporalmente)
+4. Comparar con `0008_add_better_auth_schema.sql` existente
+5. Crear migración aditiva con solo los deltas (nueva tabla, nueva columna, etc.)
+6. Actualizar ADR y este runbook
+7. Probar en entorno efímero antes de producción
+
+## Rollback
+
+Si Better Auth causa problemas en producción:
+
+1. Cambiar `AUTH_MODE=disabled` en `shared/.env`
+2. Ejecutar `./scripts/deploy.sh`
+3. Las cookies existentes expirarán (máximo 8 horas)
+4. Los datos en `auth.*` y `public.app_users` se conservan
+5. `/acceso` vuelve a ser informativa
+6. Coinvierte sigue funcionando normalmente
