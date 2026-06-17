@@ -6,8 +6,14 @@
  * Node.js (req, res) that Better Auth expects.
  *
  * When AUTH_MODE=*** returns 503 for all /api/auth/* routes.
+ *
+ * Sign-up protection: validates X-Invitation-Token header before
+ * delegating to Better Auth. Uses app-level preHandler on the
+ * sign-up route because Better Auth v1.6.19 hooks context does
+ * not reliably contain request headers.
  */
 import type { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
+import type { Pool } from 'pg';
 import type { AppConfig } from '../config.js';
 
 // The Better Auth server type (from betterAuth())
@@ -32,13 +38,31 @@ export function getBetterAuthServer(): BetterAuthServer | null {
   return _betterAuthServer;
 }
 
+export interface InvitationValidator {
+  validateToken(token: string, email: string): Promise<{ valid: boolean; reason?: string }>;
+  consumeAfterSignup(token: string, email: string, betterAuthUserId: string, userName?: string): Promise<void>;
+}
+
+function extractToken(headers: Record<string, string | string[] | undefined>): string | null {
+  for (const [key, value] of Object.entries(headers)) {
+    if (key.toLowerCase() === 'x-invitation-token') {
+      if (Array.isArray(value)) return value[0] || null;
+      return value || null;
+    }
+  }
+  return null;
+}
+
 /**
  * Register the Better Auth handler as a Fastify plugin.
  * Routes all /api/auth/* requests to Better Auth.
+ * For sign-up, validates invitation token before delegating.
  */
 export async function betterAuthPlugin(
   app: FastifyInstance,
   config: AppConfig,
+  pool?: Pool,
+  invitationValidator?: InvitationValidator,
 ): Promise<void> {
   // ── Auth disabled: return 503 for all auth routes ──
   app.all('/api/auth/*', async (request: FastifyRequest, reply: FastifyReply) => {
@@ -62,12 +86,98 @@ export async function betterAuthPlugin(
       });
     }
 
+    // ── Sign-up invitation validation ──
+    if (request.method === 'POST' && request.url === '/api/auth/sign-up/email') {
+      if (invitationValidator) {
+        const rawToken = extractToken(request.headers as Record<string, string | string[] | undefined>);
+        if (!rawToken || typeof rawToken !== 'string' || rawToken.length < 32) {
+          return reply.status(403).send({
+            error: {
+              id: `err_${Date.now().toString(36)}`,
+              code: 'invitation_required',
+              message: 'Se requiere un token de invitación válido para registrarse.',
+            },
+          });
+        }
+
+        const body = request.body as { email?: string } | undefined;
+        const email = body?.email?.toLowerCase().trim();
+        if (!email || !email.includes('@')) {
+          return reply.status(400).send({
+            error: {
+              id: `err_${Date.now().toString(36)}`,
+              code: 'bad_request',
+              message: 'El email proporcionado no es válido.',
+            },
+          });
+        }
+
+        // Reject forbidden client-sent fields
+        const forbiddenFields = ['role', 'status', 'userId', 'permissions', 'admin', 'staff'];
+        if (body) {
+          for (const field of forbiddenFields) {
+            if ((body as Record<string, unknown>)[field] !== undefined) {
+              return reply.status(403).send({
+                error: {
+                  id: `err_${Date.now().toString(36)}`,
+                  code: 'forbidden_fields',
+                  message: 'La solicitud contiene campos no permitidos.',
+                },
+              });
+            }
+          }
+        }
+
+        const result = await invitationValidator.validateToken(rawToken, email);
+        if (!result.valid) {
+          return reply.status(403).send({
+            error: {
+              id: `err_${Date.now().toString(36)}`,
+              code: 'invalid_invitation',
+              message: 'La invitación no es válida, ha expirado o ya ha sido utilizada.',
+            },
+          });
+        }
+      } else {
+        return reply.status(403).send({
+          error: {
+            id: `err_${Date.now().toString(36)}`,
+            code: 'invitation_required',
+            message: 'El registro requiere invitación.',
+          },
+        });
+      }
+    }
+
     try {
       // Convert Fastify request to Web Request
       const webRequest = fastifyRequestToWebRequest(request);
 
       // Delegate to Better Auth
       const webResponse = await _betterAuthServer.handler(webRequest);
+
+      // ── Post-signup: consume invitation ──
+      if (request.method === 'POST' && request.url === '/api/auth/sign-up/email' && webResponse.ok && invitationValidator) {
+        const rawToken = extractToken(request.headers as Record<string, string | string[] | undefined>);
+        const body = request.body as { email?: string } | undefined;
+        const email = body?.email?.toLowerCase().trim();
+        if (rawToken && email) {
+          try {
+            // Get the created user from Better Auth response
+            const responseBody = await webResponse.clone().json().catch(() => null) as Record<string, unknown> | null;
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            const betterAuthUserId = (responseBody as any)?.user?.id || (responseBody as any)?.id;
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            const userName = (responseBody as any)?.user?.name;
+            if (betterAuthUserId) {
+              await invitationValidator.consumeAfterSignup(rawToken, email, betterAuthUserId, userName);
+            }
+          } catch {
+            // Consumption failure should not break the sign-up response
+            request.log.warn('invitation consumption after signup failed');
+          }
+        }
+      }
 
       // Convert Web Response back to Fastify reply
       await webResponseToFastifyReply(webResponse, reply);
@@ -108,9 +218,6 @@ function fastifyRequestToWebRequest(request: FastifyRequest): Request {
       body = request.body;
     } else {
       body = JSON.stringify(request.body);
-      if (!headers.has('content-type')) {
-        headers.set('content-type', 'application/json');
-      }
     }
   }
 
@@ -123,7 +230,6 @@ function fastifyRequestToWebRequest(request: FastifyRequest): Request {
 
 /**
  * Convert a Web API Response to a Fastify reply.
- * Handles cookies (multiple Set-Cookie), status, and body.
  */
 async function webResponseToFastifyReply(
   response: Response,
@@ -139,19 +245,14 @@ async function webResponseToFastifyReply(
     if (lower === 'set-cookie') {
       setCookieHeaders.push(value);
     } else if (lower !== 'content-length') {
-      // Fastify handles content-length automatically
       reply.header(key, value);
     }
   });
 
   // Set cookies (multiple Set-Cookie headers)
-  // Fastify's reply.header() overwrites when called repeatedly with the same name.
-  // Use reply.raw.setHeader() which supports append via array.
-  // @fastify/cookie serializes cookies; raw headers bypass it for Better Auth compatibility.
   if (setCookieHeaders.length === 1) {
     reply.header('set-cookie', setCookieHeaders[0]);
   } else if (setCookieHeaders.length > 1) {
-    // Force multiple Set-Cookie via raw Node.js response
     const raw = reply.raw;
     const existing = raw.getHeader('set-cookie');
     if (!existing) {
@@ -171,7 +272,6 @@ async function webResponseToFastifyReply(
     const body = await response.text();
     return reply.send(body);
   } else if (response.status === 302 || response.status === 301) {
-    // Redirect — just send empty body with Location header
     return reply.send('');
   } else {
     const body = await response.text();

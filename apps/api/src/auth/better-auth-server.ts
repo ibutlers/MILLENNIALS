@@ -17,24 +17,17 @@
  */
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { betterAuth, APIError } from 'better-auth';
+import { betterAuth } from 'better-auth';
 import { twoFactor } from 'better-auth/plugins';
 import { organization } from 'better-auth/plugins';
-import { createHash } from 'node:crypto';
 import type { Pool } from 'pg';
 import type { AppConfig } from '../config.js';
 import type { AuthEmailProvider } from './email-provider.js';
-import type { InvitationRepository } from './invitations.js';
-
-function hashToken(token: string): string {
-  return createHash('sha256').update(token).digest('hex');
-}
 
 export function createBetterAuthServer(
   pool: Pool,
   config: AppConfig,
   emailProvider: AuthEmailProvider,
-  invitations?: InvitationRepository,
 ) {
   const baseURL = config.betterAuthUrl || config.appBaseUrl;
 
@@ -42,148 +35,12 @@ export function createBetterAuthServer(
     ? config.betterAuthTrustedOrigins
     : [baseURL];
 
-  // ── Sign-up protection hooks ──────────────────────────────────────────
-  // Invitation validation in before hook (no consumption)
-  // Invitation consumption in after hook (atomic, after successful signup)
-  const beforeHooks: any[] = [];
-  const afterHooks: any[] = [];
-
-  if (invitations) {
-    // BEFORE: validate invitation without consuming it
-    beforeHooks.push(async (ctx: any) => {
-      if (ctx.path !== '/sign-up/email') return;
-
-      // 1. Exige X-Invitation-Token header
-      if (!ctx.headers || typeof ctx.headers.get !== 'function') {
-        throw APIError.fromStatus('FORBIDDEN', {
-          message: 'Se requiere un token de invitación válido para registrarse.',
-        });
-      }
-
-      const rawToken = ctx.headers.get('x-invitation-token') as string | null;
-      if (!rawToken || typeof rawToken !== 'string' || rawToken.length < 32) {
-        throw APIError.fromStatus('FORBIDDEN', {
-          message: 'Se requiere un token de invitación válido para registrarse.',
-        });
-      }
-
-      // 2. Normaliza email del body
-      const email = (ctx.body?.email as string | undefined)?.toLowerCase().trim();
-      if (!email || !email.includes('@')) {
-        throw APIError.fromStatus('BAD_REQUEST', {
-          message: 'El email proporcionado no es válido.',
-        });
-      }
-
-      // 3. Valida invitación (sin consumir)
-      const result = await invitations.validateToken(rawToken, email);
-      if (!result.valid) {
-        throw APIError.fromStatus('FORBIDDEN', {
-          message: 'La invitación no es válida, ha expirado o ya ha sido utilizada.',
-        });
-      }
-
-      // 4. Rechaza campos no permitidos enviados por cliente
-      const forbiddenFields = ['role', 'status', 'userId', 'permissions', 'admin', 'staff'];
-      for (const field of forbiddenFields) {
-        if (ctx.body?.[field] !== undefined) {
-          throw APIError.fromStatus('FORBIDDEN', {
-            message: 'La solicitud contiene campos no permitidos.',
-          });
-        }
-      }
-
-      // No consume la invitación todavía — eso ocurre en after
-    });
-
-    // AFTER: consume invitation atomically after successful signup
-    afterHooks.push(async (ctx: any) => {
-      if (ctx.path !== '/sign-up/email') return;
-
-      // Only run on success
-      const responseStatus = (ctx as any).responseStatus ?? (ctx as any)._responseStatus;
-      if (responseStatus && responseStatus >= 400) return;
-
-      const rawToken = ctx.headers?.get?.('x-invitation-token') as string | undefined;
-      const email = (ctx.body?.email as string | undefined)?.toLowerCase().trim();
-
-      if (!rawToken || !email) return;
-
-      const tokenHash = hashToken(rawToken);
-
-      const pgClient = await pool.connect();
-      try {
-        await pgClient.query('BEGIN');
-
-        const invResult = await pgClient.query(
-          `UPDATE access_invitations
-           SET status = 'accepted', accepted_at = now()
-           WHERE email_normalized = $1
-             AND token_hash = $2
-             AND status = 'pending'
-             AND expires_at > now()
-           RETURNING id, public_reference`,
-          [email, tokenHash],
-        );
-
-        if (invResult.rows.length === 0) {
-          await pgClient.query('ROLLBACK');
-          return;
-        }
-
-        const invitation = invResult.rows[0];
-        const newUser = (ctx as any).context?.newUser;
-        const betterAuthUserId = newUser?.id as string | undefined;
-
-        if (betterAuthUserId) {
-          await pgClient.query(
-            `UPDATE access_invitations SET better_auth_user_id = $1 WHERE id = $2`,
-            [betterAuthUserId, invitation.id],
-          );
-
-          await pgClient.query(
-            `INSERT INTO app_users (better_auth_user_id, email_normalized, display_name, role, status)
-             VALUES ($1, $2, $3, 'investor', 'pending_email')
-             ON CONFLICT (better_auth_user_id) DO UPDATE
-               SET email_normalized = EXCLUDED.email_normalized,
-                   updated_at = now()`,
-            [betterAuthUserId, email, newUser?.name || email],
-          );
-
-          await pgClient.query(
-            `INSERT INTO auth_audit_events (action, resource_type, resource_id, result, metadata)
-             VALUES ('invitation_accepted', 'access_invitation', $1, 'success', $2)`,
-            [invitation.id, JSON.stringify({ reference: invitation.public_reference })],
-          );
-        }
-
-        await pgClient.query('COMMIT');
-      } catch (error) {
-        await pgClient.query('ROLLBACK').catch(() => {});
-        try {
-          const logger = (ctx as any).context?.logger;
-          if (logger?.error) {
-            logger.error({ err: error }, 'invitation consumption failed');
-          }
-        } catch { /* silent */ }
-      } finally {
-        pgClient.release();
-      }
-    });
-  }
-
-  const hooksConfig = (beforeHooks.length > 0 || afterHooks.length > 0)
-    ? {
-        before: beforeHooks[0] as any,
-        after: afterHooks[0] as any,
-      }
-    : undefined;
+  // ── Sign-up protection is handled at the Fastify level in better-auth-plugin.ts ──
+  // Better Auth v1.6.19 databaseHooks.user.create.before does not reliably
+  // contain request headers. See betterAuthPlugin() for invitation validation.
 
   return betterAuth({
     appName: 'MILLENNIALS CONSTRUYEN',
-
-    // ── Request lifecycle hooks ──
-    hooks: hooksConfig,
 
     // ── Email + Password ──
     emailAndPassword: {

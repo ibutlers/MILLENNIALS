@@ -1,6 +1,7 @@
 import Fastify, { type FastifyInstance } from 'fastify';
 import cookie from '@fastify/cookie';
 import type { Pool } from 'pg';
+import { createHash } from 'node:crypto';
 import { ZodError } from 'zod';
 import { getConfig, isBetterAuthEnabled, leadsCaptureAvailable, rejectInsecureAuth, type AppConfig } from './config.js';
 import { getPool } from './db/pool.js';
@@ -111,11 +112,12 @@ export function buildApp(dependencies: AppDependencies = {}): FastifyInstance {
   const providers = dependencies.providers ?? createProviders();
 
   // ── Better Auth initialization ──
+  let invitationValidator = undefined;
   if (isBetterAuthEnabled(config)) {
     const authEmailProvider = createAuthEmailProvider(config.authEmailMode);
     const invitations = new InvitationRepository(pool as Pool);
     try {
-      const betterAuth = createBetterAuthServer(pool as Pool, config, authEmailProvider, invitations);
+      const betterAuth = createBetterAuthServer(pool as Pool, config, authEmailProvider);
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       setBetterAuthServer(betterAuth as any);
       app.log.info('better-auth server initialized');
@@ -123,6 +125,47 @@ export function buildApp(dependencies: AppDependencies = {}): FastifyInstance {
       app.log.error({ err: error }, 'failed to initialize better-auth server');
       throw error;
     }
+
+    // Adapter for invitation validation + consumption at Fastify level
+    // (Better Auth v1.6.19 hooks context does not reliably contain headers)
+    invitationValidator = {
+      validateToken: (token: string, email: string) => invitations.validateToken(token, email),
+      consumeAfterSignup: async (token: string, email: string, baUserId: string, userName?: string) => {
+        // Create app_users and mark invitation accepted atomically
+        const pgClient = await (pool as Pool).connect();
+        try {
+          await pgClient.query('BEGIN');
+          const tokenHash = createHash('sha256').update(token).digest('hex');
+          const invResult = await pgClient.query(
+            `UPDATE access_invitations
+             SET status = 'accepted', accepted_at = now(), better_auth_user_id = $1
+             WHERE email_normalized = $2 AND token_hash = $3 AND status = 'pending' AND expires_at > now()
+             RETURNING id, public_reference`,
+            [baUserId, email, tokenHash],
+          );
+          if (invResult.rows.length > 0) {
+            const inv = invResult.rows[0];
+            await pgClient.query(
+              `INSERT INTO app_users (better_auth_user_id, email_normalized, display_name, role, status)
+               VALUES ($1, $2, $3, 'investor', 'pending_email')
+               ON CONFLICT (better_auth_user_id) DO UPDATE
+                 SET email_normalized = EXCLUDED.email_normalized, updated_at = now()`,
+              [baUserId, email, userName || email],
+            );
+            const appUser = await pgClient.query(`SELECT id FROM app_users WHERE better_auth_user_id = $1`, [baUserId]);
+            if (appUser.rows.length > 0) {
+              await invitations.markAccepted(inv.id, baUserId, appUser.rows[0].id);
+            }
+          }
+          await pgClient.query('COMMIT');
+        } catch {
+          await pgClient.query('ROLLBACK').catch(() => {});
+          throw new Error('Failed to finalize invitation after signup');
+        } finally {
+          pgClient.release();
+        }
+      },
+    };
   }
 
   // ── Plugins ──
@@ -130,7 +173,7 @@ export function buildApp(dependencies: AppDependencies = {}): FastifyInstance {
 
   // ── Better Auth plugin (mounts /api/auth/*) ──
   app.register(async (authApp) => {
-    await betterAuthPlugin(authApp, config);
+    await betterAuthPlugin(authApp, config, pool as Pool, invitationValidator);
   });
 
   // ── CSRF / Origin check ──
