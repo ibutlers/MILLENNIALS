@@ -1,3 +1,5 @@
+export type AuthMode = 'disabled' | 'better-auth';
+
 export type AppConfig = {
   leadsEnabled: boolean;
   privacyControllerName: string;
@@ -6,6 +8,8 @@ export type AppConfig = {
   leadsRateLimitMax: number;
   leadsRateLimitWindowMs: number;
   // Auth
+  authMode: AuthMode;
+  /** @deprecated Use authMode instead. True when authMode !== 'disabled' */
   authEnabled: boolean;
   registrationEnabled: boolean;
   emailDeliveryEnabled: boolean;
@@ -19,6 +23,23 @@ export type AppConfig = {
   passwordResetTtlSeconds: number;
   authRateLimitMax: number;
   authRateLimitWindowMs: number;
+  // Better Auth
+  betterAuthSecret?: string;
+  betterAuthUrl?: string;
+  betterAuthTrustedOrigins: string[];
+  betterAuthCookiePrefix: string;
+  betterAuthRequire2FA: boolean;
+  authEmailMode: 'disabled' | 'capture' | 'smtp';
+  authEmailFrom: string;
+  authEmailReplyTo: string;
+  smtpHost: string;
+  smtpPort: number;
+  smtpSecure: boolean;
+  smtpUser: string;
+  smtpPassword: string;
+  authInvitationTtlHours: number;
+  authSessionExpiresHours: number;
+  authPasswordMinLength: number;
   // Admin
   adminEnabled: boolean;
   adminMediaUploadEnabled: boolean;
@@ -35,7 +56,24 @@ function num(value: string | undefined, defaultValue: number): number {
   return Number.isFinite(parsed) ? parsed : defaultValue;
 }
 
+function parseAuthMode(value: string | undefined): AuthMode {
+  if (!value) return 'disabled';
+  const normalized = value.toLowerCase().trim();
+  if (normalized === 'better-auth' || normalized === 'better_auth') return 'better-auth';
+  if (normalized === 'disabled') return 'disabled';
+  throw new Error(
+    `AUTH_MODE="${value}" no es válido. Valores permitidos: disabled, better-auth.`
+  );
+}
+
+function parseCommaSeparated(value: string | undefined): string[] {
+  if (!value) return [];
+  return value.split(',').map(s => s.trim()).filter(Boolean);
+}
+
 export function getConfig(): AppConfig {
+  const authMode = parseAuthMode(process.env.AUTH_MODE);
+
   return {
     leadsEnabled: bool(process.env.LEADS_ENABLED, false),
     privacyControllerName: process.env.PRIVACY_CONTROLLER_NAME?.trim() ?? '',
@@ -44,7 +82,8 @@ export function getConfig(): AppConfig {
     leadsRateLimitMax: num(process.env.LEADS_RATE_LIMIT_MAX, 5),
     leadsRateLimitWindowMs: num(process.env.LEADS_RATE_LIMIT_WINDOW_MS, 900_000),
     // Auth
-    authEnabled: bool(process.env.AUTH_ENABLED, false),
+    authMode,
+    authEnabled: authMode !== 'disabled',
     registrationEnabled: bool(process.env.REGISTRATION_ENABLED, false),
     emailDeliveryEnabled: bool(process.env.EMAIL_DELIVERY_ENABLED, false),
     e2eTestMode: bool(process.env.E2E_TEST_MODE, false),
@@ -57,6 +96,23 @@ export function getConfig(): AppConfig {
     passwordResetTtlSeconds: num(process.env.PASSWORD_RESET_TTL_SECONDS, 1800),
     authRateLimitMax: num(process.env.AUTH_RATE_LIMIT_MAX, 10),
     authRateLimitWindowMs: num(process.env.AUTH_RATE_LIMIT_WINDOW_MS, 900_000),
+    // Better Auth
+    betterAuthSecret: process.env.BETTER_AUTH_SECRET?.trim() || undefined,
+    betterAuthUrl: process.env.BETTER_AUTH_URL?.trim() || undefined,
+    betterAuthTrustedOrigins: parseCommaSeparated(process.env.BETTER_AUTH_TRUSTED_ORIGINS),
+    betterAuthCookiePrefix: process.env.BETTER_AUTH_COOKIE_PREFIX?.trim() || 'mc',
+    betterAuthRequire2FA: bool(process.env.BETTER_AUTH_REQUIRE_2FA, true),
+    authEmailMode: (process.env.AUTH_EMAIL_MODE?.trim() || 'disabled') as 'disabled' | 'capture' | 'smtp',
+    authEmailFrom: process.env.AUTH_EMAIL_FROM?.trim() || '',
+    authEmailReplyTo: process.env.AUTH_EMAIL_REPLY_TO?.trim() || '',
+    smtpHost: process.env.SMTP_HOST?.trim() || '',
+    smtpPort: num(process.env.SMTP_PORT, 587),
+    smtpSecure: bool(process.env.SMTP_SECURE, false),
+    smtpUser: process.env.SMTP_USER?.trim() || '',
+    smtpPassword: process.env.SMTP_PASSWORD?.trim() || '',
+    authInvitationTtlHours: num(process.env.AUTH_INVITATION_TTL_HOURS, 48),
+    authSessionExpiresHours: num(process.env.AUTH_SESSION_EXPIRES_HOURS, 8),
+    authPasswordMinLength: num(process.env.AUTH_PASSWORD_MIN_LENGTH, 12),
     // Admin
     adminEnabled: bool(process.env.ADMIN_ENABLED, false),
     adminMediaUploadEnabled: bool(process.env.ADMIN_MEDIA_UPLOAD_ENABLED, false),
@@ -72,8 +128,11 @@ export function isSecureConfig(config: AppConfig): boolean {
   return config.appBaseUrl.startsWith('https://');
 }
 
+export function isBetterAuthEnabled(config: AppConfig): boolean {
+  return config.authMode === 'better-auth';
+}
+
 export function rejectInsecureAuth(config: AppConfig): void {
-  // Allow insecure auth in E2E/test environments (localhost only)
   const isE2E = config.e2eTestMode && (process.env.NODE_ENV === 'test' || process.env.NODE_ENV === 'e2e');
   const isLocalhost = config.appBaseUrl.includes('127.0.0.1') || config.appBaseUrl.includes('localhost');
 
@@ -84,16 +143,45 @@ export function rejectInsecureAuth(config: AppConfig): void {
     throw new Error('E2E_INTERNAL_SECRET is required for isolated E2E test mode and must be at least 64 characters.');
   }
 
-  if (config.authEnabled && !isSecureConfig(config) && !(isE2E && isLocalhost)) {
-    throw new Error(
-      'AUTH_ENABLED=true requires APP_BASE_URL to use https://. ' +
-      'Authentication is not safe over plain HTTP. ' +
-      `Current APP_BASE_URL: ${config.appBaseUrl}`
-    );
+  // Better Auth validation
+  if (config.authMode === 'better-auth') {
+    // Require HTTPS unless E2E localhost
+    if (!isSecureConfig(config) && !(isE2E && isLocalhost)) {
+      throw new Error(
+        'AUTH_MODE=better-auth requires APP_BASE_URL to use https://. ' +
+        'Authentication is not safe over plain HTTP. ' +
+        `Current APP_BASE_URL: ${config.appBaseUrl}`
+      );
+    }
+
+    // Require secret
+    if (!config.betterAuthSecret || config.betterAuthSecret.length < 32) {
+      throw new Error(
+        'AUTH_MODE=better-auth requires BETTER_AUTH_SECRET with at least 32 characters.'
+      );
+    }
+
+    // Require email config when email delivery is enabled
+    if (config.authEmailMode === 'smtp') {
+      if (!config.smtpHost || !config.smtpUser) {
+        throw new Error(
+          'AUTH_EMAIL_MODE=smtp requires SMTP_HOST and SMTP_USER to be configured.'
+        );
+      }
+    }
+
+    // Reject forbidden bypass modes
+    if (process.env.AUTH_MODE_OVERRIDE || process.env.DEV_BYPASS || process.env.MOCK_USERS ||
+        process.env.SKIP_AUTH || process.env.FAKE_SESSION || process.env.TEST_ADMIN) {
+      throw new Error(
+        'Bypass authentication variables detected. These are not allowed in any environment.'
+      );
+    }
   }
-  if (config.adminEnabled && !config.authEnabled) {
+
+  if (config.adminEnabled && config.authMode === 'disabled') {
     throw new Error(
-      'ADMIN_ENABLED=true requires AUTH_ENABLED=true. ' +
+      'ADMIN_ENABLED=true requires AUTH_MODE=better-auth. ' +
       'The admin panel cannot function without authentication.'
     );
   }

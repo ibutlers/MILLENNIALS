@@ -2,7 +2,7 @@ import Fastify, { type FastifyInstance } from 'fastify';
 import cookie from '@fastify/cookie';
 import type { Pool } from 'pg';
 import { ZodError } from 'zod';
-import { getConfig, leadsCaptureAvailable, rejectInsecureAuth, type AppConfig } from './config.js';
+import { getConfig, isBetterAuthEnabled, leadsCaptureAvailable, rejectInsecureAuth, type AppConfig } from './config.js';
 import { getPool } from './db/pool.js';
 import { OriginRateLimiter } from './leads/rate-limit.js';
 import { LeadRepository } from './leads/repository.js';
@@ -22,6 +22,10 @@ import { registerAuthRoutes } from './auth/routes.js';
 import { registerAdminRoutes } from './admin/routes.js';
 import { registerInvestorRoutes } from './investor/routes.js';
 import { createProviders, type ProviderSet } from './providers/index.js';
+import { betterAuthPlugin, setBetterAuthServer } from './auth/better-auth-plugin.js';
+import { createBetterAuthServer } from './auth/better-auth-server.js';
+import { createAuthEmailProvider } from './auth/email-provider.js';
+import { registerInvitationRoutes } from './auth/invitation-routes.js';
 
 export type AppDependencies = {
   pool?: Pool;
@@ -59,7 +63,7 @@ function isStateChanging(method: string): boolean {
 /** CSRF / Origin protection for state-changing requests */
 function checkOrigin(request: { method: string; headers: Record<string, string | undefined> }, config: AppConfig): void {
   if (!isStateChanging(request.method)) return;
-  if (!config.authEnabled) return; // Only enforce when auth is active
+  if (!isBetterAuthEnabled(config)) return; // Only enforce when Better Auth is active
 
   const origin = request.headers['origin'];
   if (!origin) {
@@ -104,11 +108,32 @@ export function buildApp(dependencies: AppDependencies = {}): FastifyInstance {
   // Providers (all disabled by default)
   const providers = dependencies.providers ?? createProviders();
 
+  // ── Better Auth initialization ──
+  if (isBetterAuthEnabled(config)) {
+    const authEmailProvider = createAuthEmailProvider(config.authEmailMode);
+    try {
+      const betterAuth = createBetterAuthServer(pool as Pool, config, authEmailProvider);
+      setBetterAuthServer(betterAuth as any);
+      app.log.info('better-auth server initialized');
+    } catch (error) {
+      app.log.error({ err: error }, 'failed to initialize better-auth server');
+      throw error;
+    }
+  }
+
   // ── Plugins ──
   app.register(cookie);
 
+  // ── Better Auth plugin (mounts /api/auth/*) ──
+  app.register(async (authApp) => {
+    await betterAuthPlugin(authApp, config);
+  });
+
   // ── CSRF / Origin check ──
   app.addHook('onRequest', async (request) => {
+    // Skip origin check for Better Auth routes (Better Auth handles its own security)
+    if (request.url.startsWith('/api/auth')) return;
+
     try {
       checkOrigin({ method: request.method, headers: request.headers as Record<string, string | undefined> }, config);
     } catch (err) {
@@ -125,7 +150,7 @@ export function buildApp(dependencies: AppDependencies = {}): FastifyInstance {
       return reply.status(400).send(errorResponseSchema.parse(body));
     }
 
-    // Fastify body-too-large → 413 (before route handler, never reaches createContact)
+    // Fastify body-too-large → 413
     if ((error as { code?: string }).code === 'FST_ERR_CTP_BODY_TOO_LARGE' || (error as { statusCode?: number }).statusCode === 413) {
       const body = publicError('payload_too_large', 'El contenido de la solicitud es demasiado grande.');
       request.log.warn({ errorId: body.error.id }, 'payload too large');
@@ -163,6 +188,17 @@ export function buildApp(dependencies: AppDependencies = {}): FastifyInstance {
       return reply.status(503).send({ status: 'not_ready' });
     }
   });
+
+  // ── Auth status endpoint (public, informs frontend about auth availability) ──
+  app.get('/api/auth/status', async () => ({
+    mode: config.authMode,
+    available: isBetterAuthEnabled(config),
+  }));
+
+  // ── Public config endpoint (minimal, no secrets exposed) ──
+  app.get('/api/config/public', async () => ({
+    authEnabled: isBetterAuthEnabled(config),
+  }));
 
   // ── Opportunities ──
   app.get('/api/v1/opportunities', async (request) => {
@@ -305,22 +341,51 @@ export function buildApp(dependencies: AppDependencies = {}): FastifyInstance {
     }
   });
 
-  // ── Auth routes ──
-  registerAuthRoutes(app, {
-    pool: pool as Pool,
-    repo: authRepo,
-    config,
-    emailTransport,
-  });
+  // ── Legacy Auth routes (only when Better Auth is disabled) ──
+  if (!isBetterAuthEnabled(config)) {
+    // Build legacy AuthConfig from AppConfig
+    const legacyAuthConfig = {
+      authEnabled: false, // Legacy auth is always "disabled" in Better Auth mode
+      registrationEnabled: config.registrationEnabled,
+      emailDeliveryEnabled: config.emailDeliveryEnabled,
+      e2eTestMode: config.e2eTestMode,
+      e2eInternalSecret: config.e2eInternalSecret,
+      appBaseUrl: config.appBaseUrl,
+      sessionCookieSecure: config.sessionCookieSecure,
+      sessionTtlSeconds: config.sessionTtlSeconds,
+      sessionIdleTtlSeconds: config.sessionIdleTtlSeconds,
+      emailVerificationTtlSeconds: config.emailVerificationTtlSeconds,
+      passwordResetTtlSeconds: config.passwordResetTtlSeconds,
+      authRateLimitMax: config.authRateLimitMax,
+      authRateLimitWindowMs: config.authRateLimitWindowMs,
+    };
+    registerAuthRoutes(app, {
+      pool: pool as Pool,
+      repo: authRepo,
+      config: legacyAuthConfig,
+      emailTransport,
+    });
+  }
 
+  // ── Admin routes ──
   registerAdminRoutes(app, {
     pool: pool as Pool,
     config,
   });
 
+  // ── Invitation routes (only when Better Auth is enabled) ──
+  if (isBetterAuthEnabled(config)) {
+    const authEmailProvider = createAuthEmailProvider(config.authEmailMode);
+    registerInvitationRoutes(app, {
+      pool: pool as Pool,
+      emailProvider: authEmailProvider,
+    });
+  }
+
+  // ── Investor routes ──
   registerInvestorRoutes(app, {
     pool: pool as Pool,
-    authEnabled: config.authEnabled,
+    authEnabled: isBetterAuthEnabled(config),
     providers,
   });
 

@@ -1,0 +1,167 @@
+/**
+ * Better Auth Fastify Plugin
+ *
+ * Mounts the Better Auth handler at /api/auth/*.
+ * Converts between Fastify's request/response and the standard
+ * Node.js (req, res) that Better Auth expects.
+ *
+ * When AUTH_MODE=*** returns 503 for all /api/auth/* routes.
+ */
+import type { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
+import type { AppConfig } from '../config.js';
+
+// The Better Auth server type (from betterAuth())
+interface BetterAuthServer {
+  handler: (request: Request) => Promise<Response>;
+  api: {
+    getSession: (headers: Headers) => Promise<{
+      user: { id: string; email: string; name?: string; emailVerified: boolean; twoFactorEnabled?: boolean };
+      session: { id: string; expiresAt: Date; token: string };
+    } | null>;
+    signOut: (headers: Headers) => Promise<void>;
+  };
+}
+
+let _betterAuthServer: BetterAuthServer | null = null;
+
+export function setBetterAuthServer(server: BetterAuthServer): void {
+  _betterAuthServer = server;
+}
+
+export function getBetterAuthServer(): BetterAuthServer | null {
+  return _betterAuthServer;
+}
+
+/**
+ * Register the Better Auth handler as a Fastify plugin.
+ * Routes all /api/auth/* requests to Better Auth.
+ */
+export async function betterAuthPlugin(
+  app: FastifyInstance,
+  config: AppConfig,
+): Promise<void> {
+  // ── Auth disabled: return 503 for all auth routes ──
+  app.all('/api/auth/*', async (request: FastifyRequest, reply: FastifyReply) => {
+    if (config.authMode !== 'better-auth') {
+      return reply.status(503).send({
+        error: {
+          id: `err_${Date.now().toString(36)}`,
+          code: 'auth_disabled',
+          message: 'La autenticación no está disponible en este momento.',
+        },
+      });
+    }
+
+    if (!_betterAuthServer) {
+      return reply.status(503).send({
+        error: {
+          id: `err_${Date.now().toString(36)}`,
+          code: 'auth_unavailable',
+          message: 'El servicio de autenticación no está inicializado.',
+        },
+      });
+    }
+
+    try {
+      // Convert Fastify request to Web Request
+      const webRequest = fastifyRequestToWebRequest(request);
+
+      // Delegate to Better Auth
+      const webResponse = await _betterAuthServer.handler(webRequest);
+
+      // Convert Web Response back to Fastify reply
+      await webResponseToFastifyReply(webResponse, reply);
+    } catch (error) {
+      request.log.error({ err: error }, 'better-auth handler error');
+      return reply.status(500).send({
+        error: {
+          id: `err_${Date.now().toString(36)}`,
+          code: 'internal_error',
+          message: 'No hemos podido completar la solicitud en este momento.',
+        },
+      });
+    }
+  });
+}
+
+/**
+ * Convert a Fastify request to a Web API Request.
+ */
+function fastifyRequestToWebRequest(request: FastifyRequest): Request {
+  const url = `${request.protocol}://${request.hostname}${request.url}`;
+
+  // Convert Fastify headers to Web Headers
+  const headers = new Headers();
+  for (const [key, value] of Object.entries(request.headers)) {
+    if (value === undefined) continue;
+    if (Array.isArray(value)) {
+      for (const v of value) headers.append(key, v);
+    } else {
+      headers.set(key, String(value));
+    }
+  }
+
+  // Build body if present
+  let body: string | null = null;
+  if (request.method !== 'GET' && request.method !== 'HEAD' && request.body) {
+    if (typeof request.body === 'string') {
+      body = request.body;
+    } else {
+      body = JSON.stringify(request.body);
+      if (!headers.has('content-type')) {
+        headers.set('content-type', 'application/json');
+      }
+    }
+  }
+
+  return new Request(url, {
+    method: request.method,
+    headers,
+    body,
+  });
+}
+
+/**
+ * Convert a Web API Response to a Fastify reply.
+ * Handles cookies (multiple Set-Cookie), status, and body.
+ */
+async function webResponseToFastifyReply(
+  response: Response,
+  reply: FastifyReply,
+): Promise<void> {
+  // Set status
+  reply.status(response.status);
+
+  // Copy headers (except Set-Cookie, handled separately)
+  const setCookieHeaders: string[] = [];
+  response.headers.forEach((value, key) => {
+    const lower = key.toLowerCase();
+    if (lower === 'set-cookie') {
+      setCookieHeaders.push(value);
+    } else if (lower !== 'content-length') {
+      // Fastify handles content-length automatically
+      reply.header(key, value);
+    }
+  });
+
+  // Set cookies (multiple Set-Cookie headers)
+  for (const cookie of setCookieHeaders) {
+    reply.header('set-cookie', cookie);
+  }
+
+  // Read body
+  const contentType = response.headers.get('content-type') || '';
+  if (contentType.includes('application/json')) {
+    const body = await response.json();
+    return reply.send(body);
+  } else if (contentType.includes('text/')) {
+    const body = await response.text();
+    return reply.send(body);
+  } else if (response.status === 302 || response.status === 301) {
+    // Redirect — just send empty body with Location header
+    return reply.send('');
+  } else {
+    const body = await response.text();
+    return reply.send(body);
+  }
+}
