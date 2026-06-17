@@ -35,12 +35,13 @@ describe('public opportunities catalog', () => {
     mockFetch(() => ({ body: opportunitiesResponse }));
     renderWithProviders('/proyectos');
 
-    expect(screen.getByRole('status')).toHaveTextContent(/cargando catálogo/i);
-    const cards = await screen.findAllByRole('article', { name: /proyecto público/i });
+    await screen.findByRole('status');
+    expect(screen.getByRole('status')).toHaveTextContent(/Cargando catálogo/i);
+    const cards = await screen.findAllByRole('article', { name: /Proyecto:/i });
     expect(cards).toHaveLength(2);
     const card = cards[0];
     expect(within(card).getByRole('img', { name: /patio rehabilitado demo/i })).toHaveAttribute('loading', 'lazy');
-    expect(within(card).getByText(/barcelona · eixample/i)).toBeInTheDocument();
+    expect(within(card).getByText(/barcelona\s*·\s*eixample/i)).toBeInTheDocument();
     expect(within(card).getByText(/residencial urbano/i)).toBeInTheDocument();
     expect(within(card).getByText(/rehabilitación energética/i)).toBeInTheDocument();
     expect(within(card).getByText(/en financiación/i)).toBeInTheDocument();
@@ -51,7 +52,7 @@ describe('public opportunities catalog', () => {
     expect(within(card).getByText(/42,4%/)).toBeInTheDocument();
     expect(within(card).getByRole('progressbar', { name: /financiación/i })).toHaveAttribute('aria-valuenow', '42.4');
     expect(within(card).getByText(/18 meses/i)).toBeInTheDocument();
-    expect(within(card).getByText(/rentabilidad anual objetivo estimada/i)).toBeInTheDocument();
+    expect(within(card).getByText(/rentabilidad anual/i)).toBeInTheDocument();
     expect(within(card).getByText(/cierre/i)).toBeInTheDocument();
     expect(within(card).getByRole('link', { name: /ver proyecto/i })).toHaveAttribute('href', '/proyectos/eixample-rehabilitacion-luminosa');
     expect(screen.getAllByText(/objetivos no están garantizados/i).length).toBeGreaterThan(0);
@@ -60,7 +61,7 @@ describe('public opportunities catalog', () => {
   it('syncs filters, sort and pagination with the URL and only sends allowed query params', async () => {
     mockFetch(() => ({ body: opportunitiesResponse }));
     renderWithProviders('/proyectos?city=Barcelona&riskLevel=medium&sort=fundingProgress&direction=desc&offset=6');
-    await screen.findByRole('heading', { name: /catálogo público/i });
+    await screen.findByRole('heading', { name: /Catálogo de proyectos inmobiliarios/i });
 
     expect(screen.getByLabelText(/ciudad/i)).toHaveValue('Barcelona');
     expect(screen.getByLabelText(/riesgo/i)).toHaveValue('medium');

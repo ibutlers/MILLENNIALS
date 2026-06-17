@@ -349,7 +349,7 @@ export function buildApp(dependencies: AppDependencies = {}): FastifyInstance {
   if (!isBetterAuthEnabled(config)) {
     // Build legacy AuthConfig from AppConfig
     const legacyAuthConfig = {
-      authEnabled: false, // Legacy auth is always "disabled" in Better Auth mode
+      authEnabled: config.authEnabled, // Legacy auth enabled when Better Auth is disabled and authEnabled is true
       registrationEnabled: config.registrationEnabled,
       emailDeliveryEnabled: config.emailDeliveryEnabled,
       e2eTestMode: config.e2eTestMode,

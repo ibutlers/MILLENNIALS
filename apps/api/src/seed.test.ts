@@ -17,7 +17,7 @@ describe('demo opportunity seed data', () => {
       expect(item.image.url).toMatch(/^\/images\//);
       expect(item.title).not.toMatch(/urbanflip|competidor/i);
     }
-    expect(DEMO_OPPORTUNITY_DISCLAIMER).toMatch(/Datos ilustrativos/i);
-    expect(DEMO_OPPORTUNITY_DISCLAIMER).toMatch(/no están garantizados/i);
+    expect(DEMO_OPPORTUNITY_DISCLAIMER).toMatch(/carácter informativo/i);
+    expect(DEMO_OPPORTUNITY_DISCLAIMER).toMatch(/no constituye una oferta/i);
   });
 });

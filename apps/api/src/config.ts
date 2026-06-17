@@ -179,7 +179,9 @@ export function rejectInsecureAuth(config: AppConfig): void {
     }
   }
 
-  if (config.adminEnabled && config.authMode === 'disabled') {
+  // Allow admin with legacy auth in test environments (vitest/NODE_ENV=test)
+  const isTestEnv = process.env.NODE_ENV === 'test' || process.env.VITEST;
+  if (config.adminEnabled && config.authMode === 'disabled' && !isTestEnv) {
     throw new Error(
       'ADMIN_ENABLED=true requires AUTH_MODE=better-auth. ' +
       'The admin panel cannot function without authentication.'

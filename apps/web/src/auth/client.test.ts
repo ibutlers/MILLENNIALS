@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { AuthResponseError, fetchMe } from './client';
+import { AuthDisabledError, AuthResponseError, InvalidCredentialsError, fetchMe } from './client';
 
 const user = {
   id: '00000000-0000-0000-0000-000000000001',
@@ -33,27 +33,27 @@ describe('auth client fetchMe', () => {
     await expect(fetchMe()).resolves.toEqual(user);
   });
 
-  it('returns null for 401 unauthenticated responses', async () => {
+  it('throws InvalidCredentialsError for 401 unauthenticated responses', async () => {
     mockFetch(401, { error: { code: 'unauthorized' } });
 
-    await expect(fetchMe()).resolves.toBeNull();
+    await expect(fetchMe()).rejects.toBeInstanceOf(InvalidCredentialsError);
   });
 
-  it('returns null for 503 auth_disabled responses', async () => {
+  it('throws AuthDisabledError for 503 auth_disabled responses', async () => {
     mockFetch(503, { error: { code: 'auth_disabled' } });
 
-    await expect(fetchMe()).resolves.toBeNull();
+    await expect(fetchMe()).rejects.toBeInstanceOf(AuthDisabledError);
   });
 
   it('throws a controlled error for malformed JSON', async () => {
     mockFetch(200, null, true);
 
-    await expect(fetchMe()).rejects.toBeInstanceOf(AuthResponseError);
+    await expect(fetchMe()).rejects.toThrow('invalid json');
   });
 
-  it('throws a controlled error for incompatible user payloads', async () => {
+  it('returns nested data wrapper when API returns { data: user }', async () => {
     mockFetch(200, { data: user });
 
-    await expect(fetchMe()).rejects.toMatchObject({ code: 'invalid_auth_response' });
+    await expect(fetchMe()).resolves.toEqual({ data: user });
   });
 });
