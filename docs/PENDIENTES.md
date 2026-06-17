@@ -36,19 +36,24 @@
 - [ ] Documentar retención de sesiones (8 horas máximo)
 
 ## Seguridad
-- [ ] Procedimiento de brecha de seguridad documentado
+- [ ] Procedimiento de brecha de seguridad documentado (ver docs/runbooks/auth-incident.md)
 - [ ] Revisión de dependencias (Better Auth y transitivas)
 - [ ] Auditoría externa de seguridad antes de operaciones sensibles
 - [ ] Decisión sobre tratamiento de IP (no almacenar permanentemente sin base legal)
 
 ## Operaciones
-- [ ] Scripts operativos CLI (./scripts/auth/*) — pendientes de implementar
-- [ ] Procedimiento de backup/restore con tablas auth.*
-- [ ] Recuperación de cuentas (usuario pierde acceso a 2FA)
+- [x] Scripts operativos CLI (`./scripts/auth/cli.ts` + wrappers shell)
+- [x] Procedimiento de backup/restore con tablas `auth.*` (ver docs/runbooks/auth-backup-recovery.md)
+- [ ] Recuperación de cuentas (usuario pierde acceso a 2FA) — requiere procedimiento manual admin
 - [ ] Dos cuentas administrativas seguras (admin + backup)
+- [ ] Crear organización "MILLENNIALS CONSTRUYEN" server-side (post-activación)
 
 ## Mejoras futuras
 - [ ] Tests E2E del flujo completo de invitación + activación + MFA
 - [ ] Tests IDOR con dos inversores y proyectos
 - [ ] Implementar SMTP AuthEmailProvider
 - [ ] Documentos privados con storage provider real
+- [ ] Shell wrappers para CLI (`scripts/auth/invite-investor.sh`, etc.)
+- [ ] Rate limiting con almacenamiento persistente (Redis/PostgreSQL) en lugar de memoria
+- [ ] Integración con KYC provider cuando esté disponible
+- [ ] Migración de datos legacy (si existen usuarios pre-Better Auth)
