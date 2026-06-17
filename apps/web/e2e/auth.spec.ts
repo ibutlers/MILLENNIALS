@@ -175,8 +175,9 @@ test.describe('Better Auth E2E — Full Authentication Flow', () => {
   let pageA: Page;
   let pageB: Page;
 
-  test.beforeAll(async ({ browser, playwright }) => {
-    apiRequest = (await playwright.request.newContext()).request;
+  test.beforeAll(async ({ playwright }) => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    apiRequest = await playwright.request.newContext() as any;
   });
 
   test.afterAll(async () => {
