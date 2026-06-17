@@ -21,6 +21,7 @@ import { ConsoleEmailTransport, type EmailTransport } from './auth/email.js';
 import { registerAuthRoutes } from './auth/routes.js';
 import { registerAdminRoutes } from './admin/routes.js';
 import { registerInvestorRoutes } from './investor/routes.js';
+import { registerPrivateInvestorRoutes } from './investor/private-routes.js';
 import { createProviders, type ProviderSet } from './providers/index.js';
 import { betterAuthPlugin, setBetterAuthServer } from './auth/better-auth-plugin.js';
 import { createBetterAuthServer } from './auth/better-auth-server.js';
@@ -382,12 +383,22 @@ export function buildApp(dependencies: AppDependencies = {}): FastifyInstance {
     });
   }
 
-  // ── Investor routes ──
-  registerInvestorRoutes(app, {
-    pool: pool as Pool,
-    authEnabled: isBetterAuthEnabled(config),
-    providers,
-  });
+  // ── Investor routes (legacy, for AUTH_MODE=*** ──
+  if (!isBetterAuthEnabled(config)) {
+    registerInvestorRoutes(app, {
+      pool: pool as Pool,
+      authEnabled: false,
+      providers,
+    });
+  }
+
+  // ── Private investor routes (Better Auth enabled) ──
+  if (isBetterAuthEnabled(config)) {
+    registerPrivateInvestorRoutes(app, {
+      pool: pool as Pool,
+      providers,
+    });
+  }
 
   return app;
 }

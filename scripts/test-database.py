@@ -26,6 +26,11 @@ EXPECTED = [
     '0002_add_lead_columns.sql',
     '0003_align_auth_schema.sql',
     '0004_add_opportunity_restore_lineage.sql',
+    '0005_add_in_study_status.sql',
+    '0006_add_contact_subject.sql',
+    '0007_add_coinvest_columns.sql',
+    '0008_add_better_auth_schema.sql',
+    '0009_add_private_access_authorization.sql',
 ]
 FAILED = False
 
@@ -190,7 +195,7 @@ def main():
         r = _psql(cn, sec, 'SELECT count(*) FROM schema_migrations')
         mc = r.stdout.strip()
         print('  migrations=' + mc)
-        _check(mc == '4', 'esperadas 4 migraciones, hay ' + mc)
+        _check(mc == '9', 'esperadas 9 migraciones, hay ' + mc)
 
         r = _psql(cn, sec,
                   'SELECT id FROM schema_migrations ORDER BY applied_at')
@@ -335,14 +340,14 @@ def main():
         cc = _psql_host(cn, sec,
                         'SELECT count(*) FROM schema_migrations',
                         db=cdb).stdout.strip()
-        _check(cc == '4', 'concurrencia: esperadas 4, hay ' + cc)
+        _check(cc == '9', 'concurrencia: esperadas 9, hay ' + cc)
 
         du = _psql_host(cn, sec,
                         'SELECT id, count(*) FROM schema_migrations '
                         'GROUP BY id HAVING count(*) > 1',
                         db=cdb).stdout.strip()
         _check(du == '', 'filas duplicadas: ' + du)
-        print('  concurrency: OK (4 migraciones, 0 duplicados)')
+        print('  concurrency: OK (9 migraciones, 0 duplicados)')
 
         # teardown
         print('=== test-database: teardown ===')
