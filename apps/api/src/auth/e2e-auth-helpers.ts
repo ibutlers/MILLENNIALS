@@ -36,6 +36,16 @@ export function registerE2EAuthHelpers(
   if (!config.e2eTestMode) return;
 
   const secret = config.e2eInternalSecret;
+  const secretFingerprint = secret
+    ? createHash('sha256').update(`realstate-e2e-auth:${secret}`).digest('hex').slice(0, 16)
+    : 'no-secret';
+
+  // ── GET /api/e2e/auth/fingerprint ──
+  // Returns a short hash of the E2E secret so Playwright can validate it matches
+  // before running auth-dependent tests. Never exposes the full secret.
+  app.get('/api/e2e/auth/fingerprint', async (_request: FastifyRequest, reply: FastifyReply) => {
+    return reply.send({ data: { fingerprint: secretFingerprint } });
+  });
 
   // ── GET /api/e2e/auth/totp-uri?email=... ──
   // Returns the TOTP URI for a user (by Better Auth user ID from email in auth.user table).
@@ -142,20 +152,21 @@ export function registerE2EAuthHelpers(
       // Generate token
       const rawToken = randomBytes(32).toString('base64url');
       const tokenHash = hashToken(rawToken);
+      const publicRef = `INV-${randomBytes(4).toString('hex')}`;
 
       // Insert invitation
       const invResult = await pool.query(
-        `INSERT INTO access_invitations (email_normalized, token_hash, intended_role, status, expires_at, created_at)
-         VALUES ($1, $2, $3, 'pending', now() + interval '48 hours', now())
+        `INSERT INTO access_invitations (public_reference, email_normalized, token_hash, intended_role, status, expires_at, created_at)
+         VALUES ($1, $2, $3, $4, 'pending', now() + interval '48 hours', now())
          RETURNING id, public_reference`,
-        [normalized, tokenHash, intendedRole],
+        [publicRef, normalized, tokenHash, intendedRole],
       );
       const invitation = invResult.rows[0];
 
-      // Record audit
+      // Record audit (actor_id and subject_id are NULL — system action, no user yet)
       await pool.query(
-        `INSERT INTO auth_audit_events (action, subject_id, result, metadata)
-         VALUES ('invitation_created', $1, 'success', $2)`,
+        `INSERT INTO auth_audit_events (action, resource_type, resource_id, result, metadata)
+         VALUES ('invitation_created', 'access_invitation', $1, 'success', $2)`,
         [invitation.id, JSON.stringify({ email: normalized, role: intendedRole })],
       );
 
@@ -288,9 +299,9 @@ export function registerE2EAuthHelpers(
       const tokenHash = hashToken(rawToken);
 
       await pool.query(
-        `INSERT INTO access_invitations (email_normalized, token_hash, intended_role, status, expires_at, created_at)
-         VALUES ($1, $2, 'investor', 'expired', now() - interval '1 second', now() - interval '49 hours')`,
-        [normalized, tokenHash],
+        `INSERT INTO access_invitations (public_reference, email_normalized, token_hash, intended_role, status, expires_at, created_at)
+         VALUES ($1, $2, $3, 'investor', 'expired', now() - interval '1 second', now() - interval '49 hours')`,
+        [`INV-EXP-${randomBytes(4).toString('hex')}`, normalized, tokenHash],
       );
 
       return { data: { token: rawToken, email: normalized } };
@@ -313,9 +324,9 @@ export function registerE2EAuthHelpers(
       const tokenHash = hashToken(rawToken);
 
       await pool.query(
-        `INSERT INTO access_invitations (email_normalized, token_hash, intended_role, status, expires_at, created_at, revoked_at)
-         VALUES ($1, $2, 'investor', 'revoked', now() + interval '48 hours', now(), now())`,
-        [normalized, tokenHash],
+        `INSERT INTO access_invitations (public_reference, email_normalized, token_hash, intended_role, status, expires_at, created_at, revoked_at)
+         VALUES ($1, $2, $3, 'investor', 'revoked', now() + interval '48 hours', now(), now())`,
+        [`INV-REV-${randomBytes(4).toString('hex')}`, normalized, tokenHash],
       );
 
       return { data: { token: rawToken, email: normalized } };
