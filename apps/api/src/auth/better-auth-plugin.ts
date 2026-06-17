@@ -8,15 +8,13 @@
  * When AUTH_MODE=*** returns 503 for all /api/auth/* routes.
  *
  * Sign-up protection: validates X-Invitation-Token header before
- * delegating to Better Auth. Uses app-level preHandler on the
- * sign-up route because Better Auth v1.6.19 hooks context does
- * not reliably contain request headers.
+ * delegating to Better Auth. Better Auth v1.6.19 hooks context does
+ * not reliably contain request headers, so validation happens here.
  */
 import type { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import type { Pool } from 'pg';
 import type { AppConfig } from '../config.js';
 
-// The Better Auth server type (from betterAuth())
 interface BetterAuthServer {
   handler: (request: Request) => Promise<Response>;
   api: {
@@ -53,18 +51,12 @@ function extractToken(headers: Record<string, string | string[] | undefined>): s
   return null;
 }
 
-/**
- * Register the Better Auth handler as a Fastify plugin.
- * Routes all /api/auth/* requests to Better Auth.
- * For sign-up, validates invitation token before delegating.
- */
 export async function betterAuthPlugin(
   app: FastifyInstance,
   config: AppConfig,
   pool?: Pool,
   invitationValidator?: InvitationValidator,
 ): Promise<void> {
-  // ── Auth disabled: return 503 for all auth routes ──
   app.all('/api/auth/*', async (request: FastifyRequest, reply: FastifyReply) => {
     if (config.authMode !== 'better-auth') {
       return reply.status(503).send({
@@ -87,59 +79,8 @@ export async function betterAuthPlugin(
     }
 
     // ── Sign-up invitation validation ──
-    // TEMPORARY: skip validation for diagnostics
-    if (false && request.method === 'POST' && request.url === '/api/auth/sign-up/email') {
-      if (invitationValidator) {
-        const rawToken = extractToken(request.headers as Record<string, string | string[] | undefined>);
-        if (!rawToken || typeof rawToken !== 'string' || rawToken.length < 32) {
-          return reply.status(403).send({
-            error: {
-              id: `err_${Date.now().toString(36)}`,
-              code: 'invitation_required',
-              message: 'Se requiere un token de invitación válido para registrarse.',
-            },
-          });
-        }
-
-        const body = request.body as { email?: string } | undefined;
-        const email = body?.email?.toLowerCase().trim();
-        if (!email || !email.includes('@')) {
-          return reply.status(400).send({
-            error: {
-              id: `err_${Date.now().toString(36)}`,
-              code: 'bad_request',
-              message: 'El email proporcionado no es válido.',
-            },
-          });
-        }
-
-        // Reject forbidden client-sent fields
-        const forbiddenFields = ['role', 'status', 'userId', 'permissions', 'admin', 'staff'];
-        if (body) {
-          for (const field of forbiddenFields) {
-            if ((body as Record<string, unknown>)[field] !== undefined) {
-              return reply.status(403).send({
-                error: {
-                  id: `err_${Date.now().toString(36)}`,
-                  code: 'forbidden_fields',
-                  message: 'La solicitud contiene campos no permitidos.',
-                },
-              });
-            }
-          }
-        }
-
-        const result = await invitationValidator.validateToken(rawToken, email);
-        if (!result.valid) {
-          return reply.status(403).send({
-            error: {
-              id: `err_${Date.now().toString(36)}`,
-              code: 'invalid_invitation',
-              message: 'La invitación no es válida, ha expirado o ya ha sido utilizada.',
-            },
-          });
-        }
-      } else {
+    if (request.method === 'POST' && request.url === '/api/auth/sign-up/email') {
+      if (!invitationValidator) {
         return reply.status(403).send({
           error: {
             id: `err_${Date.now().toString(36)}`,
@@ -148,39 +89,84 @@ export async function betterAuthPlugin(
           },
         });
       }
+
+      const rawToken: string | null = extractToken(request.headers as Record<string, string | string[] | undefined>);
+      if (rawToken === null || rawToken.length < 32) {
+        return reply.status(403).send({
+          error: {
+            id: `err_${Date.now().toString(36)}`,
+            code: 'invitation_required',
+            message: 'Se requiere un token de invitación válido para registrarse.',
+          },
+        });
+      }
+
+      const body = request.body as { email?: string } | undefined;
+      const email: string | undefined = body?.email?.toLowerCase().trim();
+      if (!email || !email.includes('@')) {
+        return reply.status(400).send({
+          error: {
+            id: `err_${Date.now().toString(36)}`,
+            code: 'bad_request',
+            message: 'El email proporcionado no es válido.',
+          },
+        });
+      }
+
+      const forbiddenFields = ['role', 'status', 'userId', 'permissions', 'admin', 'staff'];
+      if (body) {
+        for (const field of forbiddenFields) {
+          if ((body as Record<string, unknown>)[field] !== undefined) {
+            return reply.status(403).send({
+              error: {
+                id: `err_${Date.now().toString(36)}`,
+                code: 'forbidden_fields',
+                message: 'La solicitud contiene campos no permitidos.',
+              },
+            });
+          }
+        }
+      }
+
+      const result = await invitationValidator.validateToken(rawToken, email);
+      if (!result.valid) {
+        return reply.status(403).send({
+          error: {
+            id: `err_${Date.now().toString(36)}`,
+            code: 'invalid_invitation',
+            message: 'La invitación no es válida, ha expirado o ya ha sido utilizada.',
+          },
+        });
+      }
     }
 
     try {
-      // Convert Fastify request to Web Request
       const webRequest = fastifyRequestToWebRequest(request);
-
-      // Delegate to Better Auth
       const webResponse = await _betterAuthServer.handler(webRequest);
 
       // ── Post-signup: consume invitation ──
       if (request.method === 'POST' && request.url === '/api/auth/sign-up/email' && webResponse.ok && invitationValidator) {
-        const rawToken = extractToken(request.headers as Record<string, string | string[] | undefined>);
+        const rawToken: string | null = extractToken(request.headers as Record<string, string | string[] | undefined>);
         const body = request.body as { email?: string } | undefined;
-        const email = body?.email?.toLowerCase().trim();
-        if (rawToken && email) {
+        const email: string | undefined = body?.email?.toLowerCase().trim();
+        if (rawToken !== null && email) {
           try {
-            // Get the created user from Better Auth response
-            const responseBody = await webResponse.clone().json().catch(() => null) as Record<string, unknown> | null;
+            const token: string = rawToken; // narrowed after null check
+            const responseBody = await webResponse.clone().json().catch(() => null);
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            const betterAuthUserId = (responseBody as any)?.user?.id || (responseBody as any)?.id;
+            const baUser = (responseBody as any)?.user as Record<string, unknown> | undefined;
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            const userName = (responseBody as any)?.user?.name;
+            const betterAuthUserId = String(baUser?.id || (responseBody as any)?.id || '');
+            const userName: string | undefined = baUser?.name as string | undefined;
             if (betterAuthUserId) {
-              await invitationValidator.consumeAfterSignup(rawToken, email, betterAuthUserId, userName);
+              await invitationValidator.consumeAfterSignup(token, email, betterAuthUserId, userName);
             }
           } catch {
-            // Consumption failure should not break the sign-up response
             request.log.warn('invitation consumption after signup failed');
           }
         }
       }
 
-      // Convert Web Response back to Fastify reply
       await webResponseToFastifyReply(webResponse, reply);
     } catch (error) {
       request.log.error({ err: error }, 'better-auth handler error');
@@ -195,13 +181,9 @@ export async function betterAuthPlugin(
   });
 }
 
-/**
- * Convert a Fastify request to a Web API Request.
- */
 function fastifyRequestToWebRequest(request: FastifyRequest): Request {
   const url = `${request.protocol}://${request.hostname}${request.url}`;
 
-  // Convert Fastify headers to Web Headers
   const headers = new Headers();
   for (const [key, value] of Object.entries(request.headers)) {
     if (value === undefined) continue;
@@ -212,7 +194,6 @@ function fastifyRequestToWebRequest(request: FastifyRequest): Request {
     }
   }
 
-  // Build body if present
   let body: string | null = null;
   if (request.method !== 'GET' && request.method !== 'HEAD' && request.body) {
     if (typeof request.body === 'string') {
@@ -229,17 +210,12 @@ function fastifyRequestToWebRequest(request: FastifyRequest): Request {
   });
 }
 
-/**
- * Convert a Web API Response to a Fastify reply.
- */
 async function webResponseToFastifyReply(
   response: Response,
   reply: FastifyReply,
 ): Promise<void> {
-  // Set status
   reply.status(response.status);
 
-  // Copy headers (except Set-Cookie, handled separately)
   const setCookieHeaders: string[] = [];
   response.headers.forEach((value, key) => {
     const lower = key.toLowerCase();
@@ -250,7 +226,6 @@ async function webResponseToFastifyReply(
     }
   });
 
-  // Set cookies (multiple Set-Cookie headers)
   if (setCookieHeaders.length === 1) {
     reply.header('set-cookie', setCookieHeaders[0]);
   } else if (setCookieHeaders.length > 1) {
@@ -264,7 +239,6 @@ async function webResponseToFastifyReply(
     }
   }
 
-  // Read body
   const contentType = response.headers.get('content-type') || '';
   if (contentType.includes('application/json')) {
     const body = await response.json();
