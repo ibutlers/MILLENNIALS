@@ -45,8 +45,8 @@ export function createBetterAuthServer(
     // ── Email + Password ──
     emailAndPassword: {
       enabled: true,
-      disableSignUp: false, // Protected by hooks.before
-      requireEmailVerification: true,
+      disableSignUp: false,
+      requireEmailVerification: false, // TEMPORARY: diagnose sign-up 500
       autoSignIn: false,
       minPasswordLength: config.authPasswordMinLength,
       maxPasswordLength: 128,
@@ -56,7 +56,7 @@ export function createBetterAuthServer(
       },
     },
 
-    // ── Email verification ──
+    // ── Email verification (temporarily disabled for diagnostics) ──
     emailVerification: {
       sendVerificationEmail: async ({ user, url }) => {
         await emailProvider.sendVerification(user.email, url);
