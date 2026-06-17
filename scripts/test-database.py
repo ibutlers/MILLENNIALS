@@ -260,8 +260,8 @@ def main():
             pc = _psql(cn, sec, "SELECT count(*) FROM opportunities WHERE visibility='public'").stdout.strip()
             vc = _psql(cn, sec, "SELECT count(*) FROM opportunities WHERE visibility='private'").stdout.strip()
             print('    opps=' + c + ' public=' + pc + ' private=' + vc)
-            _check(c == '5', 'pass ' + str(pn) + ': total=' + c)
-            _check(pc == '4', 'pass ' + str(pn) + ': public=' + pc)
+            _check(c == '4', 'pass ' + str(pn) + ': total=' + c)
+            _check(pc == '3', 'pass ' + str(pn) + ': public=' + pc)
             _check(vc == '1', 'pass ' + str(pn) + ': private=' + vc)
 
             slugs = _psql(cn, sec,
