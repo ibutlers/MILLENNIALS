@@ -7,8 +7,11 @@
  * All checks are done against the local app_users and project_user_access tables.
  * Better Auth only provides the session identity.
  */
+
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import type { FastifyRequest, FastifyReply } from 'fastify';
 import type { Pool } from 'pg';
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 import type { AppConfig } from '../config.js';
 import { getBetterAuthServer } from './better-auth-plugin.js';
 

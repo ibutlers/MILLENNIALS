@@ -116,6 +116,7 @@ export function buildApp(dependencies: AppDependencies = {}): FastifyInstance {
     const invitations = new InvitationRepository(pool as Pool);
     try {
       const betterAuth = createBetterAuthServer(pool as Pool, config, authEmailProvider, invitations);
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       setBetterAuthServer(betterAuth as any);
       app.log.info('better-auth server initialized');
     } catch (error) {

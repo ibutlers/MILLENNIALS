@@ -5,7 +5,6 @@
  * (LoginPage, RegisterPage, RecoverAccessPage, etc.).
  * New code should use Better Auth client from context.tsx.
  */
-import type { AuthState } from './context';
 
 // ── Error classes (kept for backward compat) ──
 

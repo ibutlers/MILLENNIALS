@@ -15,6 +15,8 @@
  * IMPORTANT: This server is only created when AUTH_MODE=better-auth.
  * In AUTH_MODE=disabled, no Better Auth instance exists and no cookies are emitted.
  */
+
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { betterAuth } from 'better-auth';
 import { twoFactor } from 'better-auth/plugins';
 import { organization } from 'better-auth/plugins';

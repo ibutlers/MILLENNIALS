@@ -4,6 +4,8 @@
  * Endpoints for staff/admin to manage access invitations.
  * All require authentication + staff or admin role.
  */
+
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import type { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import type { Pool } from 'pg';
 import { InvitationRepository } from './invitations.js';
@@ -37,6 +39,7 @@ export function registerInvitationRoutes(
       requireActiveAppUser(pool),
       requireRole('staff', 'admin'),
     ],
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   }, async (request: FastifyRequest, reply: FastifyReply) => {
     const body = request.body as Record<string, unknown>;
     const email = typeof body.email === 'string' ? body.email : null;
@@ -69,7 +72,7 @@ export function registerInvitationRoutes(
 
       const appUser = (request as any).appUser;
 
-      const { invitation, token } = await repo.create({
+      const { invitation } = await repo.create({
         emailNormalized,
         coinvestLeadId: coinvestLeadId || undefined,
         intendedRole: intendedRole as 'investor' | 'staff' | 'admin',
@@ -115,6 +118,7 @@ export function registerInvitationRoutes(
       requireActiveAppUser(pool),
       requireRole('staff', 'admin'),
     ],
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   }, async (request: FastifyRequest, reply: FastifyReply) => {
     const query = request.query as Record<string, string>;
     const result = await repo.list({
@@ -173,6 +177,7 @@ export function registerInvitationRoutes(
       requireActiveAppUser(pool),
       requireRole('staff', 'admin'),
     ],
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   }, async (request: FastifyRequest, reply: FastifyReply) => {
     const { reference } = request.params as { reference: string };
     const body = request.body as Record<string, unknown> || {};

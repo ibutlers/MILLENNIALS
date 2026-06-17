@@ -4,6 +4,7 @@
  * Endpoints protected by Better Auth session + local authorization.
  * Replaces the legacy session-based investor routes when Better Auth is enabled.
  */
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import type { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import type { Pool } from 'pg';
 import {

@@ -17,7 +17,7 @@ export function TwoFactorPage() {
   const navigate = useNavigate();
   const [code, setCode] = useState('');
   const [error, setError] = useState('');
-  const [mode, setMode] = useState<'setup' | 'verify'>('setup');
+  const [mode] = useState<'setup' | 'verify'>('setup');
   const [backupCodes, setBackupCodes] = useState<string[]>([]);
   const [showCodes, setShowCodes] = useState(false);
   const [codesSaved, setCodesSaved] = useState(false);

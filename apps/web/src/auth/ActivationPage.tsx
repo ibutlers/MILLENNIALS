@@ -1,7 +1,5 @@
 import { useEffect, useState, useRef, type FormEvent } from 'react';
-import { useNavigate } from 'react-router';
 import { useAuth } from './context';
-
 /**
  * ActivationPage — invitation-based account activation.
  *
@@ -13,7 +11,6 @@ import { useAuth } from './context';
  */
 export function ActivationPage() {
   const { signUp, isAuthAvailable, checkedAvailability, isLoading } = useAuth();
-  const navigate = useNavigate();
   const [token, setToken] = useState<string | null>(null);
   const [invitationEmail, setInvitationEmail] = useState('');
   const [invitationRole, setInvitationRole] = useState('');
