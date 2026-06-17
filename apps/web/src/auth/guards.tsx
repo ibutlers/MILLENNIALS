@@ -73,7 +73,7 @@ export function RequireRole({ roles, children }: { roles: string[]; children: Re
     );
   }
 
-  const hasRole = roles.some((role) => user.roles.includes(role));
+  const hasRole = roles.some((role) => user.roles?.includes(role));
   if (!hasRole) {
     return (
       <main className="min-h-screen bg-carbon text-textLight">

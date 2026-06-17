@@ -29,7 +29,7 @@ export function VerifyEmailPage() {
 
     async function verify() {
       try {
-        await verifyEmailApi(token!, controller.signal);
+        await verifyEmailApi(token!);
         if (!cancelled) setState({ status: 'success' });
       } catch (err) {
         if (cancelled) return;

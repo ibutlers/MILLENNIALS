@@ -21,8 +21,8 @@ export function InvestorAccount() {
     }
 
     const controller = new AbortController();
-    fetchSessions(controller.signal)
-      .then((data) => setSessions(data))
+    fetchSessions()
+      .then((response) => setSessions(response.data))
       .catch(() => setSessionsError(true))
       .finally(() => setSessionsLoading(false));
 
