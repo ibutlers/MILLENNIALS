@@ -1,54 +1,59 @@
+/**
+ * API build artifact tests — validates that the TypeScript build produces
+ * the required runtime artifacts (migrate.js, seed.js, baseline SQL).
+ *
+ * These tests validate the local dist/ output from `pnpm build`.
+ * Docker image validation is handled by the E2E test suite.
+ */
+import { existsSync, readFileSync } from 'node:fs';
+import { createHash } from 'node:crypto';
+import { resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { execSync } from 'node:child_process';
+
+// CWD for api tests is apps/api/ (set by vitest workspace)
+const DIST_ROOT = resolve(process.cwd(), 'dist');
 
 const REQUIRED_ARTIFACTS = [
-  'apps/api/dist/db/migrate.js',
-  'apps/api/dist/db/seed.js',
-  'apps/api/dist/db/migrations/0001_baseline_definitive.sql',
+  'db/migrate.js',
+  'db/seed.js',
+  'db/migrations/0001_baseline_definitive.sql',
 ];
 
-describe('API Docker image artifacts', () => {
-  it('contains migrate.js, seed.js, and baseline SQL', () => {
+function sha256(path: string): string {
+  return createHash('sha256').update(readFileSync(path)).digest('hex');
+}
+
+describe('API build artifacts', () => {
+  it('contains migrate.js, seed.js, and baseline SQL in dist/', () => {
     for (const artifact of REQUIRED_ARTIFACTS) {
-      try {
-        // Check inside the built image (requires docker)
-        const result = execSync(
-          `docker run --rm --entrypoint sh realstate-api-fix -c "test -f ${artifact} && echo OK || echo MISSING"`,
-          { encoding: 'utf8', timeout: 10000 }
-        ).trim();
-        expect(result, `${artifact} should exist in image`).toBe('OK');
-      } catch (error) {
-        // If docker isn't available or image doesn't exist, skip gracefully
-        if (error instanceof Error && (error.message.includes('command not found') || error.message.includes('ENOENT') || error.message.includes('Unable to find image'))) {
-          console.warn('Docker or image not available — skipping image artifact test');
-          return;
-        }
-        throw error;
-      }
+      const fullPath = resolve(DIST_ROOT, artifact);
+      expect(existsSync(fullPath), `${artifact} should exist in dist/`).toBe(true);
     }
-  }, 15000);
+  });
 
-  it('baseline SQL in image matches source checksum', () => {
-    try {
-      const imageChecksum = execSync(
-        'docker run --rm --entrypoint sh realstate-api-fix -c "sha256sum apps/api/dist/db/migrations/0001_baseline_definitive.sql | cut -d\\" \\" -f1"',
-        { encoding: 'utf8', timeout: 10000 }
-      ).trim();
+  it('baseline SQL in dist/ matches source checksum', () => {
+    const distBaseline = resolve(DIST_ROOT, 'db/migrations/0001_baseline_definitive.sql');
+    const srcBaseline = resolve(process.cwd(), 'src/db/migrations/0001_baseline_definitive.sql');
 
-      const sourceChecksum = execSync(
-        'sha256sum apps/api/src/db/migrations/0001_baseline_definitive.sql | cut -d" " -f1',
-        { encoding: 'utf8', timeout: 5000, cwd: process.cwd() + '/../..' }
-      ).trim();
+    const distHash = sha256(distBaseline);
+    const srcHash = sha256(srcBaseline);
 
-      expect(imageChecksum).toBe(sourceChecksum);
-      // Baseline is immutable
-      expect(sourceChecksum).toBe('2e4fab57f6e5227444a7d881243b8d63cddf1a2369ac5c942f1ed0e96fade1f8');
-    } catch (error) {
-      if (error instanceof Error && (error.message.includes('command not found') || error.message.includes('ENOENT') || error.message.includes('Unable to find image'))) {
-        console.warn('Docker or image not available — skipping checksum test');
-        return;
-      }
-      throw error;
-    }
-  }, 15000);
+    expect(distHash).toBe(srcHash);
+
+    // Baseline 0001 is IMMUTABLE — SHA-256 fixed at creation
+    expect(srcHash).toBe('2e4fab57f6e5227444a7d881243b8d63cddf1a2369ac5c942f1ed0e96fade1f8');
+  });
+
+  it('migrate.js is a valid JavaScript module', () => {
+    const content = readFileSync(resolve(DIST_ROOT, 'db/migrate.js'), 'utf-8');
+    // Must be a valid JS module (CJS or ESM)
+    expect(content).toMatch(/exports\.|module\.exports|require\(|import .* from|export /);
+    expect(content.length).toBeGreaterThan(100);
+  });
+
+  it('seed.js is a valid JavaScript module', () => {
+    const content = readFileSync(resolve(DIST_ROOT, 'db/seed.js'), 'utf-8');
+    expect(content).toMatch(/exports\.|module\.exports|require\(|import .* from|export /);
+    expect(content.length).toBeGreaterThan(100);
+  });
 });

@@ -39,7 +39,7 @@ export function registerInvitationRoutes(
       requireActiveAppUser(pool),
       requireRole('staff', 'admin'),
     ],
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+   
   }, async (request: FastifyRequest, reply: FastifyReply) => {
     const body = request.body as Record<string, unknown>;
     const email = typeof body.email === 'string' ? body.email : null;
@@ -177,7 +177,7 @@ export function registerInvitationRoutes(
       requireActiveAppUser(pool),
       requireRole('staff', 'admin'),
     ],
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+   
   }, async (request: FastifyRequest, reply: FastifyReply) => {
     const { reference } = request.params as { reference: string };
     const body = request.body as Record<string, unknown> || {};

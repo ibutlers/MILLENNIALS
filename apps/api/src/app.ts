@@ -386,6 +386,15 @@ export function buildApp(dependencies: AppDependencies = {}): FastifyInstance {
     });
   }
 
+  // ── E2E Auth helper routes (test-only, protected by x-e2e-secret) ──
+  if (isBetterAuthEnabled(config) && config.e2eTestMode) {
+    import('./auth/e2e-auth-helpers.js').then(({ registerE2EAuthHelpers }) => {
+      registerE2EAuthHelpers(app, pool as Pool, config);
+    }).catch((err) => {
+      app.log.error({ err }, 'failed to register E2E auth helpers');
+    });
+  }
+
   // ── Investor routes (legacy, for AUTH_MODE=*** ──
   if (!isBetterAuthEnabled(config)) {
     registerInvestorRoutes(app, {

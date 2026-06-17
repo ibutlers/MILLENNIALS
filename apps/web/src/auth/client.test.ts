@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { AuthDisabledError, AuthResponseError, InvalidCredentialsError, fetchMe } from './client';
+import { AuthDisabledError, InvalidCredentialsError, fetchMe } from './client';
 
 const user = {
   id: '00000000-0000-0000-0000-000000000001',

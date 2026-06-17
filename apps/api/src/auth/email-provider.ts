@@ -328,14 +328,29 @@ export class SmtpAuthEmailProvider implements AuthEmailProvider {
 
 export function createAuthEmailProvider(mode: string): AuthEmailProvider {
   switch (mode) {
-    case 'capture':
-      return new CaptureEmailProvider();
+    case 'capture': {
+      const provider = new CaptureEmailProvider();
+      _captureProvider = provider;
+      return provider;
+    }
     case 'smtp':
-      // SMTP provider not yet implemented — fall back to disabled
-      // TODO: Implement SmtpAuthEmailProvider when SMTP is configured
+      // SMTP provider not yet implemented
       throw new Error('SMTP email provider is not yet implemented. Use "disabled" or "capture".');
     case 'disabled':
     default:
       return new DisabledEmailProvider();
+  }
+}
+
+// Global accessor for E2E test helpers
+let _captureProvider: CaptureEmailProvider | null = null;
+
+export function getCapturedEmails(): CapturedEmail[] {
+  return _captureProvider?.sent ?? [];
+}
+
+export function clearCapturedEmails(): void {
+  if (_captureProvider) {
+    _captureProvider.clear();
   }
 }

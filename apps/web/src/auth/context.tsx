@@ -1,4 +1,4 @@
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
+ 
 /**
  * Auth Context — Better Auth integration
  *
