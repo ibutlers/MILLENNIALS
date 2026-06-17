@@ -21,6 +21,18 @@ export function createPool(connectionString = getDatabaseUrl()) {
   });
 }
 
+/**
+ * Creates a pg Pool whose search_path defaults to `auth,public`.
+ * Used by Better Auth so bare table references (e.g. `user`) resolve
+ * to the `auth` schema where Better Auth tables live.
+ */
+export function createAuthPool(connectionString = getDatabaseUrl()) {
+  // Append search_path via PGOPTIONS-like URL parameter
+  const sep = connectionString.includes('?') ? '&' : '?';
+  const authUrl = `${connectionString}${sep}options=-c%20search_path%3Dauth,public`;
+  return createPool(authUrl);
+}
+
 export function getPool() {
   sharedPool ??= createPool();
   return sharedPool;

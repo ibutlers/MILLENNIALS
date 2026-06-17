@@ -23,6 +23,7 @@ import { organization } from 'better-auth/plugins';
 import type { Pool } from 'pg';
 import type { AppConfig } from '../config.js';
 import type { AuthEmailProvider } from './email-provider.js';
+import { createAuthPool } from '../db/pool.js';
 
 export function createBetterAuthServer(
   pool: Pool,
@@ -46,7 +47,7 @@ export function createBetterAuthServer(
     emailAndPassword: {
       enabled: true,
       disableSignUp: false,
-      requireEmailVerification: false, // TEMPORARY: diagnose sign-up 500
+      requireEmailVerification: true,
       autoSignIn: false,
       minPasswordLength: config.authPasswordMinLength,
       maxPasswordLength: 128,
@@ -56,13 +57,14 @@ export function createBetterAuthServer(
       },
     },
 
-    // ── Email verification (temporarily disabled for diagnostics) ──
+    // ── Email verification ──
     emailVerification: {
       sendVerificationEmail: async ({ user, url }) => {
         await emailProvider.sendVerification(user.email, url);
       },
+      sendOnSignUp: true,
+      autoSignInAfterVerification: true,
       expiresIn: config.emailVerificationTtlSeconds,
-      autoSignInAfterVerification: false,
     },
 
     // ── No social login ──
@@ -85,11 +87,13 @@ export function createBetterAuthServer(
     database: pool,
 
     // ── Field mappings (camelCase → snake_case for auth schema) ──
+    // Plain strings work correctly with Better Auth v1.6.19's Kysely adapter.
+    // (Object format { fieldName: '...' } causes "[object Object]" column error.)
     user: {
       modelName: 'user',
       fields: {
         emailVerified: 'email_verified',
-        twoFactorEnabled: 'two_factor_enabled',
+        twoFactorEnabled: 'twoFactorEnabled', // col renamed by 0011 from two_factor_enabled
         createdAt: 'created_at',
         updatedAt: 'updated_at',
       },
@@ -106,7 +110,7 @@ export function createBetterAuthServer(
         ipAddress: 'ip_address',
         userAgent: 'user_agent',
         userId: 'user_id',
-        activeOrganizationId: 'active_organization_id',
+        activeOrganizationId: 'activeOrganizationId', // 0012: col renamed
       },
     },
 
@@ -125,13 +129,8 @@ export function createBetterAuthServer(
       },
     },
 
-    verification: {
-      fields: {
-        expiresAt: 'expires_at',
-        createdAt: 'created_at',
-        updatedAt: 'updated_at',
-      },
-    },
+    // verification columns renamed to camelCase by 0012 — no mapping needed
+    // account columns remain snake_case with mappings below
 
     // ── Rate limiting ──
     rateLimit: {

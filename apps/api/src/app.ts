@@ -4,7 +4,7 @@ import type { Pool } from 'pg';
 import { createHash } from 'node:crypto';
 import { ZodError } from 'zod';
 import { getConfig, isBetterAuthEnabled, leadsCaptureAvailable, rejectInsecureAuth, type AppConfig } from './config.js';
-import { getPool } from './db/pool.js';
+import { getPool, createAuthPool } from './db/pool.js';
 import { OriginRateLimiter } from './leads/rate-limit.js';
 import { LeadRepository } from './leads/repository.js';
 import { leadCreatedResponseSchema, leadRequestSchema, normalizeLeadInput } from './leads/schemas.js';
@@ -113,11 +113,16 @@ export function buildApp(dependencies: AppDependencies = {}): FastifyInstance {
 
   // ── Better Auth initialization ──
   let invitationValidator = undefined;
+  // Single CaptureEmailProvider instance shared between Better Auth and invitation routes.
+  // createAuthEmailProvider sets the global _captureProvider which E2E helpers read from.
+  const authEmailProvider = createAuthEmailProvider(config.authEmailMode);
   if (isBetterAuthEnabled(config)) {
-    const authEmailProvider = createAuthEmailProvider(config.authEmailMode);
     const invitations = new InvitationRepository(pool as Pool);
+    // Create a dedicated pool for Better Auth with search_path=auth,public
+    // so bare table references (e.g. 'user') resolve to auth.*
+    const authPool = createAuthPool();
     try {
-      const betterAuth = createBetterAuthServer(pool as Pool, config, authEmailProvider);
+      const betterAuth = createBetterAuthServer(authPool, config, authEmailProvider);
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       setBetterAuthServer(betterAuth as any);
       app.log.info('better-auth server initialized');
@@ -130,12 +135,20 @@ export function buildApp(dependencies: AppDependencies = {}): FastifyInstance {
     // (Better Auth v1.6.19 hooks context does not reliably contain headers)
     invitationValidator = {
       validateToken: (token: string, email: string) => invitations.validateToken(token, email),
+
+      /**
+       * Finalizes invitation after Better Auth sign-up succeeds.
+       * Single transaction — no nested pool connections to avoid lock contention.
+       * If a previous sign-up created the app_user but failed to finalize,
+       * the ON CONFLICT DO NOTHING makes this idempotent.
+       */
       consumeAfterSignup: async (token: string, email: string, baUserId: string, userName?: string) => {
-        // Create app_users and mark invitation accepted atomically
         const pgClient = await (pool as Pool).connect();
         try {
           await pgClient.query('BEGIN');
           const tokenHash = createHash('sha256').update(token).digest('hex');
+
+          // 1. Lock+update the invitation row
           const invResult = await pgClient.query(
             `UPDATE access_invitations
              SET status = 'accepted', accepted_at = now(), better_auth_user_id = $1
@@ -143,24 +156,165 @@ export function buildApp(dependencies: AppDependencies = {}): FastifyInstance {
              RETURNING id, public_reference`,
             [baUserId, email, tokenHash],
           );
+
           if (invResult.rows.length > 0) {
             const inv = invResult.rows[0];
+
+            // 2. Create app_user (idempotent)
             await pgClient.query(
               `INSERT INTO app_users (better_auth_user_id, email_normalized, display_name, role, status)
                VALUES ($1, $2, $3, 'investor', 'pending_email')
-               ON CONFLICT (better_auth_user_id) DO UPDATE
-                 SET email_normalized = EXCLUDED.email_normalized, updated_at = now()`,
+               ON CONFLICT (better_auth_user_id) DO NOTHING`,
               [baUserId, email, userName || email],
             );
-            const appUser = await pgClient.query(`SELECT id FROM app_users WHERE better_auth_user_id = $1`, [baUserId]);
+
+            // 3. Fetch the app_user id
+            const appUser = await pgClient.query(
+              `SELECT id FROM app_users WHERE better_auth_user_id = $1`,
+              [baUserId],
+            );
+
             if (appUser.rows.length > 0) {
-              await invitations.markAccepted(inv.id, baUserId, appUser.rows[0].id);
+              const appUserId = appUser.rows[0].id;
+
+              // 4. Link invitation → app_user (inline — no separate pool call)
+              await pgClient.query(
+                `UPDATE access_invitations SET app_user_id = $2 WHERE id = $1 AND app_user_id IS NULL`,
+                [inv.id, appUserId],
+              );
+
+              // 5. Audit event (inline — same transaction)
+              await pgClient.query(
+                `INSERT INTO auth_audit_events (actor_id, action, subject_id, resource_type, resource_id, result)
+                 VALUES ($1, 'invitation_accepted', $2, 'access_invitation', $3, 'success')`,
+                [appUserId, appUserId, inv.id],
+              );
             }
           }
+
           await pgClient.query('COMMIT');
-        } catch {
+        } catch (err) {
           await pgClient.query('ROLLBACK').catch(() => {});
           throw new Error('Failed to finalize invitation after signup');
+        } finally {
+          pgClient.release();
+        }
+      },
+
+      /**
+       * Idempotent reconciliation: repairs state when a previous sign-up
+       * created the Better Auth user but the local finalization failed.
+       * Safe to call multiple times; never degrades existing state.
+       */
+      reconcileAfterSignup: async (email: string, baUserId: string) => {
+        const pgClient = await (pool as Pool).connect();
+        try {
+          await pgClient.query('BEGIN');
+
+          // Check existing app_user
+          const existing = await pgClient.query(
+            `SELECT id, status, email_normalized FROM app_users WHERE better_auth_user_id = $1`,
+            [baUserId],
+          );
+
+          // Only reconcile if no existing app_user for this BA user
+          if (existing.rows.length === 0) {
+            // Find a pending invitation for this email
+            const pendingInv = await pgClient.query(
+              `SELECT id, public_reference FROM access_invitations
+               WHERE email_normalized = $1 AND status = 'pending' AND expires_at > now()
+               ORDER BY created_at ASC LIMIT 1`,
+              [email],
+            );
+
+            if (pendingInv.rows.length > 0) {
+              const inv = pendingInv.rows[0];
+
+              // Create app_user
+              await pgClient.query(
+                `INSERT INTO app_users (better_auth_user_id, email_normalized, display_name, role, status)
+                 VALUES ($1, $2, $3, 'investor', 'pending_email')
+                 ON CONFLICT (better_auth_user_id) DO NOTHING`,
+                [baUserId, email, email],
+              );
+
+              const appUser = await pgClient.query(
+                `SELECT id FROM app_users WHERE better_auth_user_id = $1`,
+                [baUserId],
+              );
+
+              if (appUser.rows.length > 0) {
+                const appUserId = appUser.rows[0].id;
+
+                // Consume invitation
+                await pgClient.query(
+                  `UPDATE access_invitations
+                   SET status = 'accepted', accepted_at = now(), better_auth_user_id = $1, app_user_id = $2
+                   WHERE id = $3 AND status = 'pending'`,
+                  [baUserId, appUserId, inv.id],
+                );
+
+                // Audit
+                await pgClient.query(
+                  `INSERT INTO auth_audit_events (actor_id, action, subject_id, resource_type, resource_id, result)
+                   VALUES ($1, 'invitation_accepted', $2, 'access_invitation', $3, 'success')`,
+                  [appUserId, appUserId, inv.id],
+                );
+
+                app.log.info({ baUserId, email: email.slice(0, 3) + '***', invRef: inv.public_reference }, 'reconciled signup');
+              }
+            }
+          }
+
+          await pgClient.query('COMMIT');
+        } catch (err) {
+          await pgClient.query('ROLLBACK').catch(() => {});
+          const e = err as Error & { code?: string };
+          app.log.warn({ errMsg: e.message, errCode: e.code }, 'reconcileAfterSignup failed');
+          throw err;
+        } finally {
+          pgClient.release();
+        }
+      },
+
+      /**
+       * Transitions app_users from pending_email to pending_mfa after
+       * Better Auth email verification succeeds. Idempotent — safe to
+       * call multiple times; never upgrades from suspended/revoked/active,
+       * only from pending_email.
+       */
+      transitionAfterEmailVerification: async (baUserId: string) => {
+        const pgClient = await (pool as Pool).connect();
+        try {
+          await pgClient.query('BEGIN');
+
+          const result = await pgClient.query(
+            `UPDATE app_users
+             SET status = 'pending_mfa',
+                 email_verified_at = COALESCE(email_verified_at, now()),
+                 updated_at = now()
+             WHERE better_auth_user_id = $1 AND status = 'pending_email'
+             RETURNING id, email_normalized`,
+            [baUserId],
+          );
+
+          if (result.rows.length > 0) {
+            const user = result.rows[0];
+            await pgClient.query(
+              `INSERT INTO auth_audit_events (actor_id, action, subject_id, resource_type, resource_id, result)
+               VALUES ($1, 'email_verified', $2, 'app_user', $3, 'success')`,
+              [user.id, user.id, user.id],
+            );
+            const emailPrefix = String(user.email_normalized || '').slice(0, 3);
+            app.log.info({ baUserId, email: emailPrefix + '***' }, 'post-verification: pending_email→pending_mfa');
+          }
+
+          await pgClient.query('COMMIT');
+        } catch (err) {
+          await pgClient.query('ROLLBACK').catch(() => {});
+          const e = err as Error & { code?: string };
+          app.log.warn({ errMsg: e.message, errCode: e.code }, 'transitionAfterEmailVerification failed');
+          throw err;
         } finally {
           pgClient.release();
         }
@@ -422,7 +576,6 @@ export function buildApp(dependencies: AppDependencies = {}): FastifyInstance {
 
   // ── Invitation routes (only when Better Auth is enabled) ──
   if (isBetterAuthEnabled(config)) {
-    const authEmailProvider = createAuthEmailProvider(config.authEmailMode);
     registerInvitationRoutes(app, {
       pool: pool as Pool,
       emailProvider: authEmailProvider,

@@ -39,6 +39,8 @@ export function getBetterAuthServer(): BetterAuthServer | null {
 export interface InvitationValidator {
   validateToken(token: string, email: string): Promise<{ valid: boolean; reason?: string }>;
   consumeAfterSignup(token: string, email: string, betterAuthUserId: string, userName?: string): Promise<void>;
+  reconcileAfterSignup(email: string, betterAuthUserId: string): Promise<void>;
+  transitionAfterEmailVerification(betterAuthUserId: string): Promise<void>;
 }
 
 function extractToken(headers: Record<string, string | string[] | undefined>): string | null {
@@ -167,23 +169,25 @@ export async function betterAuthPlugin(
         }
       }
 
+      // ── Post-verification: transition pending_email → pending_mfa ──
+      if (request.method === 'GET' && request.url.startsWith('/api/auth/verify-email') && webResponse.ok && invitationValidator) {
+        try {
+          const responseBody = await webResponse.clone().json().catch(() => null);
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const baUser = (responseBody as any)?.user as Record<string, unknown> | undefined;
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const betterAuthUserId = String(baUser?.id || (responseBody as any)?.id || '');
+          if (betterAuthUserId) {
+            await invitationValidator.transitionAfterEmailVerification(betterAuthUserId);
+          }
+        } catch {
+          request.log.warn('post-verification transition failed');
+        }
+      }
+
       await webResponseToFastifyReply(webResponse, reply);
     } catch (error) {
-      const err = error as Error & { cause?: Error & { code?: string; constraint?: string; table?: string; column?: string; detail?: string } };
-      const diagnosticInfo: Record<string, unknown> = {
-        errorName: err.name,
-        errorMessage: err.message,
-        causeName: err.cause?.name,
-        causeMessage: err.cause?.message,
-        causeCode: err.cause?.code,
-        causeConstraint: err.cause?.constraint,
-        causeTable: err.cause?.table,
-        causeColumn: err.cause?.column,
-        causeDetail: err.cause?.detail,
-        requestUrl: request.url,
-        requestId: request.id,
-      };
-      request.log.error({ err: error, diagnostic: diagnosticInfo }, 'better-auth handler error');
+      request.log.error({ err: error }, 'better-auth handler error');
       return reply.status(500).send({
         error: {
           id: `err_${Date.now().toString(36)}`,

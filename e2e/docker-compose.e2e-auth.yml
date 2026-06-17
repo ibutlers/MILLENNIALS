@@ -39,7 +39,7 @@ services:
       REGISTRATION_ENABLED: "true"
       E2E_TEST_MODE: "true"
       E2E_INTERNAL_SECRET: ${E2E_INTERNAL_SECRET}
-      AUTH_RATE_LIMIT_MAX: "500"
+      AUTH_RATE_LIMIT_MAX: "10000"
       APP_BASE_URL: http://127.0.0.1:8090
       SESSION_COOKIE_SECURE: "false"
       PRIVACY_CONTROLLER_NAME: "Realstate E2E Auth Test"

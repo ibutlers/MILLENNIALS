@@ -341,7 +341,7 @@ async function main(): Promise<void> {
       const u = user.rows[0];
       console.log(`app_user: id=${u.id} ba_id=${u.better_auth_user_id || 'NULL'} status=${u.status}`);
       if (u.better_auth_user_id) {
-        const baUser = await pool.query(`SELECT id, email, email_verified, two_factor_enabled FROM auth.user WHERE id = $1`, [u.better_auth_user_id]);
+        const baUser = await pool.query(`SELECT id, email, email_verified, "twoFactorEnabled" FROM auth.user WHERE id = $1`, [u.better_auth_user_id]);
         if (baUser.rows.length === 0) {
           console.log('WARNING: Better Auth user no encontrado — la cuenta está huérfana');
         } else {
@@ -366,7 +366,7 @@ async function main(): Promise<void> {
         console.log(`✓ La organización ya existe (id=${existing.rows[0].id})`);
       } else {
         const result = await pool.query(
-          `INSERT INTO auth.organization (id, name, slug, created_at) VALUES (gen_random_uuid()::text, 'MILLENNIALS CONSTRUYEN', 'millennials-construyen', now()) RETURNING id`);
+          `INSERT INTO auth.organization (id, name, slug, "createdAt") VALUES (gen_random_uuid()::text, 'MILLENNIALS CONSTRUYEN', 'millennials-construyen', now()) RETURNING id`);
         console.log(`✓ Organización creada (id=${result.rows[0].id})`);
       }
       break;

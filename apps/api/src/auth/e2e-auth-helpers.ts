@@ -92,6 +92,92 @@ export function registerE2EAuthHelpers(
     }
   });
 
+  // ── POST /api/e2e/auth/force-verify-email ──
+  // Directly marks a user's email as verified and transitions status to pending_mfa.
+  // Bypasses Better Auth's email verification flow entirely.
+  // Only available in E2E test mode with valid x-e2e-secret.
+  app.post('/api/e2e/auth/force-verify-email', async (request: FastifyRequest, reply: FastifyReply) => {
+    const header = request.headers['x-e2e-secret'];
+    if (!safeSecretMatches(header, secret)) {
+      return reply.status(404).send(e2eNotFound());
+    }
+
+    const body = request.body as { email?: string } | undefined;
+    const email = body?.email?.toLowerCase().trim();
+    if (!email || !email.includes('@')) {
+      return reply.status(400).send({ error: { code: 'bad_request', message: 'email required in body' } });
+    }
+
+    const client = await pool.connect();
+    try {
+      await client.query('BEGIN');
+
+      // 1. Update auth.user email_verified flag
+      const userResult = await client.query(
+        `UPDATE auth."user" SET email_verified = true WHERE email = $1 RETURNING id`,
+        [email],
+      );
+      if (userResult.rows.length === 0) {
+        await client.query('ROLLBACK');
+        return reply.status(404).send({ error: { code: 'not_found', message: 'Better Auth user not found' } });
+      }
+      const baUserId = userResult.rows[0].id;
+
+      // 2. Update app_users status: pending_email → pending_mfa
+      const appResult = await client.query(
+        `UPDATE app_users SET status = 'pending_mfa', email_verified_at = now(), updated_at = now()
+         WHERE better_auth_user_id = $1 AND status = 'pending_email'
+         RETURNING id, status`,
+        [baUserId],
+      );
+      if (appResult.rows.length === 0) {
+        // Already transitioned or wrong status — idempotent, not an error
+      }
+
+      await client.query('COMMIT');
+      return { data: { email, baUserId, status: 'pending_mfa' } };
+    } catch (error) {
+      await client.query('ROLLBACK').catch(() => {});
+      request.log.error({ err: error }, 'e2e force-verify-email error');
+      return reply.status(500).send({ error: { code: 'internal_error', message: 'Internal error' } });
+    } finally {
+      client.release();
+    }
+  });
+
+  // ── GET /api/e2e/auth/verification-token?email=... ──
+  // Returns the latest email verification token for a user (from auth.verification).
+  // Bypasses the email capture system — reads directly from the DB.
+  // Requires x-e2e-secret header. Only in E2E test mode.
+  app.get('/api/e2e/auth/verification-token', async (request: FastifyRequest, reply: FastifyReply) => {
+    const header = request.headers['x-e2e-secret'];
+    if (!safeSecretMatches(header, secret)) {
+      return reply.status(404).send(e2eNotFound());
+    }
+
+    const { email } = request.query as { email?: string };
+    if (!email) {
+      return reply.status(400).send({ error: { code: 'bad_request', message: 'email query param required' } });
+    }
+
+    try {
+      const result = await pool.query<{ value: string; id: string }>(
+        `SELECT id, value FROM auth.verification
+         WHERE identifier = $1
+         ORDER BY "createdAt" DESC
+         LIMIT 1`,
+        [email.toLowerCase().trim()],
+      );
+      if (result.rows.length === 0) {
+        return reply.status(404).send({ error: { code: 'not_found', message: 'No verification token found for this email' } });
+      }
+      return { data: { token: result.rows[0].value } };
+    } catch (error) {
+      request.log.error({ err: error }, 'e2e verification-token error');
+      return reply.status(500).send({ error: { code: 'internal_error', message: 'Internal error' } });
+    }
+  });
+
   // ── GET /api/e2e/auth/captured-emails ──
   // Returns captured emails from the in-memory capture provider.
   // Requires x-e2e-secret header.
@@ -148,6 +234,14 @@ export function registerE2EAuthHelpers(
       if (existing.rows.length > 0) {
         return reply.status(409).send({ error: { code: 'conflict', message: 'User already exists' } });
       }
+
+      // Expire any existing pending invitations for this email to satisfy
+      // the access_invitations_single_active exclusion constraint
+      await pool.query(
+        `UPDATE access_invitations SET status = 'revoked', revoked_at = now(), revocation_reason = 'replaced_by_new_e2e_invitation'
+         WHERE email_normalized = $1 AND status = 'pending'`,
+        [normalized],
+      );
 
       // Generate token
       const rawToken = randomBytes(32).toString('base64url');
