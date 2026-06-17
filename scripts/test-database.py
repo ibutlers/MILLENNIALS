@@ -395,7 +395,8 @@ def main():
                 _psql(cn, sec, f"INSERT INTO project_user_access (app_user_id, opportunity_id, status) VALUES ('{suspended_uid}', '{oid2}', 'revoked')")
 
         # Insert invitation rows into access_invitations
-        _psql(cn, sec, "INSERT INTO access_invitations (email_normalized, token_hash, intended_role, status, expires_at, created_at, revoked_at) VALUES ('expired_inv@restore.test', 'hash_exp_999', 'investor', 'expired', now() - interval '1 hour', now() - interval '49 hours', NULL), ('revoked_inv@restore.test', 'hash_rev_999', 'investor', 'revoked', now() + interval '48 hours', now(), now()), ('pending_inv@restore.test', 'hash_pend_999', 'investor', 'pending', now() + interval '48 hours', now(), NULL)")
+        r = _psql(cn, sec, "INSERT INTO access_invitations (public_reference, email_normalized, token_hash, intended_role, status, expires_at, created_at, revoked_at, resend_count) VALUES ('REF-EXP-001', 'expired_inv@restore.test', 'hash_exp_999', 'investor', 'expired', now() - interval '1 hour', now() - interval '49 hours', NULL, 0), ('REF-REV-001', 'revoked_inv@restore.test', 'hash_rev_999', 'investor', 'revoked', now() + interval '48 hours', now(), now(), 0), ('REF-PEND-001', 'pending_inv@restore.test', 'hash_pend_999', 'investor', 'pending', now() + interval '48 hours', now(), NULL, 0)")
+        _check(r.returncode == 0, 'insert access_invitations fallo: ' + r.stderr.strip()[:200])
 
         # Insert audit events
         _psql(cn, sec, "INSERT INTO auth_audit_events (action, actor_id, subject_id, result, metadata, created_at) VALUES ('user_activated', 'ba-restore-active', 'ba-restore-active', 'success', '{\"email\":\"active@restore.test\"}', now()), ('user_suspended', 'ba-restore-active', 'ba-restore-suspended', 'success', '{\"email\":\"suspended@restore.test\"}', now()), ('user_revoked', 'ba-restore-active', 'ba-restore-revoked', 'success', '{\"email\":\"revoked@restore.test\"}', now())")
