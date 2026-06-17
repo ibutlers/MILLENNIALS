@@ -367,7 +367,7 @@ def main():
         r = _psql(cn, sec, "INSERT INTO auth.\"verification\" (id, identifier, value, expires_at, created_at, updated_at) VALUES ('verif-restore-1', 'active@restore.test', 'verify_token_1', now() + interval '30 minutes', now(), now()), ('verif-restore-2', 'pending@restore.test', 'verify_token_2', now() - interval '1 hour', now(), now())")
         _check(r.returncode == 0, 'insert auth.verification fallo: ' + r.stderr.strip()[:200])
 
-        r = _psql(cn, sec, "INSERT INTO auth.\"two_factor\" (id, \"user_id\", secret, verified) VALUES ('2fa-restore-1', 'ba-restore-active', 'BASE32SECRET1', true), ('2fa-restore-2', 'ba-restore-suspended', 'BASE32SECRET2', false)")
+        r = _psql(cn, sec, "INSERT INTO auth.\"two_factor\" (id, \"user_id\", secret, backup_codes, verified) VALUES ('2fa-restore-1', 'ba-restore-active', 'BASE32SECRET1', '', true), ('2fa-restore-2', 'ba-restore-suspended', 'BASE32SECRET2', '', false)")
         _check(r.returncode == 0, 'insert auth.two_factor fallo: ' + r.stderr.strip()[:200])
 
         r = _psql(cn, sec, "INSERT INTO auth.\"organization\" (id, name, slug, created_at) VALUES ('org-restore-1', 'MILLENNIALS CONSTRUYEN', 'millennials-construyen', now())")
