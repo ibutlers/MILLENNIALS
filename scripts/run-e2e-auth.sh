@@ -109,4 +109,5 @@ curl -fsS http://127.0.0.1:8090/api/health >/dev/null
 
 # Run Playwright
 echo "Ejecutando Playwright (auth)..."
+export E2E_INTERNAL_SECRET
 pnpm --filter @realstate/web exec playwright test   --config playwright.auth.config.ts   --project=chromium   --workers=1   --retries=0   --reporter=line
