@@ -27,7 +27,7 @@ export function RequireAuth({ children }: { children: React.ReactNode }) {
     }
     if (!isLoading && checkedAvailability && !isAuthenticated) {
       const returnTo = encodeURIComponent(window.location.pathname + window.location.search);
-      navigate(`/acceso?retorno=${returnTo}`, { replace: true });
+      navigate(`/acceso/login?retorno=${returnTo}`, { replace: true });
     }
   }, [isAuthenticated, isLoading, checkedAvailability, isAuthAvailable, navigate]);
 

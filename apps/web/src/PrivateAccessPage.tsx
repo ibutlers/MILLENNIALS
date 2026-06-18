@@ -23,7 +23,7 @@ function MinimalHeader() {
         {/* Return link */}
         <Link
           to="/"
-          className="text-[13px] font-medium text-charcoal/55 transition hover:text-electric focus:outline-none focus-visible:ring-2 focus-visible:ring-electric focus-visible:ring-offset-2"
+          className="text-[13px] font-medium text-charcoal/70 transition hover:text-electric focus:outline-none focus-visible:ring-2 focus-visible:ring-electric focus-visible:ring-offset-2"
         >
           Volver al sitio
         </Link>
@@ -77,7 +77,7 @@ export function PrivateAccessPage() {
 
             {/* ── Right panel: light informational ── */}
             <div className="flex flex-col justify-center bg-[#FAFAF7] px-8 py-10 sm:px-10 sm:py-12 lg:px-12 lg:py-12">
-              <p className="mb-4 text-[11px] font-black uppercase tracking-[0.22em] text-charcoal/45">
+              <p className="mb-4 text-[11px] font-black uppercase tracking-[0.22em] text-charcoal/60">
                 ACCESO PRIVADO
               </p>
               <h2 className="font-serif text-[24px] leading-[1.15] tracking-[-0.01em] text-ink sm:text-[28px]">
@@ -107,7 +107,7 @@ export function PrivateAccessPage() {
                 </a>
               </div>
 
-              <p className="mt-6 text-[12px] leading-[1.6] text-charcoal/40">
+              <p className="mt-6 text-[12px] leading-[1.6] text-charcoal/55">
                 Enviar una solicitud no garantiza el acceso al club ni implica
                 ningún compromiso de inversión.
               </p>

@@ -225,7 +225,7 @@ function Header() {
                   key={item.href}
                   href={item.href}
                   className={`relative text-[14px] font-medium tracking-[0.02em] transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-electric ${
-                    isActive ? 'text-electric' : 'text-charcoal/55 hover:text-electric'
+                    isActive ? 'text-electric' : 'text-charcoal/70 hover:text-electric'
                   }`}
                 >
                   {item.label}
@@ -237,7 +237,7 @@ function Header() {
 
           {/* Right zone: Lang + Login */}
           <div className="hidden xl:flex flex-shrink-0 items-center gap-5">
-            <button type="button" aria-label="Idioma español seleccionado" className="text-[13px] font-medium text-charcoal/55 hover:text-electric transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-electric">
+            <button type="button" aria-label="Idioma español seleccionado" className="text-[13px] font-medium text-charcoal/70 hover:text-electric transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-electric">
               <span className="text-electric font-semibold">ES</span> · EN
             </button>
             <a href="/acceso" className="inline-flex h-10 w-[100px] items-center justify-center rounded bg-ink text-[14px] font-semibold text-white transition hover:bg-electric focus:outline-none focus-visible:ring-2 focus-visible:ring-electric focus-visible:ring-offset-2">
@@ -284,7 +284,7 @@ function Header() {
               ))}
             </nav>
             <div className="grid gap-4">
-              <div className="flex items-center gap-4 text-[14px] font-medium text-charcoal/55">
+              <div className="flex items-center gap-4 text-[14px] font-medium text-charcoal/70">
                 <span className="text-electric font-semibold">ES</span> · EN
               </div>
               <a href="/acceso" onClick={() => setIsOpen(false)} className="rounded bg-electric px-6 py-4 text-center text-sm font-bold text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-electric">
@@ -536,7 +536,7 @@ function ProjectsSection() {
             <div className="mt-10 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
               {state.data.map((opportunity) => <OpportunityCard key={opportunity.slug} opportunity={opportunity} />)}
             </div>
-            <p className="mt-8 text-sm leading-7 text-charcoal/50 max-w-3xl">{state.disclaimer}</p>
+            <p className="mt-8 text-sm leading-7 text-charcoal/80 max-w-3xl">{state.disclaimer}</p>
           </>
         ) : null}
       </div>
@@ -654,7 +654,7 @@ function ContactSection() {
           {/* ── Left column · dark ── */}
           <div className="flex items-center bg-ink px-8 py-10 text-white lg:px-12 lg:py-12">
             <div className="max-w-prose">
-              <p className="text-xs font-black uppercase tracking-[0.28em] text-electric">Contacto</p>
+              <p className="text-xs font-black uppercase tracking-[0.28em] text-white">Contacto</p>
               <h2 className="mt-5 font-serif text-4xl leading-tight tracking-[-0.03em] sm:text-[48px] sm:leading-[1.1] lg:text-[52px] lg:leading-[1.08]">
                 Conversemos.
               </h2>
@@ -663,7 +663,7 @@ function ContactSection() {
               </p>
               <p className="mt-4 text-sm leading-6 text-white/60">
                 Para solicitar acceso como coinversor, utiliza la sección{' '}
-                <a href="/acceso#solicitud" className="font-semibold text-electric underline hover:text-electric-hover focus:outline-none focus-visible:ring-2 focus-visible:ring-white">Solicitar acceso</a>.
+                <a href="/acceso#solicitud" className="font-semibold text-white underline hover:text-lavender focus:outline-none focus-visible:ring-2 focus-visible:ring-white">Solicitar acceso</a>.
               </p>
             </div>
           </div>
@@ -728,7 +728,7 @@ function ContactSection() {
                   <input name="consent" type="checkbox" className="mt-[0.35em] h-4 w-4 flex-shrink-0 accent-electric" disabled={submitting} required />
                   <span>Acepto que los datos facilitados se utilicen exclusivamente para atender esta consulta.</span>
                 </label>
-                <p className="mt-1.5 pl-[26px] text-xs leading-5 text-charcoal/50">
+                <p className="mt-1.5 pl-[26px] text-xs leading-5 text-charcoal/75">
                   No utilizaremos estos datos para comunicaciones comerciales sin consentimiento adicional.
                 </p>
               </div>
@@ -820,7 +820,7 @@ export function CoinvestSection() {
           {/* ── Left column · editorial ── */}
           <div className="flex items-center px-8 py-10 text-white lg:px-12 lg:py-12">
             <div className="max-w-prose">
-              <p className="text-xs font-black uppercase tracking-[0.28em] text-electric">Coinvierte con nosotros</p>
+              <p className="text-xs font-black uppercase tracking-[0.28em] text-white">Coinvierte con nosotros</p>
               <h2 className="mt-5 font-serif text-4xl leading-tight tracking-[-0.03em] sm:text-[44px] sm:leading-[1.12] lg:text-[48px] lg:leading-[1.1]">
                 Accede a oportunidades seleccionadas con criterio.
               </h2>
@@ -834,21 +834,21 @@ export function CoinvestSection() {
               {/* Process steps */}
               <div className="mt-8 flex flex-col gap-3 border-t border-white/15 pt-8">
                 <div className="flex items-start gap-4">
-                  <span className="mt-0.5 flex-shrink-0 text-sm font-black text-electric">01</span>
+                  <span className="mt-0.5 flex-shrink-0 text-sm font-black text-white">01</span>
                   <div>
                     <p className="text-sm font-bold text-white">Solicitud</p>
                     <p className="mt-0.5 text-sm leading-6 text-white/60">Cuéntanos brevemente quién eres y qué tipo de oportunidades te interesan.</p>
                   </div>
                 </div>
                 <div className="flex items-start gap-4">
-                  <span className="mt-0.5 flex-shrink-0 text-sm font-black text-electric">02</span>
+                  <span className="mt-0.5 flex-shrink-0 text-sm font-black text-white">02</span>
                   <div>
                     <p className="text-sm font-bold text-white">Validación</p>
                     <p className="mt-0.5 text-sm leading-6 text-white/60">Revisamos el perfil y valoramos su adecuación al enfoque del club.</p>
                   </div>
                 </div>
                 <div className="flex items-start gap-4">
-                  <span className="mt-0.5 flex-shrink-0 text-sm font-black text-electric">03</span>
+                  <span className="mt-0.5 flex-shrink-0 text-sm font-black text-white">03</span>
                   <div>
                     <p className="text-sm font-bold text-white">Acceso</p>
                     <p className="mt-0.5 text-sm leading-6 text-white/60">Si existe encaje, contactaremos contigo para explicarte el funcionamiento y los siguientes pasos.</p>
@@ -931,7 +931,7 @@ export function CoinvestSection() {
                   <input name="consent" type="checkbox" className="mt-[0.35em] h-4 w-4 flex-shrink-0 accent-electric" disabled={submitting} required />
                   <span>Acepto que los datos facilitados se utilicen para evaluar mi solicitud de acceso y contactar conmigo en relación con el club.</span>
                 </label>
-                <p className="mt-1.5 pl-[26px] text-xs leading-5 text-charcoal/50">
+                <p className="mt-1.5 pl-[26px] text-xs leading-5 text-charcoal/75">
                   No utilizaremos estos datos para comunicaciones comerciales ajenas a esta solicitud sin consentimiento adicional.
                 </p>
               </div>
@@ -968,8 +968,8 @@ function Footer() {
           {/* Brand column */}
           <div>
             <p className="text-lg font-black uppercase tracking-[0.12em] text-ink">MILLENNIALS CONSTRUYEN</p>
-            <p className="mt-1 max-w-md text-sm leading-6 text-charcoal/60">Club privado de coinversión inmobiliaria.</p>
-            <p className="mt-2 text-xs text-charcoal/40">Acceso sujeto a invitación o validación previa.</p>
+            <p className="mt-1 max-w-md text-sm leading-6 text-charcoal/70">Club privado de coinversión inmobiliaria.</p>
+            <p className="mt-2 text-xs text-charcoal/55">Acceso sujeto a invitación o validación previa.</p>
           </div>
 
           {/* Navigation */}
@@ -985,7 +985,7 @@ function Footer() {
         </div>
 
         {/* Bottom strip */}
-        <div className="mt-8 border-t border-frost pt-5 text-xs leading-5 text-charcoal/40">
+        <div className="mt-8 border-t border-frost pt-5 text-xs leading-5 text-charcoal/50">
           <p>La información contenida en esta web tiene carácter informativo y no constituye una oferta pública de inversión. Toda inversión inmobiliaria implica riesgos y puede producir pérdidas.</p>
           <p className="mt-1">&copy; 2026 MILLENNIALS CONSTRUYEN</p>
         </div>
