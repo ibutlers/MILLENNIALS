@@ -142,15 +142,27 @@ export function AuthProvider({ children, baseURL }: { children: ReactNode; baseU
 
   const signUp = useCallback(async (email: string, password: string, name: string, invitationToken: string) => {
     if (!client) throw new Error('Auth not available');
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const result: any = await client.signUp.email(
-      { email, password, name },
-      {
-        headers: invitationToken ? { 'X-Invitation-Token': invitationToken } : undefined,
+    const resp = await fetch(`${baseURL}/api/auth/sign-up/email`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(invitationToken ? { 'X-Invitation-Token': invitationToken } : {}),
       },
-    );
-    if (result.error) throw new Error(result.error.message || 'Sign up failed');
-  }, [client]);
+      credentials: 'include',
+      body: JSON.stringify({ email, password, name }),
+    });
+
+    const contentType = resp.headers.get('content-type') || '';
+    const payload: unknown = contentType.includes('application/json') ? await resp.json().catch(() => null) : await resp.text().catch(() => '');
+
+    if (!resp.ok) {
+      throw new Error(readAuthErrorMessage(payload, resp.status));
+    }
+
+    if (!payload || (typeof payload === 'object' && 'error' in payload && (payload as { error?: unknown }).error)) {
+      throw new Error(readAuthErrorMessage(payload, resp.status));
+    }
+  }, [client, baseURL]);
 
   const refreshSession = useCallback(async () => {
     if (!client) return;
@@ -199,6 +211,25 @@ export function AuthProvider({ children, baseURL }: { children: ReactNode; baseU
       {children}
     </AuthContext.Provider>
   );
+}
+
+function readAuthErrorMessage(payload: unknown, status: number): string {
+  const generic = 'No hemos podido completar la activación. Revisa los datos o solicita un nuevo enlace si el problema continúa.';
+  if (payload && typeof payload === 'object') {
+    const maybe = payload as { error?: { message?: unknown; code?: unknown }; message?: unknown; code?: unknown };
+    const code = String(maybe.error?.code || maybe.code || '');
+    const message = typeof maybe.error?.message === 'string'
+      ? maybe.error.message
+      : typeof maybe.message === 'string'
+        ? maybe.message
+        : '';
+    if (code.includes('invalid_invitation')) return 'La invitación no es válida, ha expirado o ya ha sido utilizada.';
+    if (code.includes('user_already_exists') || code.includes('already') || status === 409) return 'Ya existe una cuenta para este email. Usa recuperación de acceso o solicita ayuda al equipo.';
+    if (message && !message.toLowerCase().includes('password') && !message.toLowerCase().includes('token')) return message;
+  }
+  if (status === 403) return 'La invitación no es válida, ha expirado o ya ha sido utilizada.';
+  if (status >= 500) return 'No hemos podido completar la activación en este momento. Inténtalo más tarde o contacta con el equipo.';
+  return generic;
 }
 
 export function useAuth(): AuthState {

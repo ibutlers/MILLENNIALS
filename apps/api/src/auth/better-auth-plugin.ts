@@ -67,6 +67,19 @@ function extractToken(headers: Record<string, string | string[] | undefined>): s
   return null;
 }
 
+function extractBetterAuthUser(payload: unknown): Record<string, unknown> | undefined {
+  if (!payload || typeof payload !== 'object') return undefined;
+  const body = payload as Record<string, unknown>;
+  if (body.user && typeof body.user === 'object') return body.user as Record<string, unknown>;
+  if (body.data && typeof body.data === 'object') {
+    const data = body.data as Record<string, unknown>;
+    if (data.user && typeof data.user === 'object') return data.user as Record<string, unknown>;
+    if (typeof data.id === 'string') return data;
+  }
+  if (typeof body.id === 'string') return body;
+  return undefined;
+}
+
 export async function betterAuthPlugin(
   app: FastifyInstance,
   config: AppConfig,
@@ -269,13 +282,27 @@ export async function betterAuthPlugin(
           try {
             const token: string = rawToken; // narrowed after null check
             const responseBody = await webResponse.clone().json().catch(() => null);
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            const baUser = (responseBody as any)?.user as Record<string, unknown> | undefined;
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            const betterAuthUserId = String(baUser?.id || (responseBody as any)?.id || '');
-            const userName: string | undefined = baUser?.name as string | undefined;
+            const baUser = extractBetterAuthUser(responseBody);
+            let betterAuthUserId = String(baUser?.id || '');
+            let userName: string | undefined = typeof baUser?.name === 'string' ? baUser.name : undefined;
+            if (!betterAuthUserId && pool) {
+              const userLookup = await pool.query(
+                `SELECT id, name FROM auth."user" WHERE lower(email) = lower($1) ORDER BY created_at DESC LIMIT 1`,
+                [email],
+              );
+              if (userLookup.rows.length > 0) {
+                betterAuthUserId = String(userLookup.rows[0].id || '');
+                userName = typeof userLookup.rows[0].name === 'string' ? userLookup.rows[0].name : userName;
+              }
+            }
             if (betterAuthUserId) {
-              await invitationValidator.consumeAfterSignup(token, email, betterAuthUserId, userName);
+              try {
+                await invitationValidator.consumeAfterSignup(token, email, betterAuthUserId, userName);
+              } catch {
+                await invitationValidator.reconcileAfterSignup(email, betterAuthUserId);
+              }
+            } else {
+              request.log.warn('signup succeeded but Better Auth user id was not available for invitation consumption');
             }
           } catch {
             request.log.warn('invitation consumption after signup failed');
