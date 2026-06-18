@@ -209,7 +209,7 @@ async function main(): Promise<void> {
       if (!invitation) { console.error(`ERROR: Invitación ${ref} no encontrada`); process.exit(1); }
       console.log(`Revocando: ${invitation.publicReference} (${showPii ? invitation.emailNormalized : maskEmail(invitation.emailNormalized)})`);
       if (!autoYes) { console.error('Use --yes para confirmar'); process.exit(1); }
-      const revoked = await invitations.revoke(invitation.id, 'cli', args['reason']);
+      const revoked = await invitations.revoke(invitation.id, null, args['reason']);
       console.log(revoked ? `✓ Invitación revocada: ${revoked.publicReference}` : 'La invitación ya no estaba activa');
       break;
     }

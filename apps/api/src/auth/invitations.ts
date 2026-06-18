@@ -357,7 +357,7 @@ export class InvitationRepository {
   /**
    * Revoke an invitation.
    */
-  async revoke(invitationId: string, revokedBy: string, reason?: string): Promise<AccessInvitation | null> {
+  async revoke(invitationId: string, revokedBy: string | null, reason?: string): Promise<AccessInvitation | null> {
     const result = await this.pool.query(
       `UPDATE access_invitations
        SET status = 'revoked', revoked_at = now(), revoked_by = $1, revocation_reason = $2
