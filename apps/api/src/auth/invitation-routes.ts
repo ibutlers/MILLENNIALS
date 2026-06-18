@@ -151,11 +151,11 @@ export function registerInvitationRoutes(
     const token = typeof body.token === 'string' ? body.token : null;
     const email = typeof body.email === 'string' ? body.email : null;
 
-    if (!token || !email) {
-      return reply.status(400).send(publicError('invalid_request', 'Token y email requeridos.'));
+    if (!token) {
+      return reply.status(400).send(publicError('invalid_request', 'Token requerido.'));
     }
 
-    const result = await repo.validateToken(token, email);
+    const result = email ? await repo.validateToken(token, email) : await repo.validateTokenForActivation(token);
 
     if (!result.valid) {
       return reply.status(400).send(publicError(`invitation_${result.reason}`, 'La invitación no es válida o ha expirado.'));

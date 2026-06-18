@@ -194,7 +194,47 @@ export class InvitationRepository {
   }
 
   /**
-   * Validate an invitation token (timing-safe comparison).
+   * Validate an invitation token for the activation page before the user has typed an email.
+   * The raw token is never stored; the lookup uses the SHA-256 token hash.
+   */
+  async validateTokenForActivation(token: string): Promise<ValidateInvitationResult> {
+    const tokenHash = hashToken(token);
+
+    const client: PoolClient = await this.pool.connect();
+    try {
+      await client.query('BEGIN');
+
+      const result = await client.query(
+        `SELECT * FROM access_invitations
+         WHERE token_hash = $1
+         ORDER BY created_at DESC
+         LIMIT 1
+         FOR UPDATE`,
+        [tokenHash],
+      );
+
+      if (result.rows.length === 0) {
+        await client.query('ROLLBACK');
+        return { valid: false, reason: 'not_found' };
+      }
+
+      const row = result.rows[0];
+      const invitation = rowToInvitation(row);
+      const invalid = await this.validateInvitationState(client, invitation);
+      if (invalid) return invalid;
+
+      await client.query('COMMIT');
+      return { valid: true, invitation };
+    } catch (err) {
+      await client.query('ROLLBACK').catch(() => {});
+      throw err;
+    } finally {
+      client.release();
+    }
+  }
+
+  /**
+   * Validate an invitation token (timing-safe comparison) for a known email.
    * Returns the invitation if valid, or a reason why it's not.
    */
   async validateToken(token: string, email: string): Promise<ValidateInvitationResult> {
@@ -229,32 +269,8 @@ export class InvitationRepository {
         return { valid: false, reason: 'not_found' };
       }
 
-      // Check status
-      if (invitation.status === 'revoked') {
-        await client.query('ROLLBACK');
-        return { valid: false, reason: 'revoked' };
-      }
-
-      if (invitation.status === 'accepted') {
-        await client.query('ROLLBACK');
-        return { valid: false, reason: 'already_accepted' };
-      }
-
-      // Check expiration
-      if (new Date(invitation.expiresAt) < new Date()) {
-        // Mark as expired
-        await client.query(
-          `UPDATE access_invitations SET status = 'expired' WHERE id = $1`,
-          [invitation.id],
-        );
-        await client.query('COMMIT');
-        return { valid: false, reason: 'expired' };
-      }
-
-      if (invitation.status !== 'pending') {
-        await client.query('ROLLBACK');
-        return { valid: false, reason: 'not_found' };
-      }
+      const invalid = await this.validateInvitationState(client, invitation);
+      if (invalid) return invalid;
 
       // Verify email matches
       if (invitation.emailNormalized !== emailNormalized) {
@@ -270,6 +286,37 @@ export class InvitationRepository {
     } finally {
       client.release();
     }
+  }
+
+  private async validateInvitationState(
+    client: PoolClient,
+    invitation: AccessInvitation,
+  ): Promise<ValidateInvitationResult | null> {
+    if (invitation.status === 'revoked') {
+      await client.query('ROLLBACK');
+      return { valid: false, reason: 'revoked' };
+    }
+
+    if (invitation.status === 'accepted') {
+      await client.query('ROLLBACK');
+      return { valid: false, reason: 'already_accepted' };
+    }
+
+    if (new Date(invitation.expiresAt) < new Date()) {
+      await client.query(
+        `UPDATE access_invitations SET status = 'expired' WHERE id = $1`,
+        [invitation.id],
+      );
+      await client.query('COMMIT');
+      return { valid: false, reason: 'expired' };
+    }
+
+    if (invitation.status !== 'pending') {
+      await client.query('ROLLBACK');
+      return { valid: false, reason: 'not_found' };
+    }
+
+    return null;
   }
 
   /**

@@ -26,9 +26,9 @@ export function ActivationPage() {
   // Read token from URL fragment on mount
   useEffect(() => {
     const hash = window.location.hash;
-    const match = hash.match(/#token=(.+)/);
-    if (match) {
-      const rawToken = match[1];
+    const params = new URLSearchParams(hash.startsWith('#') ? hash.slice(1) : hash);
+    const rawToken = params.get('token');
+    if (rawToken) {
       setToken(rawToken);
       // Remove token from URL immediately
       window.history.replaceState(null, '', window.location.pathname + window.location.search);
