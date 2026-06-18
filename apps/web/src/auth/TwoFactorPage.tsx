@@ -49,7 +49,7 @@ function extractManualSecret(totpUri: string): string {
  * TwoFactorPage — mandatory TOTP setup after email verification.
  */
 export function TwoFactorPage() {
-  const { isAuthAvailable, checkedAvailability, refreshSession } = useAuth();
+  const { isAuthAvailable, checkedAvailability, isAuthenticated, user, refreshSession } = useAuth();
   const navigate = useNavigate();
   const [step, setStep] = useState<SetupState>('password');
   const [password, setPassword] = useState('');
@@ -76,6 +76,26 @@ export function TwoFactorPage() {
     );
   }
 
+  if (checkedAvailability && !isAuthenticated && !user) {
+    return (
+      <main className="flex min-h-screen items-center justify-center bg-lavender p-8" role="main">
+        <div className="w-full max-w-md rounded-xl border border-frost bg-white p-8 text-center shadow-sm">
+          <h1 className="text-2xl font-semibold text-ink">Vuelve a iniciar sesión</h1>
+          <p className="mt-4 text-charcoal">
+            Tu email ya está verificado, pero esta pestaña no tiene una sesión activa. Inicia sesión con la misma cuenta y volverás a la configuración 2FA.
+          </p>
+          <button
+            type="button"
+            onClick={() => navigate('/acceso/login?retorno=/acceso/2fa')}
+            className="mt-6 w-full rounded-lg bg-electric px-4 py-3 font-semibold text-white hover:bg-electric-hover"
+          >
+            Iniciar sesión para configurar 2FA
+          </button>
+        </div>
+      </main>
+    );
+  }
+
   async function handleEnable(e: FormEvent) {
     e.preventDefault();
     setError('');
@@ -92,6 +112,9 @@ export function TwoFactorPage() {
         body: JSON.stringify({ password, issuer: 'MILLENNIALS CONSTRUYEN' }),
       });
       const payload = await readJson(resp);
+      if (resp.status === 401) {
+        throw new Error('Tu sesión no está activa. Inicia sesión de nuevo para configurar 2FA.');
+      }
       if (!resp.ok) throw new Error(extractError(payload, 'No hemos podido iniciar la configuración 2FA.'));
       const uri = unwrapTotpUri(payload);
       if (!uri) throw new Error('No hemos podido generar la clave TOTP. Inténtalo de nuevo.');
