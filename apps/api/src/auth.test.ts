@@ -6,6 +6,7 @@ import { hashPassword, verifyPassword } from './auth/password.js';
 import { createSessionToken, hashToken } from './auth/sessions.js';
 import { rejectInsecureAuth } from './auth/config.js';
 import { TestEmailTransport } from './auth/email.js';
+import { SmtpAuthEmailProvider, createAuthEmailProvider } from './auth/email-provider.js';
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -225,6 +226,25 @@ describe('config validation', () => {
     expect(() =>
       rejectInsecureAuth({ ...baseAuthConfig, appBaseUrl: 'http://localhost:8088' }),
     ).toThrow(/https/);
+  });
+
+  it('creates the SMTP auth email provider when SMTP config is complete', () => {
+    const provider = createAuthEmailProvider('smtp', {
+      smtpHost: 'smtp.gmail.com',
+      smtpPort: 465,
+      smtpSecure: true,
+      smtpUser: 'smtp@example.test',
+      smtpPassword: 'app-password-with-16-chars',
+      authEmailFrom: 'smtp@example.test',
+      authEmailReplyTo: 'reply@example.test',
+      appBaseUrl: 'http://65.108.251.196:8088',
+    });
+
+    expect(provider).toBeInstanceOf(SmtpAuthEmailProvider);
+  });
+
+  it('rejects SMTP auth email provider without required SMTP config', () => {
+    expect(() => createAuthEmailProvider('smtp')).toThrow(/AUTH_EMAIL_MODE=smtp/);
   });
 
   it('does not register internal E2E token endpoints when e2eTestMode is disabled', async () => {

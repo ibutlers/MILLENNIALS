@@ -174,6 +174,17 @@ export class CaptureEmailProvider implements AuthEmailProvider {
 // SmtpAuthEmailProvider
 // ---------------------------------------------------------------------------
 
+export interface SmtpAuthEmailProviderConfig {
+  smtpHost: string;
+  smtpPort: number;
+  smtpSecure: boolean;
+  smtpUser: string;
+  smtpPassword: string;
+  authEmailFrom: string;
+  authEmailReplyTo: string;
+  appBaseUrl: string;
+}
+
 export class SmtpAuthEmailProvider implements AuthEmailProvider {
   private transporter: Transporter | null = null;
   private retries = 3;
@@ -265,9 +276,18 @@ export class SmtpAuthEmailProvider implements AuthEmailProvider {
     });
   }
 
-  async sendInvitation(_to: string, _displayName: string): Promise<void> {
-    // Invitations are handled by the application-level invitation system
-    // This is a placeholder for when SMTP is fully configured
+  async sendInvitation(to: string, activationPathOrReference: string): Promise<void> {
+    const activationUrl = activationPathOrReference.startsWith('http')
+      ? activationPathOrReference
+      : activationPathOrReference.startsWith('/')
+        ? `${this.config.baseUrl}${activationPathOrReference}`
+        : `${this.config.baseUrl}/acceso`;
+    await this.sendWithRetry({
+      to,
+      subject: 'Invitación a MILLENNIALS CONSTRUYEN',
+      html: `<p>Hola,</p><p>Has recibido una invitación para acceder a MILLENNIALS CONSTRUYEN | CAPITAL.</p><p><a href="${this.escapeHtml(activationUrl)}">Activar acceso</a></p><p>Si no esperabas esta invitación, ignora este mensaje.</p>`,
+      text: `Hola,\n\nHas recibido una invitación para acceder a MILLENNIALS CONSTRUYEN | CAPITAL.\n\nActiva tu acceso aquí: ${activationUrl}\n\nSi no esperabas esta invitación, ignora este mensaje.`,
+    });
   }
 
   async sendPasswordChanged(to: string): Promise<void> {
@@ -326,16 +346,31 @@ export class SmtpAuthEmailProvider implements AuthEmailProvider {
   }
 }
 
-export function createAuthEmailProvider(mode: string): AuthEmailProvider {
+export function createAuthEmailProvider(
+  mode: string,
+  config?: SmtpAuthEmailProviderConfig,
+): AuthEmailProvider {
   switch (mode) {
     case 'capture': {
       const provider = new CaptureEmailProvider();
       _captureProvider = provider;
       return provider;
     }
-    case 'smtp':
-      // SMTP provider not yet implemented
-      throw new Error('SMTP email provider is not yet implemented. Use "disabled" or "capture".');
+    case 'smtp': {
+      if (!config?.smtpHost || !config.smtpUser || !config.smtpPassword || !config.authEmailFrom) {
+        throw new Error('AUTH_EMAIL_MODE=smtp requires SMTP_HOST, SMTP_USER, SMTP_PASSWORD and AUTH_EMAIL_FROM.');
+      }
+      return new SmtpAuthEmailProvider({
+        host: config.smtpHost,
+        port: config.smtpPort,
+        secure: config.smtpSecure,
+        user: config.smtpUser,
+        password: config.smtpPassword,
+        from: config.authEmailFrom,
+        replyTo: config.authEmailReplyTo,
+        baseUrl: config.appBaseUrl,
+      });
+    }
     case 'disabled':
     default:
       return new DisabledEmailProvider();

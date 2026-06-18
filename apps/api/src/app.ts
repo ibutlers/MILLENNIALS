@@ -115,7 +115,7 @@ export function buildApp(dependencies: AppDependencies = {}): FastifyInstance {
   let invitationValidator: InvitationValidator | undefined = undefined;
   // Single CaptureEmailProvider instance shared between Better Auth and invitation routes.
   // createAuthEmailProvider sets the global _captureProvider which E2E helpers read from.
-  const authEmailProvider = createAuthEmailProvider(config.authEmailMode);
+  const authEmailProvider = createAuthEmailProvider(config.authEmailMode, config);
   if (isBetterAuthEnabled(config)) {
     const invitations = new InvitationRepository(pool as Pool);
     // Create a dedicated pool for Better Auth with search_path=auth,public

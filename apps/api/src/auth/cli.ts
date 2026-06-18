@@ -6,6 +6,7 @@
  *
  * Commands:
  *   invite-investor     --lead-ref RS-... [--role investor] [--send]
+ *   invite-email        --email user@example.com [--role investor|staff|admin] [--send]
  *   resend-invitation    <ref>
  *   list-invitations     [--status pending] [--email ...]
  *   revoke-invitation    <ref> [--reason ...]
@@ -30,6 +31,8 @@
 
 import { getPool } from '../db/pool.js';
 import { InvitationRepository } from './invitations.js';
+import { getConfig } from '../config.js';
+import { createAuthEmailProvider } from './email-provider.js';
 
 const pool = getPool();
 
@@ -39,6 +42,7 @@ Uso: npx tsx apps/api/src/auth/cli.ts <comando> [opciones]
 
 Comandos:
   invite-investor         --lead-ref RS-... [--role investor] [--send]
+  invite-email            --email user@example.com [--role investor|staff|admin] [--send]
   resend-invitation        <ref>
   list-invitations         [--status pending] [--email ...]
   revoke-invitation        <ref> [--reason ...]
@@ -140,6 +144,35 @@ async function main(): Promise<void> {
       console.log(`  Rol: ${invitation.intendedRole}`);
       if (args['send']) {
         console.log(`[Enlace: /acceso/activar#token=${token}]`);
+      }
+      break;
+    }
+
+    case 'invite-email': {
+      const email = args['email'];
+      if (!email || !email.includes('@')) { console.error('ERROR: --email válido requerido'); process.exit(1); }
+      const role = args['role'] || 'investor';
+      if (!['investor', 'staff', 'admin'].includes(role)) { console.error('ERROR: --role debe ser investor, staff o admin'); process.exit(1); }
+      const emailNormalized = email.toLowerCase().trim();
+      console.log(`Email: ${showPii ? emailNormalized : maskEmail(emailNormalized)}`);
+      console.log(`Rol: ${role}`);
+      if (!autoYes) { console.error('Use --yes para confirmar en modo no interactivo'); process.exit(1); }
+
+      const { invitation, token } = await invitations.create({
+        emailNormalized,
+        intendedRole: role as 'investor' | 'staff' | 'admin',
+      });
+      console.log(`\n✓ Invitación creada: ${invitation.publicReference}`);
+      console.log(`  Email: ${showPii ? emailNormalized : maskEmail(emailNormalized)}`);
+      console.log(`  Expira: ${invitation.expiresAt}`);
+      console.log(`  Rol: ${invitation.intendedRole}`);
+      if (args['send']) {
+        const config = getConfig();
+        const emailProvider = createAuthEmailProvider(config.authEmailMode, config);
+        await emailProvider.sendInvitation(emailNormalized, `/acceso/activar#token=${token}`);
+        console.log('✓ Correo de invitación enviado');
+      } else {
+        console.log('NOTA: correo no enviado; usa --send para enviar por SMTP configurado.');
       }
       break;
     }
