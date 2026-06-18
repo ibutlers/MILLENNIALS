@@ -19,7 +19,9 @@ import threading
 import time
 import uuid
 
-ROOT = '/srv/workspaces/realstate'
+from pathlib import Path
+
+ROOT = str(Path(__file__).resolve().parents[1])
 MIG_DIR = os.path.join(ROOT, 'apps', 'api', 'src', 'db', 'migrations')
 EXPECTED = [
     '0001_baseline_definitive.sql',

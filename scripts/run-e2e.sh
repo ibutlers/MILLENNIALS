@@ -68,13 +68,15 @@ fi
 POSTGRES_PASSWORD="$PG_PASSWORD" E2E_INTERNAL_SECRET="$E2E_INTERNAL_SECRET" BETTER_AUTH_SECRET="$BETTER_AUTH_SECRET" \
   docker compose --env-file "$ENV_FILE" -f "$E2E_COMPOSE" -p "$E2E_PROJECT" up -d --wait --build 2>&1
 
-if ! docker compose --env-file "$ENV_FILE" -f "$E2E_COMPOSE" -p "$E2E_PROJECT" ps --status running 2>/dev/null | grep -q postgres; then
+postgres_id="$(docker compose --env-file "$ENV_FILE" -f "$E2E_COMPOSE" -p "$E2E_PROJECT" ps -q postgres 2>/dev/null || true)"
+if [[ -z "$postgres_id" || "$(docker inspect -f '{{.State.Running}}' "$postgres_id" 2>/dev/null || true)" != "true" ]]; then
   echo "ERROR: PostgreSQL failed to start. Logs:" >&2
   docker compose --env-file "$ENV_FILE" -f "$E2E_COMPOSE" -p "$E2E_PROJECT" logs postgres 2>&1 | tail -40 >&2
   exit 1
 fi
 
-if ! docker compose --env-file "$ENV_FILE" -f "$E2E_COMPOSE" -p "$E2E_PROJECT" ps --status running 2>/dev/null | grep -q api; then
+api_id="$(docker compose --env-file "$ENV_FILE" -f "$E2E_COMPOSE" -p "$E2E_PROJECT" ps -q api 2>/dev/null || true)"
+if [[ -z "$api_id" || "$(docker inspect -f '{{.State.Running}}' "$api_id" 2>/dev/null || true)" != "true" ]]; then
   echo "ERROR: API failed to start. Logs:" >&2
   docker compose --env-file "$ENV_FILE" -f "$E2E_COMPOSE" -p "$E2E_PROJECT" logs api 2>&1 | tail -40 >&2
   exit 1

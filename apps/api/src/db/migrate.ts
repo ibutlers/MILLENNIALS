@@ -1,5 +1,5 @@
 import { createHash } from 'node:crypto';
-import { existsSync, realpathSync, statSync } from 'node:fs';
+import { existsSync, statSync } from 'node:fs';
 import { readdir, readFile } from 'node:fs/promises';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -32,7 +32,7 @@ export function resolveMigrationsDir() {
   if (!existsSync(absolute) || !statSync(absolute).isDirectory()) {
     throw new Error('MIGRATIONS_DIR does not point to an existing directory');
   }
-  return realpathSync(absolute);
+  return absolute;
 }
 
 export async function listMigrationFiles(dir = resolveMigrationsDir()) {

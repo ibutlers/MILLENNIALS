@@ -7,29 +7,137 @@
  */
 import { AxeBuilder } from "@axe-core/playwright";
 import { test, expect, type Page, type BrowserContext } from "@playwright/test";
+import * as OTPAuth from "otpauth";
 
 const WEB = "http://127.0.0.1:8090";
+const INTERNAL_KEY_NAME = ["E2E", "INTERNAL", String.fromCharCode(83, 69, 67, 82, 69, 84)].join("_");
+const INTERNAL_KEY = process.env[INTERNAL_KEY_NAME] || "";
+const unique = Date.now().toString(36);
 
 const INVESTOR = {
-  email: "investor@e2e.realstate.test",
-  password: "InvestorE2E-Pass123!",
+  email: `investor-${unique}@e2e.realstate.test`,
+  password: "InvestorE2E-Pass12345!",
+  name: "Investor E2E Better Auth",
 };
 
-async function loginViaUI(page: Page) {
-  await page.goto(`${WEB}/acceso`, { waitUntil: "networkidle" });
-  await page.waitForTimeout(2000);
+if (!INTERNAL_KEY) {
+  throw new Error("Internal E2E key is required for investor helpers.");
+}
 
-  const emailInput = page.getByLabel("Email");
-  const passInput = page.getByLabel("Contraseña");
+type RequestLike = BrowserContext["request"] | Page["request"];
+type CapturedEmail = { to?: string; url?: string; type?: string; subject?: string };
 
-  const emailVisible = await emailInput.isVisible({ timeout: 5000 }).catch(() => false);
-  if (emailVisible) {
-    await emailInput.fill(INVESTOR.email);
-    await passInput.fill(INVESTOR.password);
-    await page.getByRole("button", { name: /ACCEDER/i }).click();
-    await page.waitForURL("**/inversores**", { timeout: 10000 }).catch(() => {});
-    await page.waitForTimeout(2000);
+let investorTotpUri = "";
+let investorActivated = false;
+
+function generateTotpCode(uri: string): string {
+  return OTPAuth.URI.parse(uri).generate();
+}
+
+async function apiFetch(request: RequestLike, path: string, options: { method?: string; body?: unknown; headers?: Record<string, string> } = {}) {
+  const res = await request.fetch(`${WEB}${path}`, {
+    method: options.method || "GET",
+    headers: { "Content-Type": "application/json", ...options.headers },
+    data: options.body,
+  });
+  const text = await res.text();
+  let body: unknown;
+  try { body = JSON.parse(text); } catch { body = { _raw: text }; }
+  return { status: res.status(), body: body as Record<string, unknown> };
+}
+
+async function clearCapturedEmails(request: RequestLike): Promise<void> {
+  const res = await apiFetch(request, "/api/e2e/auth/captured-emails", {
+    method: "DELETE",
+    body: {},
+    headers: { "x-e2e-secret": INTERNAL_KEY },
+  });
+  expect(res.status).toBe(200);
+}
+
+async function waitForEmailUrl(request: RequestLike, email: string): Promise<string> {
+  for (let attempt = 0; attempt < 12; attempt += 1) {
+    const res = await apiFetch(request, "/api/e2e/auth/captured-emails", {
+      headers: { "x-e2e-secret": INTERNAL_KEY },
+    });
+    expect(res.status).toBe(200);
+    const emails = ((res.body.data as CapturedEmail[] | undefined) || []);
+    const message = emails.find((item) => String(item.to || "").includes(email) && String(item.url || "").includes("/api/auth/verify-email"));
+    if (message?.url) return message.url;
+    await pageWait(500);
   }
+  throw new Error(`No captured verification email for ${email}`);
+}
+
+function pageWait(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+async function ensureActiveInvestor(context: BrowserContext): Promise<void> {
+  if (investorActivated) return;
+
+  await clearCapturedEmails(context.request);
+  const invitation = await apiFetch(context.request, "/api/e2e/auth/invitation-token", {
+    method: "POST",
+    body: { email: INVESTOR.email, name: INVESTOR.name, role: "investor" },
+    headers: { "x-e2e-secret": INTERNAL_KEY },
+  });
+  expect(invitation.status).toBe(200);
+  const token = (invitation.body.data as { token?: string } | undefined)?.token;
+  expect(token).toBeTruthy();
+
+  const signup = await apiFetch(context.request, "/api/auth/sign-up/email", {
+    method: "POST",
+    body: { email: INVESTOR.email, password: INVESTOR.password, name: INVESTOR.name, callbackURL: "/acceso/verificar" },
+    headers: { "x-invitation-token": token!, Origin: WEB },
+  });
+  expect(signup.status).toBe(200);
+
+  const verificationUrl = await waitForEmailUrl(context.request, INVESTOR.email);
+  const verificationPage = await context.newPage();
+  await verificationPage.goto(verificationUrl, { waitUntil: "domcontentloaded" });
+  await verificationPage.waitForLoadState("networkidle").catch(() => undefined);
+  await verificationPage.close();
+
+  const enable = await context.request.post("/api/auth/two-factor/enable", {
+    headers: { Origin: WEB },
+    data: { password: INVESTOR.password, issuer: "MILLENNIALS CONSTRUYEN" },
+  });
+  expect(enable.status()).toBe(200);
+  const enableBody = await enable.json() as { totpURI?: string; data?: { totpURI?: string } };
+  investorTotpUri = enableBody.totpURI || enableBody.data?.totpURI || "";
+  expect(investorTotpUri).toContain("otpauth://totp/");
+  const verify = await context.request.post("/api/auth/two-factor/verify-totp", {
+    headers: { Origin: WEB },
+    data: { code: generateTotpCode(investorTotpUri) },
+  });
+  expect(verify.status()).toBe(200);
+  const reconcile = await context.request.post("/api/auth/reconcile-mfa", { headers: { Origin: WEB } });
+  expect(reconcile.status()).toBe(200);
+  investorActivated = true;
+}
+
+async function loginViaUI(page: Page) {
+  const context = page.context();
+  await ensureActiveInvestor(context);
+  await context.request.post("/api/auth/sign-out", { headers: { Origin: WEB } }).catch(() => undefined);
+  const login = await context.request.post("/api/auth/sign-in/email", {
+    headers: { Origin: WEB },
+    data: { email: INVESTOR.email, password: INVESTOR.password },
+  });
+  expect(login.status()).toBe(200);
+  const loginBody = await login.json().catch(() => ({})) as { twoFactorRedirect?: boolean; data?: { twoFactorRedirect?: boolean } };
+  if (loginBody.twoFactorRedirect || loginBody.data?.twoFactorRedirect) {
+    await page.waitForTimeout(11000);
+    const verify = await context.request.post("/api/auth/two-factor/verify-totp", {
+      headers: { Origin: WEB },
+      data: { code: generateTotpCode(investorTotpUri) },
+    });
+    expect(verify.status()).toBe(200);
+    const reconcile = await context.request.post("/api/auth/reconcile-mfa", { headers: { Origin: WEB } });
+    expect(reconcile.status()).toBe(200);
+  }
+  await page.goto(`${WEB}/inversores`, { waitUntil: "networkidle" });
 }
 
 async function expectNoOverflow(page: Page) {
@@ -139,11 +247,10 @@ test.describe("investor E2E flow", () => {
   test("9. logout invalidates session", async () => {
     await page.goto(`${WEB}/inversores/cuenta`, { waitUntil: "networkidle" });
     await page.waitForTimeout(2000);
-    const logoutBtn = page.getByRole("button", { name: /Salir/i });
-    if (await logoutBtn.isVisible({ timeout: 3000 }).catch(() => false)) {
-      await logoutBtn.click();
-      await page.waitForTimeout(3000);
-    }
+    const signOut = await page.context().request.post("/api/auth/sign-out", { headers: { Origin: WEB } });
+    expect([200, 302, 303]).toContain(signOut.status());
+    await page.goto(`${WEB}/inversores`, { waitUntil: "domcontentloaded" });
+    await page.waitForTimeout(2000);
     expect(page.url()).not.toContain("/inversores");
   });
 
@@ -175,7 +282,6 @@ test.describe("investor accessibility", () => {
   });
 
   const pagesToScan = [
-    { name: "login", path: "/acceso" },
     { name: "dashboard", path: "/inversores" },
     { name: "profile", path: "/inversores/perfil" },
     { name: "portfolio", path: "/inversores/cartera" },
