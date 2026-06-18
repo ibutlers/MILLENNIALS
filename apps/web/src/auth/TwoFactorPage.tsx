@@ -1,30 +1,70 @@
-import { useState, type FormEvent } from 'react';
+import { useEffect, useMemo, useState, type FormEvent } from 'react';
 import { useNavigate } from 'react-router';
 import { useAuth } from './context';
 
+type SetupState = 'password' | 'verify' | 'backup' | 'done';
+
+function extractError(payload: unknown, fallback: string): string {
+  if (payload && typeof payload === 'object') {
+    const body = payload as { error?: { message?: unknown }; message?: unknown };
+    if (typeof body.error?.message === 'string') return body.error.message;
+    if (typeof body.message === 'string') return body.message;
+  }
+  return fallback;
+}
+
+async function readJson(resp: Response): Promise<unknown> {
+  const contentType = resp.headers.get('content-type') || '';
+  if (!contentType.includes('application/json')) return null;
+  return resp.json().catch(() => null);
+}
+
+function unwrapTotpUri(payload: unknown): string {
+  if (!payload || typeof payload !== 'object') return '';
+  const body = payload as { totpURI?: unknown; data?: { totpURI?: unknown } };
+  return typeof body.totpURI === 'string'
+    ? body.totpURI
+    : typeof body.data?.totpURI === 'string'
+      ? body.data.totpURI
+      : '';
+}
+
+function unwrapBackupCodes(payload: unknown): string[] {
+  if (!payload || typeof payload !== 'object') return [];
+  const body = payload as { backupCodes?: unknown; data?: { backupCodes?: unknown } };
+  const raw = Array.isArray(body.backupCodes) ? body.backupCodes : Array.isArray(body.data?.backupCodes) ? body.data?.backupCodes : [];
+  return raw.filter((code): code is string => typeof code === 'string' && code.length > 0);
+}
+
+function extractManualSecret(totpUri: string): string {
+  try {
+    const url = new URL(totpUri);
+    return url.searchParams.get('secret') || '';
+  } catch {
+    return '';
+  }
+}
+
 /**
- * TwoFactorPage — TOTP setup and verification.
- *
- * Two modes:
- * - Setup: displays QR code / secret, asks for verification code,
- *   shows backup codes once, requires confirmation they were saved.
- * - Verification: during login, asks for 6-digit TOTP code.
- *
- * When auth is disabled, shows "not available" message.
+ * TwoFactorPage — mandatory TOTP setup after email verification.
  */
 export function TwoFactorPage() {
-  const { isAuthAvailable, checkedAvailability } = useAuth();
+  const { isAuthAvailable, checkedAvailability, refreshSession } = useAuth();
   const navigate = useNavigate();
+  const [step, setStep] = useState<SetupState>('password');
+  const [password, setPassword] = useState('');
   const [code, setCode] = useState('');
-  const [error, setError] = useState('');
-  const [mode] = useState<'setup' | 'verify'>('setup');
+  const [totpUri, setTotpUri] = useState('');
   const [backupCodes, setBackupCodes] = useState<string[]>([]);
-  const [showCodes, setShowCodes] = useState(false);
   const [codesSaved, setCodesSaved] = useState(false);
+  const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);
-  const [success, setSuccess] = useState(false);
+  const manualSecret = useMemo(() => extractManualSecret(totpUri), [totpUri]);
 
-  // Auth not available
+  useEffect(() => {
+    refreshSession().catch(() => {});
+  }, [refreshSession]);
+
   if (checkedAvailability && !isAuthAvailable) {
     return (
       <main className="flex min-h-screen items-center justify-center bg-lavender p-8" role="main">
@@ -36,6 +76,35 @@ export function TwoFactorPage() {
     );
   }
 
+  async function handleEnable(e: FormEvent) {
+    e.preventDefault();
+    setError('');
+    if (password.length < 8) {
+      setError('Introduce la contraseña de tu cuenta para configurar 2FA.');
+      return;
+    }
+    setSubmitting(true);
+    try {
+      const resp = await fetch('/api/auth/two-factor/enable', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ password, issuer: 'MILLENNIALS CONSTRUYEN' }),
+      });
+      const payload = await readJson(resp);
+      if (!resp.ok) throw new Error(extractError(payload, 'No hemos podido iniciar la configuración 2FA.'));
+      const uri = unwrapTotpUri(payload);
+      if (!uri) throw new Error('No hemos podido generar la clave TOTP. Inténtalo de nuevo.');
+      setTotpUri(uri);
+      setBackupCodes(unwrapBackupCodes(payload));
+      setStep('verify');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'No hemos podido iniciar la configuración 2FA.');
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
   async function handleVerify(e: FormEvent) {
     e.preventDefault();
     setError('');
@@ -45,81 +114,73 @@ export function TwoFactorPage() {
     }
     setSubmitting(true);
     try {
-      // In a real implementation, this calls the Better Auth 2FA verify endpoint
-      // For now, we show the flow structure
-      const resp = await fetch('/api/auth/two-factor/verify', {
+      const verifyResp = await fetch('/api/auth/two-factor/verify-totp', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
         body: JSON.stringify({ code }),
+      });
+      const verifyPayload = await readJson(verifyResp);
+      if (!verifyResp.ok) throw new Error(extractError(verifyPayload, 'Código inválido o expirado.'));
+
+      const reconcileResp = await fetch('/api/auth/reconcile-mfa', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
       });
-      if (!resp.ok) {
-        const data = await resp.json().catch(() => ({}));
-        throw new Error(data.message || 'Código inválido');
-      }
-      if (mode === 'setup') {
-        // Generate backup codes after first verification
-        const codesResp = await fetch('/api/auth/two-factor/generate-backup-codes', {
-          method: 'POST', credentials: 'include',
-        });
-        const codesData = await codesResp.json();
-        if (codesData.data?.backupCodes) {
-          setBackupCodes(codesData.data.backupCodes);
-          setShowCodes(true);
-        }
-      } else {
-        setSuccess(true);
-        setTimeout(() => navigate('/inversor'), 1500);
-      }
+      const reconcilePayload = await readJson(reconcileResp);
+      if (!reconcileResp.ok) throw new Error(extractError(reconcilePayload, 'No hemos podido activar tu acceso tras 2FA.'));
+
+      await refreshSession().catch(() => {});
+      setStep(backupCodes.length > 0 ? 'backup' : 'done');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Código inválido o expirado.');
-    } finally { setSubmitting(false); }
+    } finally {
+      setSubmitting(false);
+    }
   }
 
-  async function handleConfirmSaved() {
+  function finish() {
     setCodesSaved(true);
-    setSuccess(true);
-    setTimeout(() => navigate('/inversor'), 1500);
+    setStep('done');
+    setTimeout(() => navigate('/admin'), 900);
   }
 
-  if (success) {
+  if (step === 'done') {
     return (
       <main className="flex min-h-screen items-center justify-center bg-lavender p-8" role="main">
         <div className="w-full max-w-md rounded-xl border border-frost bg-white p-8 text-center shadow-sm">
-          <h1 className="text-2xl font-semibold text-ink">
-            {codesSaved ? '¡Verificación completada!' : 'Verificación exitosa'}
-          </h1>
-          <p className="mt-4 text-charcoal">Redirigiendo al área privada…</p>
+          <h1 className="text-2xl font-semibold text-ink">¡Verificación completada!</h1>
+          <p className="mt-4 text-charcoal">Redirigiendo al panel administrativo…</p>
         </div>
       </main>
     );
   }
 
-  // Backup codes display
-  if (showCodes) {
+  if (step === 'backup') {
     return (
       <main className="flex min-h-screen items-center justify-center bg-lavender p-8" role="main">
         <div className="w-full max-w-md rounded-xl border border-frost bg-white p-8 shadow-sm">
           <h1 className="text-2xl font-semibold text-ink">Códigos de recuperación</h1>
           <p className="mt-2 text-sm text-charcoal">
-            Guarda estos códigos en un lugar seguro. Cada código solo puede usarse una vez.
-            No los compartas con nadie.
+            Guarda estos códigos en un lugar seguro. Cada código solo puede usarse una vez. No los compartas con nadie.
           </p>
           <div className="mt-4 rounded-lg bg-gray-50 p-4 font-mono text-sm">
-            {backupCodes.map((c, i) => (
-              <div key={i} className="py-1 text-charcoal">{c}</div>
+            {backupCodes.map((backupCode) => (
+              <div key={backupCode} className="py-1 text-charcoal">{backupCode}</div>
             ))}
           </div>
           <button
-            onClick={() => {
-              navigator.clipboard.writeText(backupCodes.join('\n')).catch(() => {});
-            }}
+            type="button"
+            onClick={() => navigator.clipboard.writeText(backupCodes.join('\n')).catch(() => {})}
             className="mt-4 w-full rounded-lg border border-frost px-4 py-2 text-sm text-charcoal hover:bg-gray-50"
           >
             Copiar al portapapeles
           </button>
           <button
-            onClick={handleConfirmSaved}
+            type="button"
+            disabled={!codesSaved && backupCodes.length === 0}
+            onClick={finish}
             className="mt-3 w-full rounded-lg bg-electric px-4 py-3 font-semibold text-white hover:bg-electric-hover"
           >
             He guardado los códigos — Continuar
@@ -129,17 +190,14 @@ export function TwoFactorPage() {
     );
   }
 
-  // Setup or Verify form
   return (
     <main className="flex min-h-screen items-center justify-center bg-lavender p-8" role="main">
       <div className="w-full max-w-md rounded-xl border border-frost bg-white p-8 shadow-sm">
-        <h1 className="text-2xl font-semibold text-ink">
-          {mode === 'setup' ? 'Configurar verificación en dos pasos' : 'Verificación en dos pasos'}
-        </h1>
+        <h1 className="text-2xl font-semibold text-ink">Configurar verificación en dos pasos</h1>
         <p className="mt-2 text-sm text-charcoal">
-          {mode === 'setup'
-            ? 'Escanea el código QR con tu aplicación de autenticación (Google Authenticator, Authy, etc.) e introduce el código de 6 dígitos.'
-            : 'Introduce el código de 6 dígitos de tu aplicación de autenticación.'}
+          {step === 'password'
+            ? 'Introduce tu contraseña para generar la clave TOTP de esta cuenta.'
+            : 'Añade esta clave en tu aplicación de autenticación y escribe el código de 6 dígitos.'}
         </p>
 
         {error && (
@@ -148,32 +206,65 @@ export function TwoFactorPage() {
           </div>
         )}
 
-        <form onSubmit={handleVerify} className="mt-6 space-y-4">
-          <div>
-            <label htmlFor="totp-code" className="block text-sm font-medium text-charcoal">Código de verificación</label>
-            <input
-              id="totp-code" type="text" inputMode="numeric" autoComplete="one-time-code"
-              maxLength={6} minLength={6} required
-              value={code} onChange={e => setCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
-              className="mt-1 block w-full rounded-lg border border-frost px-3 py-3 text-center text-2xl tracking-widest text-ink focus:border-electric focus:outline-none focus:ring-1 focus:ring-electric"
-              placeholder="000000"
-            />
-          </div>
-
-          <button
-            type="submit" disabled={submitting || code.length !== 6}
-            className="w-full rounded-lg bg-electric px-4 py-3 font-semibold text-white transition-colors hover:bg-electric-hover focus:outline-none focus-visible:ring-2 focus-visible:ring-electric focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-          >
-            {submitting ? 'Verificando…' : 'Verificar'}
-          </button>
-        </form>
-
-        {mode === 'verify' && (
-          <p className="mt-4 text-center text-sm text-charcoal">
-            <button onClick={() => navigate('/acceso/login')} className="text-electric underline hover:text-electric-hover">
-              Volver al inicio de sesión
+        {step === 'password' ? (
+          <form onSubmit={handleEnable} className="mt-6 space-y-4">
+            <div>
+              <label htmlFor="password" className="block text-sm font-medium text-charcoal">Contraseña</label>
+              <input
+                id="password"
+                type="password"
+                autoComplete="current-password"
+                required
+                value={password}
+                onChange={(event) => setPassword(event.target.value)}
+                className="mt-1 block w-full rounded-lg border border-frost px-3 py-3 text-ink focus:border-electric focus:outline-none focus:ring-1 focus:ring-electric"
+              />
+            </div>
+            <button
+              type="submit"
+              disabled={submitting || password.length < 8}
+              className="w-full rounded-lg bg-electric px-4 py-3 font-semibold text-white transition-colors hover:bg-electric-hover focus:outline-none focus-visible:ring-2 focus-visible:ring-electric focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              {submitting ? 'Generando…' : 'Generar clave 2FA'}
             </button>
-          </p>
+          </form>
+        ) : (
+          <form onSubmit={handleVerify} className="mt-6 space-y-4">
+            <div className="rounded-lg bg-gray-50 p-4">
+              <p className="text-xs font-semibold uppercase tracking-wide text-charcoal">Clave manual</p>
+              <p className="mt-2 break-all font-mono text-sm text-ink">{manualSecret || totpUri}</p>
+              <button
+                type="button"
+                onClick={() => navigator.clipboard.writeText(manualSecret || totpUri).catch(() => {})}
+                className="mt-3 rounded-lg border border-frost px-3 py-2 text-sm text-charcoal hover:bg-white"
+              >
+                Copiar clave
+              </button>
+            </div>
+            <div>
+              <label htmlFor="totp-code" className="block text-sm font-medium text-charcoal">Código de verificación</label>
+              <input
+                id="totp-code"
+                type="text"
+                inputMode="numeric"
+                autoComplete="one-time-code"
+                maxLength={6}
+                minLength={6}
+                required
+                value={code}
+                onChange={(event) => setCode(event.target.value.replace(/\D/g, '').slice(0, 6))}
+                className="mt-1 block w-full rounded-lg border border-frost px-3 py-3 text-center text-2xl tracking-widest text-ink focus:border-electric focus:outline-none focus:ring-1 focus:ring-electric"
+                placeholder="000000"
+              />
+            </div>
+            <button
+              type="submit"
+              disabled={submitting || code.length !== 6}
+              className="w-full rounded-lg bg-electric px-4 py-3 font-semibold text-white transition-colors hover:bg-electric-hover focus:outline-none focus-visible:ring-2 focus-visible:ring-electric focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              {submitting ? 'Verificando…' : 'Verificar y activar acceso'}
+            </button>
+          </form>
         )}
       </div>
     </main>
