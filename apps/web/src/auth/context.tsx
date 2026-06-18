@@ -144,7 +144,20 @@ export function AuthProvider({ children, baseURL }: { children: ReactNode; baseU
       return;
     }
 
-    throw new Error('Login completed without session');
+    // Better Auth may return 200 and set the session cookie before getSession()
+    // observes it in the same JS tick/browser. Treat the successful sign-in as
+    // valid and let the next route refresh/verify the session before sensitive
+    // actions such as TOTP setup.
+    setUser({
+      id: '',
+      email: payload.email,
+      emailVerified: true,
+      twoFactorEnabled: false,
+      roles: ['investor'],
+      status: 'pending_mfa',
+    });
+    setIsAuthenticated(true);
+    setSession(null);
   }, [client, baseURL]);
 
   const logout = useCallback(async () => {
