@@ -97,6 +97,7 @@ function cleanup(pg: EphemeralPostgres | undefined): void {
 function config(): AppConfig {
   return {
     appBaseUrl: 'http://127.0.0.1:8090',
+    authAllowInsecureIpTest: false,
     authMode: 'better-auth',
     authEnabled: true,
     registrationEnabled: true,

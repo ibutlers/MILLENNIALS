@@ -16,6 +16,8 @@ export type AppConfig = {
   e2eTestMode: boolean;
   e2eInternalSecret?: string;
   appBaseUrl: string;
+  /** Temporal production test override: allows Better Auth/Admin over http://65.108.251.196:8088 only. */
+  authAllowInsecureIpTest: boolean;
   sessionCookieSecure: boolean;
   sessionTtlSeconds: number;
   sessionIdleTtlSeconds: number;
@@ -89,6 +91,7 @@ export function getConfig(): AppConfig {
     e2eTestMode: bool(process.env.E2E_TEST_MODE, false),
     e2eInternalSecret: process.env.E2E_INTERNAL_SECRET?.trim() || undefined,
     appBaseUrl: (process.env.APP_BASE_URL ?? 'http://65.108.251.196:8088').replace(/\/+$/, ''),
+    authAllowInsecureIpTest: bool(process.env.AUTH_ALLOW_INSECURE_IP_TEST, false),
     sessionCookieSecure: bool(process.env.SESSION_COOKIE_SECURE, true),
     sessionTtlSeconds: num(process.env.SESSION_TTL_SECONDS, 86400),
     sessionIdleTtlSeconds: num(process.env.SESSION_IDLE_TTL_SECONDS, 3600),
@@ -135,6 +138,19 @@ export function isBetterAuthEnabled(config: AppConfig): boolean {
 export function rejectInsecureAuth(config: AppConfig): void {
   const isE2E = config.e2eTestMode && (process.env.NODE_ENV === 'test' || process.env.NODE_ENV === 'e2e');
   const isLocalhost = config.appBaseUrl.includes('127.0.0.1') || config.appBaseUrl.includes('localhost');
+  const isAuthorizedInsecureIpTest = config.authAllowInsecureIpTest && config.appBaseUrl === 'http://65.108.251.196:8088';
+
+  if (config.authAllowInsecureIpTest && !isAuthorizedInsecureIpTest) {
+    throw new Error(
+      'AUTH_ALLOW_INSECURE_IP_TEST=true is only allowed with APP_BASE_URL=http://65.108.251.196:8088.'
+    );
+  }
+
+  if (isAuthorizedInsecureIpTest) {
+    console.warn(
+      'WARNING: AUTH_ALLOW_INSECURE_IP_TEST=true enables temporary Better Auth/Admin over HTTP on 65.108.251.196:8088. Replace with domain + HTTPS as soon as possible.'
+    );
+  }
 
   if (config.e2eTestMode && !(isE2E && isLocalhost)) {
     throw new Error('E2E_TEST_MODE=true is only allowed in isolated localhost test environments.');
@@ -146,7 +162,7 @@ export function rejectInsecureAuth(config: AppConfig): void {
   // Better Auth validation
   if (config.authMode === 'better-auth') {
     // Require HTTPS unless E2E localhost
-    if (!isSecureConfig(config) && !(isE2E && isLocalhost)) {
+    if (!isSecureConfig(config) && !(isE2E && isLocalhost) && !isAuthorizedInsecureIpTest) {
       throw new Error(
         'AUTH_MODE=better-auth requires APP_BASE_URL to use https://. ' +
         'Authentication is not safe over plain HTTP. ' +
@@ -187,7 +203,7 @@ export function rejectInsecureAuth(config: AppConfig): void {
       'The admin panel cannot function without authentication.'
     );
   }
-  if (config.adminEnabled && !isSecureConfig(config) && !(isE2E && isLocalhost)) {
+  if (config.adminEnabled && !isSecureConfig(config) && !(isE2E && isLocalhost) && !isAuthorizedInsecureIpTest) {
     throw new Error(
       'ADMIN_ENABLED=true requires APP_BASE_URL to use https://. ' +
       'The admin panel is not safe over plain HTTP.'

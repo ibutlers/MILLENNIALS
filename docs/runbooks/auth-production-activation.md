@@ -140,6 +140,25 @@ Reglas:
 - No usar valores ficticios.
 - No activar si falta SPF/DKIM/DMARC.
 
+### 5.1 Activación temporal sobre IP HTTP
+
+El estado definitivo debe ser dominio + HTTPS. Solo para pruebas reales temporales sobre la IP actual se permite este override explícito:
+
+```env
+APP_BASE_URL=http://65.108.251.196:8088
+BETTER_AUTH_URL=http://65.108.251.196:8088
+BETTER_AUTH_TRUSTED_ORIGINS=http://65.108.251.196:8088
+AUTH_ALLOW_INSECURE_IP_TEST=true
+```
+
+Reglas del override:
+
+- Solo se acepta cuando `APP_BASE_URL` es exactamente `http://65.108.251.196:8088`.
+- No permite HTTP para ningún otro host.
+- Emite un warning de arranque sin secretos.
+- Debe eliminarse al pasar a dominio + HTTPS.
+- Mantener `SESSION_COOKIE_SECURE=false` únicamente durante esta prueba HTTP/IP; volver a `true` con HTTPS.
+
 ### 6. Actualizar servidor y desplegar
 
 Solo después de push a GitHub y plan confirmado:

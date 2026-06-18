@@ -191,6 +191,36 @@ describe('config validation', () => {
     ).toThrow(/E2E_INTERNAL_SECRET/);
   });
 
+  it('allows the temporary insecure IP override only for the approved production test URL', () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    expect(() =>
+      rejectInsecureAppConfig({
+        ...getConfig(),
+        authMode: 'better-auth',
+        authEnabled: true,
+        adminEnabled: true,
+        authAllowInsecureIpTest: true,
+        appBaseUrl: 'http://65.108.251.196:8088',
+        betterAuthSecret: 'a'.repeat(64),
+      }),
+    ).not.toThrow();
+    expect(warn).toHaveBeenCalledWith(expect.stringContaining('AUTH_ALLOW_INSECURE_IP_TEST=true'));
+  });
+
+  it('rejects the temporary insecure IP override for any non-approved URL', () => {
+    expect(() =>
+      rejectInsecureAppConfig({
+        ...getConfig(),
+        authMode: 'better-auth',
+        authEnabled: true,
+        adminEnabled: true,
+        authAllowInsecureIpTest: true,
+        appBaseUrl: 'http://example.com',
+        betterAuthSecret: 'a'.repeat(64),
+      }),
+    ).toThrow(/AUTH_ALLOW_INSECURE_IP_TEST/);
+  });
+
   it('rejectInsecureAuth throws with http baseUrl + authEnabled', () => {
     expect(() =>
       rejectInsecureAuth({ ...baseAuthConfig, appBaseUrl: 'http://localhost:8088' }),
