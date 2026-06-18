@@ -15,6 +15,7 @@
  */
 import { createContext, useContext, useEffect, useState, useCallback, type ReactNode } from 'react';
 import { createAuthClient } from 'better-auth/client';
+import { AccountDisabledError, AuthDisabledError, AuthResponseError, InvalidCredentialsError, RateLimitedError } from './client';
 
 export interface AuthUser {
   id: string;
@@ -110,24 +111,41 @@ export function AuthProvider({ children, baseURL }: { children: ReactNode; baseU
 
   const login = useCallback(async (payload: { email: string; password: string }) => {
     if (!client) throw new Error('Auth not available');
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const result: any = await client.signIn.email({ email: payload.email, password: payload.password });
-    if (result.error) throw new Error(result.error.message || 'Login failed');
-    if (result.data?.user) {
-      const userData = result.data.user;
-      setUser({
-        id: userData.id,
-        email: userData.email,
-        name: userData.name,
-        emailVerified: userData.emailVerified || false,
-        twoFactorEnabled: userData.twoFactorEnabled || false,
-        roles: userData.role ? [userData.role] : ['investor'],
-        status: 'active',
-        createdAt: userData.createdAt,
-      });
-      setIsAuthenticated(true);
+
+    const resp = await fetch(`${baseURL}/api/auth/sign-in/email`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ email: payload.email, password: payload.password }),
+    });
+
+    const contentType = resp.headers.get('content-type') || '';
+    const responsePayload: unknown = contentType.includes('application/json') ? await resp.json().catch(() => null) : await resp.text().catch(() => '');
+
+    if (!resp.ok) {
+      throw mapLoginError(resp, responsePayload);
     }
-  }, [client]);
+
+    if (responsePayload && typeof responsePayload === 'object' && 'error' in responsePayload && (responsePayload as { error?: unknown }).error) {
+      throw mapLoginError(resp, responsePayload);
+    }
+
+    const sessionData = await readSessionFromClient(client);
+    if (sessionData?.user) {
+      const userData = sessionData.user;
+      setUser(toAuthUser(userData));
+      setIsAuthenticated(true);
+      if (sessionData.session) {
+        setSession({
+          id: sessionData.session.id,
+          expiresAt: new Date(sessionData.session.expiresAt),
+        });
+      }
+      return;
+    }
+
+    throw new Error('Login completed without session');
+  }, [client, baseURL]);
 
   const logout = useCallback(async () => {
     if (!client) {
@@ -211,6 +229,49 @@ export function AuthProvider({ children, baseURL }: { children: ReactNode; baseU
       {children}
     </AuthContext.Provider>
   );
+}
+
+type BetterAuthUserLike = {
+  id: string;
+  email: string;
+  name?: string;
+  emailVerified?: boolean;
+  twoFactorEnabled?: boolean;
+  role?: string;
+  createdAt?: string;
+};
+
+type BetterAuthSessionLike = {
+  user?: BetterAuthUserLike;
+  session?: { id: string; expiresAt: string | Date };
+};
+
+async function readSessionFromClient(client: ReturnType<typeof createAuthClient>): Promise<BetterAuthSessionLike | null> {
+  const res = await client.getSession() as { data?: BetterAuthSessionLike | null };
+  return res.data || null;
+}
+
+function toAuthUser(userData: BetterAuthUserLike): AuthUser {
+  return {
+    id: userData.id,
+    email: userData.email,
+    name: userData.name,
+    emailVerified: userData.emailVerified || false,
+    twoFactorEnabled: userData.twoFactorEnabled || false,
+    roles: userData.role ? [userData.role] : ['investor'],
+    status: 'active',
+    createdAt: userData.createdAt,
+  };
+}
+
+function mapLoginError(response: Response, payload: unknown): Error {
+  if (response.status === 503) return new AuthDisabledError(response);
+  if (response.status === 401) return new InvalidCredentialsError(response);
+  if (response.status === 429) return new RateLimitedError(response);
+  if (response.status === 403) return new AccountDisabledError(response);
+
+  const message = readAuthErrorMessage(payload, response.status);
+  return new AuthResponseError(message, response);
 }
 
 function readAuthErrorMessage(payload: unknown, status: number): string {
