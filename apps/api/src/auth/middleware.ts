@@ -53,7 +53,7 @@ export function requireBetterAuthSession() {
       }
     }
 
-    const session = await auth.api.getSession(headers);
+    const session = await auth.api.getSession({ headers });
     if (!session) {
       return reply.status(401).send(publicError('unauthorized', 'Autenticación requerida.'));
     }
@@ -203,22 +203,26 @@ export function requireProjectAccess(pool: Pool) {
     }
 
     const params = request.params as Record<string, string>;
-    const projectId = params.id || params.projectId;
+    const projectRef = params.id || params.projectId;
 
-    if (!projectId) {
+    if (!projectRef) {
       return reply.status(400).send(publicError('invalid_request', 'ID de proyecto no especificado.'));
     }
 
     const result = await pool.query(
-      `SELECT 1 FROM project_user_access
-       WHERE app_user_id = $1 AND opportunity_id = $2 AND status = 'active'`,
-      [user.id, projectId],
+      `SELECT 1
+       FROM opportunities o
+       JOIN project_user_access pua ON pua.opportunity_id = o.id
+       WHERE pua.app_user_id = $1
+         AND pua.status = 'active'
+         AND (o.id::text = $2 OR o.slug = $2)`,
+      [user.id, projectRef],
     );
 
     if (result.rows.length === 0) {
       return reply.status(403).send(publicError('forbidden', 'No tienes acceso a este proyecto.'));
     }
 
-    (request as any).projectAccess = { projectId, granted: true };
+    (request as any).projectAccess = { projectId: projectRef, granted: true };
   };
 }

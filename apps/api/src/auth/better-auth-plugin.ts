@@ -18,7 +18,7 @@ import type { AppConfig } from '../config.js';
 interface BetterAuthServer {
   handler: (request: Request) => Promise<Response>;
   api: {
-    getSession: (headers: Headers) => Promise<{
+    getSession: (context: { headers: Headers }) => Promise<{
       user: { id: string; email: string; name?: string; emailVerified: boolean; twoFactorEnabled?: boolean };
       session: { id: string; expiresAt: Date; token: string };
     } | null>;
@@ -34,6 +34,20 @@ export function setBetterAuthServer(server: BetterAuthServer): void {
 
 export function getBetterAuthServer(): BetterAuthServer | null {
   return _betterAuthServer;
+}
+
+
+function headersFromFastifyRequest(request: FastifyRequest): Headers {
+  const headers = new Headers();
+  for (const [key, value] of Object.entries(request.headers)) {
+    if (value === undefined) continue;
+    if (Array.isArray(value)) {
+      for (const v of value) headers.append(key, v);
+    } else {
+      headers.set(key, String(value));
+    }
+  }
+  return headers;
 }
 
 export interface InvitationValidator {
@@ -78,6 +92,106 @@ export async function betterAuthPlugin(
           message: 'El servicio de autenticación no está inicializado.',
         },
       });
+    }
+
+
+    // ── Explicit MFA reconciliation (pending_mfa → active) ──
+    if (request.method === 'POST' && request.url === '/api/auth/reconcile-mfa') {
+      if (!pool) {
+        return reply.status(503).send({ error: { id: `err_${Date.now().toString(36)}`, code: 'auth_unavailable', message: 'El servicio de autenticación no está inicializado.' } });
+      }
+      const headers = headersFromFastifyRequest(request);
+      const session = await _betterAuthServer.api.getSession({ headers });
+      if (!session) {
+        return reply.status(401).send({ error: { id: `err_${Date.now().toString(36)}`, code: 'unauthorized', message: 'Autenticación requerida.' } });
+      }
+
+      const client = await pool.connect();
+      try {
+        await client.query('BEGIN');
+        const authUserResult = await client.query<{
+          id: string;
+          emailVerified: boolean;
+          twoFactorEnabled: boolean;
+        }>(
+          `SELECT id, email_verified AS "emailVerified", "twoFactorEnabled"
+           FROM auth."user"
+           WHERE id = $1
+           FOR SHARE`,
+          [session.user.id],
+        );
+        if (authUserResult.rows.length === 0) {
+          await client.query('ROLLBACK');
+          return reply.status(401).send({ error: { id: `err_${Date.now().toString(36)}`, code: 'unauthorized', message: 'Autenticación requerida.' } });
+        }
+        const authUser = authUserResult.rows[0];
+        if (!authUser.emailVerified) {
+          await client.query('ROLLBACK');
+          return reply.status(403).send({ error: { id: `err_${Date.now().toString(36)}`, code: 'email_not_verified', message: 'Debes verificar tu correo antes de continuar.' } });
+        }
+        if (!authUser.twoFactorEnabled) {
+          await client.query('ROLLBACK');
+          return reply.status(409).send({ error: { id: `err_${Date.now().toString(36)}`, code: 'mfa_not_verified', message: 'Debes completar la verificación en dos pasos.' } });
+        }
+
+        const appUserResult = await client.query<{
+          id: string;
+          status: string;
+          email_verified_at: Date | null;
+          mfa_enabled_at: Date | null;
+        }>(
+          `SELECT id, status, email_verified_at, mfa_enabled_at
+           FROM app_users
+           WHERE better_auth_user_id = $1
+           FOR UPDATE`,
+          [session.user.id],
+        );
+        if (appUserResult.rows.length === 0) {
+          await client.query('ROLLBACK');
+          return reply.status(401).send({ error: { id: `err_${Date.now().toString(36)}`, code: 'unauthorized', message: 'Usuario no registrado en el sistema.' } });
+        }
+        const appUser = appUserResult.rows[0];
+        if (appUser.status === 'suspended') {
+          await client.query('ROLLBACK');
+          return reply.status(403).send({ error: { id: `err_${Date.now().toString(36)}`, code: 'account_suspended', message: 'La cuenta está suspendida.' } });
+        }
+        if (appUser.status === 'revoked') {
+          await client.query('ROLLBACK');
+          return reply.status(403).send({ error: { id: `err_${Date.now().toString(36)}`, code: 'account_revoked', message: 'La cuenta ha sido revocada.' } });
+        }
+        if (appUser.status === 'active') {
+          await client.query('COMMIT');
+          return { data: { status: 'active', reconciled: false } };
+        }
+        if (appUser.status !== 'pending_mfa') {
+          await client.query('ROLLBACK');
+          return reply.status(409).send({ error: { id: `err_${Date.now().toString(36)}`, code: 'invalid_state', message: 'La cuenta todavía no está lista para activar MFA.' } });
+        }
+
+        await client.query(
+          `UPDATE app_users
+           SET status = 'active',
+               email_verified_at = COALESCE(email_verified_at, now()),
+               mfa_enabled_at = COALESCE(mfa_enabled_at, now()),
+               activated_at = COALESCE(activated_at, now()),
+               updated_at = now()
+           WHERE id = $1`,
+          [appUser.id],
+        );
+        await client.query(
+          `INSERT INTO auth_audit_events (actor_id, action, subject_id, resource_type, resource_id, result)
+           VALUES ($1, 'mfa_enabled', $2, 'app_user', $3, 'success')`,
+          [appUser.id, appUser.id, appUser.id],
+        );
+        await client.query('COMMIT');
+        return { data: { status: 'active', reconciled: true } };
+      } catch (error) {
+        await client.query('ROLLBACK').catch(() => {});
+        request.log.warn({ err: error }, 'mfa reconciliation failed');
+        return reply.status(500).send({ error: { id: `err_${Date.now().toString(36)}`, code: 'internal_error', message: 'No hemos podido completar la solicitud en este momento.' } });
+      } finally {
+        client.release();
+      }
     }
 
     // ── Sign-up invitation validation ──
@@ -185,6 +299,7 @@ export async function betterAuthPlugin(
         }
       }
 
+
       await webResponseToFastifyReply(webResponse, reply);
     } catch (error) {
       request.log.error({ err: error }, 'better-auth handler error');
@@ -258,16 +373,19 @@ async function webResponseToFastifyReply(
   }
 
   const contentType = response.headers.get('content-type') || '';
-  if (contentType.includes('application/json')) {
-    const body = await response.json();
-    return reply.send(body);
-  } else if (contentType.includes('text/')) {
-    const body = await response.text();
-    return reply.send(body);
-  } else if (response.status === 302 || response.status === 301) {
+  if (response.status === 302 || response.status === 301 || response.status === 303 || response.status === 307 || response.status === 308) {
     return reply.send('');
+  }
+
+  const text = await response.text();
+  if (!text) {
+    return reply.send('');
+  }
+  if (contentType.includes('application/json')) {
+    return reply.send(JSON.parse(text));
+  } else if (contentType.includes('text/')) {
+    return reply.send(text);
   } else {
-    const body = await response.text();
-    return reply.send(body);
+    return reply.send(text);
   }
 }

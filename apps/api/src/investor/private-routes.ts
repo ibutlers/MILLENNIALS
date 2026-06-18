@@ -46,32 +46,37 @@ export function registerPrivateInvestorRoutes(
   // ── GET /api/investor/dashboard ──
   app.get('/api/investor/dashboard', {
     preHandler: authChain,
-  }, async (request: FastifyRequest) => {
-    const appUser = (request as any).appUser;
+  }, async (request: FastifyRequest, reply: FastifyReply) => {
+    try {
+      const appUser = (request as any).appUser;
 
-    // Count user's active project accesses
-    const accessResult = await pool.query(
-      `SELECT count(*)::int AS count FROM project_user_access
-       WHERE app_user_id = $1 AND status = 'active'`,
-      [appUser.id],
-    );
+      // Count user's active project accesses
+      const accessResult = await pool.query(
+        `SELECT count(*)::int AS count FROM project_user_access
+         WHERE app_user_id = $1 AND status = 'active'`,
+        [appUser.id],
+      );
 
-    return {
-      data: {
-        user: {
-          id: appUser.id,
-          displayName: appUser.displayName,
-          email: appUser.emailNormalized,
-          role: appUser.role,
-          status: appUser.status,
-          emailVerified: !!appUser.emailVerifiedAt,
-          mfaEnabled: !!appUser.mfaEnabledAt,
+      return {
+        data: {
+          user: {
+            id: appUser.id,
+            displayName: appUser.displayName,
+            email: appUser.emailNormalized,
+            role: appUser.role,
+            status: appUser.status,
+            emailVerified: !!appUser.emailVerifiedAt,
+            mfaEnabled: !!appUser.mfaEnabledAt,
+          },
+          summary: {
+            activeProjects: accessResult.rows[0].count,
+          },
         },
-        summary: {
-          activeProjects: accessResult.rows[0].count,
-        },
-      },
-    };
+      };
+    } catch (err) {
+      request.log.error({ err, requestId: (request as any).id }, 'dashboard handler error');
+      return reply.status(500).send({ error: { code: 'internal_error', message: 'Internal error' } });
+    }
   });
 
   // ── GET /api/investor/projects ──
@@ -107,23 +112,7 @@ export function registerPrivateInvestorRoutes(
       );
     }
 
-    const projects = result.rows.map((row: Record<string, unknown>) => ({
-      id: row.id,
-      slug: row.slug,
-      title: row.title,
-      shortDescription: row.short_description,
-      city: row.city,
-      status: row.status,
-      riskLevel: row.risk_level,
-      targetReturnType: row.target_return_type,
-      targetReturnBps: row.target_return_bps,
-      targetAmountCents: row.target_amount_cents ? parseInt(String(row.target_amount_cents), 10) : 0,
-      committedAmountCents: row.committed_amount_cents ? parseInt(String(row.committed_amount_cents), 10) : 0,
-      estimatedTermMonths: row.estimated_term_months,
-      primaryImageUrl: row.primary_image_url || null,
-    }));
-
-    return { data: projects };
+    return { data: result.rows };
   });
 
   // ── GET /api/investor/projects/:id ──
@@ -133,17 +122,11 @@ export function registerPrivateInvestorRoutes(
     const { id } = request.params as { id: string };
 
     const result = await pool.query(
-      `SELECT o.*,
-              (SELECT json_agg(json_build_object('id', m.id, 'type', m.type, 'url', m.url, 'alt_text', m.alt_text, 'position', m.position))
-               FROM opportunity_media m WHERE m.opportunity_id = o.id ORDER BY m.position) AS media,
-              (SELECT json_agg(json_build_object('id', h.id, 'label', h.label, 'value', h.value, 'position', h.position))
-               FROM opportunity_highlights h WHERE h.opportunity_id = o.id ORDER BY h.position) AS highlights,
-              (SELECT json_agg(json_build_object('id', r.id, 'title', r.title, 'description', r.description, 'position', r.position))
-               FROM opportunity_risks r WHERE r.opportunity_id = o.id ORDER BY r.position) AS risks,
-              (SELECT json_agg(json_build_object('id', ml.id, 'title', ml.title, 'description', ml.description, 'planned_date', ml.planned_date, 'completed_at', ml.completed_at, 'position', ml.position))
-               FROM opportunity_milestones ml WHERE ml.opportunity_id = o.id ORDER BY ml.position) AS milestones
+      `SELECT o.id, o.slug, o.title, o.short_description, o.description, o.city, o.status, o.risk_level,
+              o.target_return_type, o.target_return_bps, o.target_amount_cents,
+              o.committed_amount_cents, o.estimated_term_months, o.created_at, o.updated_at
        FROM opportunities o
-       WHERE o.id = $1`,
+       WHERE o.id::text = $1 OR o.slug = $1`,
       [id],
     );
 
@@ -151,63 +134,25 @@ export function registerPrivateInvestorRoutes(
       return reply.status(404).send(publicError('not_found', 'Proyecto no encontrado.'));
     }
 
-    const row = result.rows[0];
-    return {
-      data: {
-        id: row.id,
-        slug: row.slug,
-        title: row.title,
-        shortDescription: row.short_description,
-        description: row.description,
-        city: row.city,
-        countryCode: row.country_code,
-        district: row.district,
-        assetType: row.asset_type,
-        strategy: row.strategy,
-        status: row.status,
-        riskLevel: row.risk_level,
-        targetReturnType: row.target_return_type,
-        targetReturnBps: row.target_return_bps,
-        targetAmountCents: row.target_amount_cents ? parseInt(String(row.target_amount_cents), 10) : null,
-        committedAmountCents: row.committed_amount_cents ? parseInt(String(row.committed_amount_cents), 10) : null,
-        minimumInvestmentCents: row.minimum_investment_cents ? parseInt(String(row.minimum_investment_cents), 10) : null,
-        estimatedTermMonths: row.estimated_term_months,
-        closingDate: row.closing_date,
-        media: row.media || [],
-        highlights: row.highlights || [],
-        risks: row.risks || [],
-        milestones: row.milestones || [],
-      },
-    };
+    return { data: result.rows[0] };
   });
 
   // ── GET /api/investor/projects/:id/documents ──
   app.get('/api/investor/projects/:id/documents', {
     preHandler: [...authChain, requireProjectAccess(pool)],
-  }, async (request: FastifyRequest) => {
+  }, async (request: FastifyRequest, _reply: FastifyReply) => {
     const { id } = request.params as { id: string };
 
     const result = await pool.query(
-      `SELECT id, title, type, status, version, mime_type, byte_size, created_at, updated_at
-       FROM documents
-       WHERE owner_type = 'opportunity' AND owner_id = $1 AND visibility = 'private'
-       ORDER BY created_at DESC`,
+      `SELECT id, title, file_type, file_size, created_at
+       FROM private_documents
+       WHERE opportunity_id = $1
+       ORDER BY created_at DESC
+       LIMIT 100`,
       [id],
     );
 
-    const documents = result.rows.map((row: Record<string, unknown>) => ({
-      id: row.id,
-      title: row.title,
-      type: row.type,
-      status: row.status,
-      version: row.version,
-      mimeType: row.mime_type,
-      byteSize: row.byte_size ? parseInt(String(row.byte_size), 10) : null,
-      createdAt: row.created_at,
-      updatedAt: row.updated_at,
-    }));
-
-    return { data: documents };
+    return { data: result.rows };
   });
 
   // ── GET /api/investor/profile ──
@@ -216,14 +161,6 @@ export function registerPrivateInvestorRoutes(
   }, async (request: FastifyRequest) => {
     const appUser = (request as any).appUser;
 
-    // Get investor profile if exists
-    const profileResult = await pool.query(
-      `SELECT ip.* FROM investor_profiles ip WHERE ip.user_id = $1`,
-      [appUser.id], // Note: this maps to the old users.id; needs adaptation for app_users
-    );
-
-    // Fallback: get profile via any linked legacy user
-    // For now, return basic app_user data
     return {
       data: {
         id: appUser.id,
@@ -233,12 +170,40 @@ export function registerPrivateInvestorRoutes(
         status: appUser.status,
         emailVerified: !!appUser.emailVerifiedAt,
         mfaEnabled: !!appUser.mfaEnabledAt,
-        activatedAt: appUser.activatedAt,
-        investorProfile: profileResult.rows.length > 0 ? {
-          status: profileResult.rows[0].status,
-          kycStatus: profileResult.rows[0].kyc_status,
-          accredited: profileResult.rows[0].accredited,
-        } : null,
+        createdAt: appUser.createdAt,
+      },
+    };
+  });
+
+  // ── GET /api/auth/me ──
+  app.get('/api/auth/me', {
+    preHandler: authChain,
+  }, async (request: FastifyRequest) => {
+    const appUser = (request as any).appUser;
+
+    // Count visible projects
+    const projResult = await pool.query(
+      `SELECT count(*)::int AS count FROM project_user_access
+       WHERE app_user_id = $1 AND status = 'active'`,
+      [appUser.id],
+    );
+
+    return {
+      data: {
+        id: appUser.id,
+        displayName: appUser.displayName,
+        email: appUser.emailNormalized,
+        role: appUser.role,
+        status: appUser.status,
+        emailVerified: !!appUser.emailVerifiedAt,
+        mfaEnabled: !!appUser.mfaEnabledAt,
+        permissions: {
+          canAccessInvestorArea: appUser.status === 'active',
+          visibleProjects: projResult.rows[0].count,
+        },
+        summary: {
+          activeProjects: projResult.rows[0].count,
+        },
       },
     };
   });

@@ -24,7 +24,7 @@ import { registerAdminRoutes } from './admin/routes.js';
 import { registerInvestorRoutes } from './investor/routes.js';
 import { registerPrivateInvestorRoutes } from './investor/private-routes.js';
 import { createProviders, type ProviderSet } from './providers/index.js';
-import { betterAuthPlugin, setBetterAuthServer } from './auth/better-auth-plugin.js';
+import { betterAuthPlugin, setBetterAuthServer, type InvitationValidator } from './auth/better-auth-plugin.js';
 import { createBetterAuthServer } from './auth/better-auth-server.js';
 import { createAuthEmailProvider } from './auth/email-provider.js';
 import { InvitationRepository } from './auth/invitations.js';
@@ -112,7 +112,7 @@ export function buildApp(dependencies: AppDependencies = {}): FastifyInstance {
   const providers = dependencies.providers ?? createProviders();
 
   // ── Better Auth initialization ──
-  let invitationValidator = undefined;
+  let invitationValidator: InvitationValidator | undefined = undefined;
   // Single CaptureEmailProvider instance shared between Better Auth and invitation routes.
   // createAuthEmailProvider sets the global _captureProvider which E2E helpers read from.
   const authEmailProvider = createAuthEmailProvider(config.authEmailMode);
@@ -121,15 +121,6 @@ export function buildApp(dependencies: AppDependencies = {}): FastifyInstance {
     // Create a dedicated pool for Better Auth with search_path=auth,public
     // so bare table references (e.g. 'user') resolve to auth.*
     const authPool = createAuthPool();
-    try {
-      const betterAuth = createBetterAuthServer(authPool, config, authEmailProvider);
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      setBetterAuthServer(betterAuth as any);
-      app.log.info('better-auth server initialized');
-    } catch (error) {
-      app.log.error({ err: error }, 'failed to initialize better-auth server');
-      throw error;
-    }
 
     // Adapter for invitation validation + consumption at Fastify level
     // (Better Auth v1.6.19 hooks context does not reliably contain headers)
@@ -193,7 +184,7 @@ export function buildApp(dependencies: AppDependencies = {}): FastifyInstance {
           }
 
           await pgClient.query('COMMIT');
-        } catch (err) {
+        } catch {
           await pgClient.query('ROLLBACK').catch(() => {});
           throw new Error('Failed to finalize invitation after signup');
         } finally {
@@ -320,9 +311,22 @@ export function buildApp(dependencies: AppDependencies = {}): FastifyInstance {
         }
       },
     };
-  }
 
-  // ── Plugins ──
+    const validator = invitationValidator;
+    try {
+    const betterAuth = createBetterAuthServer(authPool, config, authEmailProvider, {
+      afterEmailVerification: (betterAuthUserId: string) => validator.transitionAfterEmailVerification(betterAuthUserId),
+    });
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    setBetterAuthServer(betterAuth as any);
+    app.log.info('better-auth server initialized');
+    } catch (error) {
+    app.log.error({ err: error }, 'failed to initialize better-auth server');
+    throw error;
+    }
+    }
+
+    // ── Plugins ──
   app.register(cookie);
 
   // ── Better Auth plugin (mounts /api/auth/*) ──
