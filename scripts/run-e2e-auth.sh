@@ -6,13 +6,21 @@ E2E_COMPOSE="$ROOT_DIR/e2e/docker-compose.e2e-auth.yml"
 E2E_PROJECT="realstate-e2e-auth"
 ENV_FILE="/tmp/realstate-e2e-auth-env-$$.env"
 
+compose() {
+  docker compose --env-file "$ENV_FILE" -f "$E2E_COMPOSE" -p "$E2E_PROJECT" "$@"
+}
+
 cleanup() {
   local status=$?
   echo ""
   echo "=== E2E AUTH TEARDOWN ==="
-  docker compose -f "$E2E_COMPOSE" -p "$E2E_PROJECT" down -v --remove-orphans 2>/dev/null || true
+  if [[ -f "$ENV_FILE" ]]; then
+    compose down -v --remove-orphans 2>/dev/null || true
+  else
+    docker compose -f "$E2E_COMPOSE" -p "$E2E_PROJECT" down -v --remove-orphans 2>/dev/null || true
+  fi
   rm -f "$ENV_FILE"
-  unset E2E_INTERNAL_SECRET
+  unset POSTGRES_PASSWORD PG_PASSWORD BETTER_AUTH_SECRET E2E_INTERNAL_SECRET
   local rc rv rn
   rc="$(docker ps -a --filter "name=${E2E_PROJECT}" -q 2>/dev/null || true)"
   rv="$(docker volume ls --filter "name=${E2E_PROJECT}" -q 2>/dev/null || true)"
@@ -37,20 +45,22 @@ grep -q '8088' "$E2E_COMPOSE" && { echo "ERROR: puerto de produccion 8088 en com
 grep -q 'POSTGRES_HOST_AUTH_METHOD' "$E2E_COMPOSE" && { echo "ERROR: trust auth en compose E2E" >&2; exit 1; }
 echo "OK Aislamiento validado"
 
-# Ephemeral credentials via Python helper
+# Ephemeral credentials via Python helper. Generate and export once in this shell
+# before any Compose command so ${VAR:?} checks are satisfied consistently.
 eval "$(python3 "$ROOT_DIR/scripts/_gen-e2e-secrets.py")"
-printf 'POSTGRES_PASSWORD=%s
-' "$PG_PASSWORD" > "$ENV_FILE"
-printf 'BETTER_AUTH_SECRET=%s
-' "$BETTER_AUTH_SECRET" >> "$ENV_FILE"
-printf 'E2E_INTERNAL_SECRET=%s
-' "$E2E_INTERNAL_SECRET" >> "$ENV_FILE"
+export POSTGRES_PASSWORD="$PG_PASSWORD"
+: "${POSTGRES_PASSWORD:?missing POSTGRES_PASSWORD}"
+: "${BETTER_AUTH_SECRET:?missing BETTER_AUTH_SECRET}"
+: "${E2E_INTERNAL_SECRET:?missing E2E_INTERNAL_SECRET}"
+printf 'POSTGRES_PASSWORD=%s\n' "$POSTGRES_PASSWORD" > "$ENV_FILE"
+printf 'BETTER_AUTH_SECRET=%s\n' "$BETTER_AUTH_SECRET" >> "$ENV_FILE"
+printf 'E2E_INTERNAL_SECRET=%s\n' "$E2E_INTERNAL_SECRET" >> "$ENV_FILE"
 chmod 600 "$ENV_FILE"
 echo "Credenciales efimeras generadas."
 
 # Tear down previous environment
 echo "-> Destruyendo entorno E2E Auth previo..."
-docker compose -f "$E2E_COMPOSE" -p "$E2E_PROJECT" down -v --remove-orphans --timeout 10 2>&1 || true
+compose down -v --remove-orphans --timeout 10 2>&1 || true
 docker volume rm -f "${E2E_PROJECT}"_e2e_auth_postgres_data 2>/dev/null || true
 sleep 3
 
@@ -61,39 +71,46 @@ fi
 
 # Start services
 echo "Iniciando servicios E2E Auth..."
-POSTGRES_PASSWORD="$PG_PASSWORD"   BETTER_AUTH_SECRET="$BETTER_AUTH_SECRET"   E2E_INTERNAL_SECRET="$E2E_INTERNAL_SECRET"   docker compose -f "$E2E_COMPOSE" -p "$E2E_PROJECT" up -d --wait --build 2>&1
+compose up -d --wait --build 2>&1
+
+is_service_running() {
+  local service="$1"
+  local cid
+  cid="$(compose ps -q "$service" 2>/dev/null || true)"
+  [[ -n "$cid" ]] && [[ "$(docker inspect -f '{{.State.Running}}' "$cid" 2>/dev/null || true)" == "true" ]]
+}
 
 # Verify PostgreSQL
-if ! docker compose -f "$E2E_COMPOSE" -p "$E2E_PROJECT" ps --status running 2>/dev/null | grep -q postgres; then
+if ! is_service_running postgres; then
   echo "ERROR: PostgreSQL no arranco. Logs:" >&2
-  docker compose -f "$E2E_COMPOSE" -p "$E2E_PROJECT" logs postgres 2>&1 | tail -40 >&2
+  compose logs postgres 2>&1 | tail -40 >&2
   exit 1
 fi
 
 # Verify API
-if ! docker compose -f "$E2E_COMPOSE" -p "$E2E_PROJECT" ps --status running 2>/dev/null | grep -q api; then
+if ! is_service_running api; then
   echo "ERROR: API no arranco. Logs:" >&2
-  docker compose -f "$E2E_COMPOSE" -p "$E2E_PROJECT" logs api 2>&1 | tail -40 >&2
+  compose logs api 2>&1 | tail -40 >&2
   exit 1
 fi
 
 # Migrations
 echo "Ejecutando migraciones..."
-docker compose -f "$E2E_COMPOSE" -p "$E2E_PROJECT" exec -T api node apps/api/dist/db/migrate.js
+compose exec -T api node apps/api/dist/db/migrate.js
 
 # Seed
 echo "Ejecutando seed..."
-docker compose -f "$E2E_COMPOSE" -p "$E2E_PROJECT" exec -T api node apps/api/dist/db/seed.js
+compose exec -T api node apps/api/dist/db/seed.js
 
 # Test data: bootstrap organization + admin
 echo "Bootstrapping organizacion y admin..."
-docker compose -f "$E2E_COMPOSE" -p "$E2E_PROJECT" exec -T api   node apps/api/dist/auth/cli.js bootstrap-organization --yes || true
-docker compose -f "$E2E_COMPOSE" -p "$E2E_PROJECT" exec -T api   node apps/api/dist/auth/cli.js bootstrap-admin --email admin@e2e.test --name "Admin E2E" --yes || true
+compose exec -T api node apps/api/dist/auth/cli.js bootstrap-organization --yes || true
+compose exec -T api node apps/api/dist/auth/cli.js bootstrap-admin --email admin@e2e.test --name "Admin E2E" --yes || true
 
 # Test data: coinvest leads via API
 echo "Creando leads de coinversion..."
-curl -sS -X POST http://127.0.0.1:8090/api/coinvest   -H "Content-Type: application/json"   -d '{"name":"Inversor A","email":"investor_a@e2e.test","phone":"+34 600 000 001","profile":"Inversor particular","experience":"Alguna inversion previa","interests":"Proyectos residenciales en Vigo","consent":true,"submittedAfterMs":3500,"website":""}'   || echo "WARNING: lead A fallo (no fatal)"
-curl -sS -X POST http://127.0.0.1:8090/api/coinvest   -H "Content-Type: application/json"   -d '{"name":"Inversor B","email":"investor_b@e2e.test","phone":"+34 600 000 002","profile":"Empresa","experience":"Experiencia habitual","interests":"Proyectos comerciales","consent":true,"submittedAfterMs":3500,"website":""}'   || echo "WARNING: lead B fallo (no fatal)"
+curl -sS -X POST http://127.0.0.1:8090/api/coinvest -H "Content-Type: application/json" -d '{"name":"Inversor A","email":"investor_a@e2e.test","phone":"+34 600 000 001","profile":"Inversor particular","experience":"Alguna inversion previa","interests":"Proyectos residenciales en Vigo","consent":true,"submittedAfterMs":3500,"website":""}' || echo "WARNING: lead A fallo (no fatal)"
+curl -sS -X POST http://127.0.0.1:8090/api/coinvest -H "Content-Type: application/json" -d '{"name":"Inversor B","email":"investor_b@e2e.test","phone":"+34 600 000 002","profile":"Empresa","experience":"Experiencia habitual","interests":"Proyectos comerciales","consent":true,"submittedAfterMs":3500,"website":""}' || echo "WARNING: lead B fallo (no fatal)"
 
 # Wait for frontend and API with active polling
 echo "Esperando servicios (PostgreSQL + API + Frontend + migraciones)..."
@@ -104,17 +121,14 @@ while [ $WAITED -lt $MAX_WAIT ]; do
   API_OK=false
   FE_OK=false
 
-  # PostgreSQL health (via API health check)
   if curl -fsS http://127.0.0.1:8090/api/health 2>/dev/null | grep -q '"ok"'; then
     API_OK=true
-    # Check auth status
     AUTH_STATUS=$(curl -fsS http://127.0.0.1:8090/api/config/public 2>/dev/null | grep -o '"authEnabled":true' || true)
     if [ -n "$AUTH_STATUS" ]; then
       PG_OK=true
     fi
   fi
 
-  # Frontend health
   if curl -fsS http://127.0.0.1:8090/health >/dev/null 2>&1; then
     FE_OK=true
   fi
@@ -130,7 +144,7 @@ while [ $WAITED -lt $MAX_WAIT ]; do
     echo "ERROR: Timeout esperando servicios tras ${MAX_WAIT}s." >&2
     echo "  API: $API_OK  PG+Auth: $PG_OK  Frontend: $FE_OK" >&2
     echo "  API logs:" >&2
-    docker compose -f "$E2E_COMPOSE" -p "$E2E_PROJECT" logs api 2>&1 | tail -20 >&2
+    compose logs api 2>&1 | tail -20 >&2
     exit 1
   fi
 done
@@ -155,13 +169,19 @@ else
   exit 1
 fi
 
-# Run Playwright
+# Run Playwright. Preserve the Playwright exit code; cleanup trap must not mask failures.
 echo "Ejecutando Playwright (auth)..."
 export E2E_INTERNAL_SECRET
+status=0
 pnpm --filter @realstate/web exec playwright test \
   --config playwright.auth.config.ts \
   --project=chromium \
   --workers=1 \
   --retries=0 \
   --reporter=line \
-  "$@"
+  "$@" || status=$?
+if [[ "$status" -ne 0 ]]; then
+  echo "=== API logs tras fallo Playwright ===" >&2
+  compose logs api 2>&1 | tail -120 >&2 || true
+fi
+exit "$status"

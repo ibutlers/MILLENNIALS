@@ -34,6 +34,7 @@ EXPECTED = [
     '0010_fix_access_invitations_public_reference.sql',
     '0011_fix_two_factor_column.sql',
     '0012_rename_plugin_columns_to_camelcase.sql',
+    '0013_rename_two_factor_table_to_runtime_model.sql',
 ]
 FAILED = False
 
@@ -198,7 +199,7 @@ def main():
         r = _psql(cn, sec, 'SELECT count(*) FROM schema_migrations')
         mc = r.stdout.strip()
         print('  migrations=' + mc)
-        _check(mc == '12', 'esperadas 12 migraciones, hay ' + mc)
+        _check(mc == '13', 'esperadas 13 migraciones, hay ' + mc)
 
         r = _psql(cn, sec,
                   'SELECT id FROM schema_migrations ORDER BY applied_at')
@@ -343,14 +344,14 @@ def main():
         cc = _psql_host(cn, sec,
                         'SELECT count(*) FROM schema_migrations',
                         db=cdb).stdout.strip()
-        _check(cc == '12', 'concurrencia: esperadas 12, hay ' + cc)
-        print('  concurrency: OK (12 migraciones, 0 duplicados)')
+        _check(cc == '13', 'concurrencia: esperadas 13, hay ' + cc)
+        print('  concurrency: OK (13 migraciones, 0 duplicados)')
         du = _psql_host(cn, sec,
                         'SELECT id, count(*) FROM schema_migrations '
                         'GROUP BY id HAVING count(*) > 1',
                         db=cdb).stdout.strip()
         _check(du == '', 'filas duplicadas: ' + du)
-        print('  concurrency: OK (12 migraciones, 0 duplicados)')
+        print('  concurrency: OK (13 migraciones, 0 duplicados)')
 
         # ─────────────────────────────────────────────────────────────────
         # Backup/restore auth tables
@@ -370,8 +371,8 @@ def main():
         r = _psql(cn, sec, "INSERT INTO auth.\"verification\" (id, identifier, value, \"expiresAt\", \"createdAt\", \"updatedAt\") VALUES ('verif-restore-1', 'active@restore.test', 'verify_token_1', now() + interval '30 minutes', now(), now()), ('verif-restore-2', 'pending@restore.test', 'verify_token_2', now() - interval '1 hour', now(), now())")
         _check(r.returncode == 0, 'insert auth.verification fallo: ' + r.stderr.strip()[:200])
 
-        r = _psql(cn, sec, "INSERT INTO auth.\"two_factor\" (id, \"userId\", secret, \"backupCodes\", verified) VALUES ('2fa-restore-1', 'ba-restore-active', 'BASE32SECRET1', '', true), ('2fa-restore-2', 'ba-restore-suspended', 'BASE32SECRET2', '', false)")
-        _check(r.returncode == 0, 'insert auth.two_factor fallo: ' + r.stderr.strip()[:200])
+        r = _psql(cn, sec, "INSERT INTO auth.\"twoFactor\" (id, \"userId\", secret, \"backupCodes\", verified) VALUES ('2fa-restore-1', 'ba-restore-active', 'BASE32SECRET1', '', true), ('2fa-restore-2', 'ba-restore-suspended', 'BASE32SECRET2', '', false)")
+        _check(r.returncode == 0, 'insert auth.twoFactor fallo: ' + r.stderr.strip()[:200])
 
         r = _psql(cn, sec, "INSERT INTO auth.\"organization\" (id, name, slug, \"createdAt\") VALUES ('org-restore-1', 'MILLENNIALS CONSTRUYEN', 'millennials-construyen', now())")
         _check(r.returncode == 0, 'insert auth.organization fallo: ' + r.stderr.strip()[:200])

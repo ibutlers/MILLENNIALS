@@ -24,6 +24,15 @@ services:
       AUTH_ENABLED: "true"
       REGISTRATION_ENABLED: "true"
       EMAIL_DELIVERY_ENABLED: "false"
+      AUTH_MODE: better-auth
+      AUTH_EMAIL_MODE: capture
+      BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET:?BETTER_AUTH_SECRET is required}
+      BETTER_AUTH_URL: http://127.0.0.1:8089
+      BETTER_AUTH_TRUSTED_ORIGINS: http://127.0.0.1:8090,http://127.0.0.1:8089
+      BETTER_AUTH_COOKIE_PREFIX: mc
+      BETTER_AUTH_REQUIRE_2FA: "false"
+      AUTH_EMAIL_FROM: e2e@realstate.test
+      AUTH_EMAIL_REPLY_TO: e2e@realstate.test
       ADMIN_ENABLED: "true"
       ADMIN_MEDIA_UPLOAD_ENABLED: "false"
       DEMO_SEED_ENABLED: "true"

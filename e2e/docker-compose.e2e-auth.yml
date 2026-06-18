@@ -5,7 +5,7 @@ services:
     image: postgres:16-alpine
     environment:
       POSTGRES_USER: realstate_e2e
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
       POSTGRES_DB: realstate_e2e
     ports:
       - "127.0.0.1:5433:5432"
@@ -22,10 +22,10 @@ services:
       context: ..
       dockerfile: apps/api/Dockerfile
     environment:
-      DATABASE_URL: postgres://realstate_e2e:${POSTGRES_PASSWORD}@postgres:5432/realstate_e2e
+      DATABASE_URL: postgres://realstate_e2e:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}@postgres:5432/realstate_e2e
       NODE_ENV: e2e
       AUTH_MODE: better-auth
-      BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET}
+      BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET:?BETTER_AUTH_SECRET is required}
       BETTER_AUTH_URL: http://127.0.0.1:8090
       BETTER_AUTH_TRUSTED_ORIGINS: http://127.0.0.1:8090,http://localhost:8090
       BETTER_AUTH_ALLOWED_HOSTS: 127.0.0.1,localhost
@@ -38,7 +38,7 @@ services:
       LEADS_ENABLED: "true"
       REGISTRATION_ENABLED: "true"
       E2E_TEST_MODE: "true"
-      E2E_INTERNAL_SECRET: ${E2E_INTERNAL_SECRET}
+      E2E_INTERNAL_SECRET: ${E2E_INTERNAL_SECRET:?E2E_INTERNAL_SECRET is required}
       AUTH_RATE_LIMIT_MAX: "10000"
       APP_BASE_URL: http://127.0.0.1:8090
       SESSION_COOKIE_SECURE: "false"

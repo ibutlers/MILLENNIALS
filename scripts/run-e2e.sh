@@ -46,8 +46,11 @@ grep -q 'POSTGRES_HOST_AUTH_METHOD' "$E2E_COMPOSE" && { echo "ERROR: trust auth 
 
 PG_PASSWORD="$(openssl rand -base64 18 | tr -dc 'a-zA-Z0-9' | head -c24)"
 E2E_INTERNAL_SECRET="$(openssl rand -hex 32)"
+BETTER_AUTH_SECRET="$(openssl rand -hex 32)"
 export E2E_INTERNAL_SECRET
+export BETTER_AUTH_SECRET
 printf 'POSTGRES_PASSWORD=%s\n' "$PG_PASSWORD" > "$ENV_FILE"
+printf 'BETTER_AUTH_SECRET=%s\n' "$BETTER_AUTH_SECRET" >> "$ENV_FILE"
 chmod 600 "$ENV_FILE"
 echo "Generated ephemeral credentials (redacted)."
 
@@ -61,7 +64,7 @@ if docker ps -a --filter "name=${E2E_PROJECT}" -q 2>/dev/null | grep -q .; then
   exit 1
 fi
 
-POSTGRES_PASSWORD="$PG_PASSWORD" E2E_INTERNAL_SECRET="$E2E_INTERNAL_SECRET" \
+POSTGRES_PASSWORD="$PG_PASSWORD" E2E_INTERNAL_SECRET="$E2E_INTERNAL_SECRET" BETTER_AUTH_SECRET="$BETTER_AUTH_SECRET" \
   docker compose -f "$E2E_COMPOSE" -p "$E2E_PROJECT" up -d --wait --build 2>&1
 
 if ! docker compose -f "$E2E_COMPOSE" -p "$E2E_PROJECT" ps --status running 2>/dev/null | grep -q postgres; then
