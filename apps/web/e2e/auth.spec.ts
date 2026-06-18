@@ -23,7 +23,7 @@
  *   Suite 7: Session & Account Security (5 tests)
  *   Suite 8: Edge Cases & Cleanup (9 tests)
  */
-import { test, expect, type APIRequestContext } from '@playwright/test';
+import { test, expect, type APIRequestContext, type Browser, type BrowserContext, type Page } from '@playwright/test';
 import * as OTPAuth from 'otpauth';
 import { createHash } from 'node:crypto';
 
@@ -33,6 +33,14 @@ import { createHash } from 'node:crypto';
 
 const API_BASE = 'http://127.0.0.1:8090';
 const E2E_SECRET = process.env.E2E_INTERNAL_SECRET || '';
+const userTotpUris = new Map<string, string>();
+
+function authMutationOptions(data?: unknown) {
+  return {
+    headers: { Origin: API_BASE },
+    ...(data === undefined ? {} : { data }),
+  };
+}
 
 const INVESTOR_A = {
   name: 'Inversor A',
@@ -86,6 +94,7 @@ async function getCapturedEmails(request: APIRequestContext): Promise<Array<Reco
 async function clearCapturedEmails(request: APIRequestContext): Promise<void> {
   await apiFetch(request, '/api/e2e/auth/captured-emails', {
     method: 'DELETE',
+    body: {},
     headers: { 'x-e2e-secret': E2E_SECRET },
   });
 }
@@ -160,6 +169,7 @@ async function loginViaApi(
   const res = await apiFetch(request, '/api/auth/sign-in/email', {
     method: 'POST',
     body: { email, password },
+    headers: { Origin: API_BASE },
   });
   return { success: res.status === 200, status: res.status, body: res.body };
 }
@@ -173,7 +183,7 @@ async function signUpViaApi(
 ): Promise<{ success: boolean; status: number; body: Record<string, unknown> }> {
   const res = await apiFetch(request, '/api/auth/sign-up/email', {
     method: 'POST',
-    body: { email, password, name },
+    body: { email, password, name, callbackURL: '/acceso/verificar' },
     headers: { 'x-invitation-token': invitationToken },
   });
   return { success: res.status === 200, status: res.status, body: res.body };
@@ -202,6 +212,109 @@ async function createInvitation(
 
   const data = (res.body as { data: { token: string; reference: string } }).data;
   return { token: data.token, reference: data.reference };
+}
+
+async function getUserStatus(request: APIRequestContext, email: string): Promise<string | null> {
+  const res = await apiFetch(request, `/api/e2e/auth/user-status?email=${encodeURIComponent(email)}`, {
+    headers: { 'x-e2e-secret': E2E_SECRET },
+  });
+  if (res.status !== 200) return null;
+  return ((res.body as { data?: { status?: string } }).data?.status) || null;
+}
+
+async function ensureSignedUp(request: APIRequestContext, user: { email: string; password: string; name: string }): Promise<void> {
+  const status = await getUserStatus(request, user.email);
+  if (status) return;
+  const invitation = await createInvitation(request, user.email, user.name, 'investor');
+  const signUp = await signUpViaApi(request, user.email, user.password, user.name, invitation.token);
+  expect(signUp.status).toBe(200);
+}
+
+async function ensureActiveInvestor(
+  request: APIRequestContext,
+  browser: Browser,
+  user: { email: string; password: string; name: string },
+): Promise<string> {
+  let status = await getUserStatus(request, user.email);
+  const existingUri = userTotpUris.get(user.email);
+  if (status === 'active' && existingUri) return existingUri;
+
+  await ensureSignedUp(request, user);
+  status = await getUserStatus(request, user.email);
+
+  const context = await browser.newContext();
+  const page = await context.newPage();
+  try {
+    if (status === 'pending_email') {
+      let verificationUrl: string | null = null;
+      for (let attempt = 0; attempt < 8 && !verificationUrl; attempt++) {
+        if (attempt > 0) await new Promise(r => setTimeout(r, 1000));
+        const emails = await getCapturedEmails(request);
+        verificationUrl = extractVerificationUrl(emails, user.email);
+      }
+      expect(verificationUrl).toBeTruthy();
+      expect(verificationUrl!.startsWith(`${API_BASE}/api/auth/verify-email`)).toBe(true);
+      await page.goto(verificationUrl!);
+      await page.waitForLoadState('networkidle');
+      const sessionRes = await page.request.get('/api/auth/get-session');
+      expect(sessionRes.status()).toBe(200);
+    } else if (status === 'pending_mfa') {
+      const loginRes = await page.request.post('/api/auth/sign-in/email', authMutationOptions({ email: user.email, password: user.password }));
+      expect(loginRes.status()).toBe(200);
+    }
+
+    const enableRes = await page.request.post('/api/auth/two-factor/enable', authMutationOptions({ password: user.password, issuer: 'MILLENNIALS CONSTRUYEN' }));
+    expect(enableRes.status()).toBe(200);
+    const enableBody = await enableRes.json() as { totpURI?: string; data?: { totpURI?: string } };
+    const uri = enableBody.totpURI || enableBody.data?.totpURI || '';
+    expect(uri).toContain('otpauth://totp/');
+    const verifyRes = await page.request.post('/api/auth/two-factor/verify-totp', authMutationOptions({ code: generateTotpCode(uri) }));
+    expect(verifyRes.status()).toBe(200);
+    const sessionRes = await page.request.get('/api/auth/get-session');
+    expect(sessionRes.status()).toBe(200);
+    const reconcileRes = await page.request.post('/api/auth/reconcile-mfa', authMutationOptions());
+    expect(reconcileRes.status()).toBe(200);
+    userTotpUris.set(user.email, uri);
+  } finally {
+    await context.close();
+  }
+
+  status = await getUserStatus(request, user.email);
+  expect(status).toBe('active');
+  const uri = userTotpUris.get(user.email);
+  expect(uri).toBeTruthy();
+  return uri!;
+}
+
+
+async function loginInvestorWithMfa(
+  browser: Browser,
+  user: { email: string; password: string; name: string },
+): Promise<BrowserContext> {
+  const uri = userTotpUris.get(user.email);
+  expect(uri).toBeTruthy();
+  const context = await browser.newContext();
+  const page = await context.newPage();
+  const loginRes = await page.request.post('/api/auth/sign-in/email', authMutationOptions({
+    email: user.email,
+    password: user.password,
+  }));
+  expect(loginRes.status()).toBe(200);
+  const loginBody = await loginRes.json().catch(() => ({})) as { twoFactorRedirect?: boolean; data?: { twoFactorRedirect?: boolean } };
+  expect(Boolean(loginBody.twoFactorRedirect || loginBody.data?.twoFactorRedirect)).toBe(true);
+  await page.goto('/acceso/2fa');
+  await page.waitForTimeout(11000);
+  const verifyRes = await page.request.post('/api/auth/two-factor/verify-totp', authMutationOptions({
+    code: generateTotpCode(uri!),
+  }));
+  expect(verifyRes.status()).toBe(200);
+  const sessionRes = await page.request.get('/api/auth/get-session');
+  expect(sessionRes.status()).toBe(200);
+  const sessionBody = await sessionRes.json() as { user?: { twoFactorEnabled?: boolean } };
+  expect(sessionBody.user?.twoFactorEnabled).toBe(true);
+  const reconcileRes = await page.request.post('/api/auth/reconcile-mfa', authMutationOptions());
+  expect(reconcileRes.status()).toBe(200);
+  return context;
 }
 
 // ─────────────────────────────────────────────────────────────────────────
@@ -348,8 +461,20 @@ test.describe('Invitation & Registration', () => {
 test.describe('Activation & MFA Flow', () => {
   test.describe.configure({ mode: 'serial', timeout: 180_000 });
 
+  let authContext: BrowserContext;
+  let authPage: Page;
   let totpUriA = '';
   let backupCodesA: string[] = [];
+
+  test.beforeAll(async ({ browser }) => {
+    await ensureSignedUp(sharedApiRequest, INVESTOR_A);
+    authContext = await browser.newContext();
+    authPage = await authContext.newPage();
+  });
+
+  test.afterAll(async () => {
+    await authContext?.close();
+  });
 
   test('16. Invitation reuse is rejected', async () => {
     // Need a fresh token for reuse test — create a new one
@@ -361,89 +486,78 @@ test.describe('Activation & MFA Flow', () => {
     expect(res.status).toBeGreaterThanOrEqual(400);
   });
 
-  test('17. Email verification for Investor A', async () => {
-    // Force-verify email directly (bypasses Better Auth's email flow)
-    const verifyRes = await apiFetch(sharedApiRequest,
-      '/api/e2e/auth/force-verify-email',
-      {
-        method: 'POST',
-        body: { email: INVESTOR_A.email },
-        headers: { 'x-e2e-secret': E2E_SECRET },
-      },
-    );
-    expect(verifyRes.status).toBe(200);
+  test('17. Email verification via link for Investor A', async () => {
+    let verificationUrl: string | null = null;
+    for (let attempt = 0; attempt < 8 && !verificationUrl; attempt++) {
+      if (attempt > 0) await new Promise(r => setTimeout(r, 1000));
+      const emails = await getCapturedEmails(sharedApiRequest);
+      verificationUrl = extractVerificationUrl(emails, INVESTOR_A.email);
+    }
+    expect(verificationUrl).toBeTruthy();
+    expect(verificationUrl!.startsWith(`${API_BASE}/api/auth/verify-email`)).toBe(true);
+
+    await authPage.goto(verificationUrl!);
+    await authPage.waitForLoadState('networkidle');
+
+
+    const sessionRes = await authPage.request.get('/api/auth/get-session');
+    expect(sessionRes.status()).toBe(200);
+    const session = await sessionRes.json() as { user?: { emailVerified?: boolean } } | null;
+    expect(session?.user?.emailVerified).toBe(true);
   });
 
   test('18. Investor A is in pending_mfa state after verification', async () => {
     const res = await apiFetch(sharedApiRequest, `/api/e2e/auth/user-status?email=${encodeURIComponent(INVESTOR_A.email)}`, {
       headers: { 'x-e2e-secret': E2E_SECRET },
     });
-    if (res.status === 200) {
-      const data = res.body as { data?: { status?: string } };
-      expect(data.data?.status).toMatch(/pending_mfa|active/);
-    }
+    expect(res.status).toBe(200);
+    const data = res.body as { data?: { status?: string } };
+    expect(data.data?.status).toBe('pending_mfa');
   });
 
-  test('19. Get TOTP URI for Investor A', async () => {
-    // Must login first and enable TOTP before URI is available
-    const loginRes = await loginViaApi(sharedApiRequest, INVESTOR_A.email, INVESTOR_A.password);
-    expect(loginRes.status).toBe(200);
-    // Enable TOTP (generates the secret in auth."twoFactor")
-    const enableRes = await apiFetch(sharedApiRequest, '/api/auth/two-factor/enable', {
-      method: 'POST',
-    });
-    // Accept 200 (TOTP initiated) or 400/500 (already enabled or error)
-    if (enableRes.status === 200) {
-      totpUriA = await getTotpUri(sharedApiRequest, INVESTOR_A.email);
-      expect(totpUriA).toContain('otpauth://totp/');
-    }
-    // If TOTP not available, skip — test 20 will try verify flow
+  test('19. Enable TOTP and get URI for Investor A', async () => {
+    const sessionRes = await authPage.request.get('/api/auth/get-session');
+    expect(sessionRes.status()).toBe(200);
+    const session = await sessionRes.json() as { user?: { emailVerified?: boolean } } | null;
+    expect(session?.user?.emailVerified).toBe(true);
+
+    const enableRes = await authPage.request.post('/api/auth/two-factor/enable', authMutationOptions({
+      password: INVESTOR_A.password,
+      issuer: 'MILLENNIALS CONSTRUYEN',
+    }));
+    expect(enableRes.status()).toBe(200);
+
+    const body = await enableRes.json() as { totpURI?: string; backupCodes?: string[]; data?: { totpURI?: string; backupCodes?: string[] } };
+    totpUriA = body.totpURI || body.data?.totpURI || '';
+    backupCodesA = body.backupCodes || body.data?.backupCodes || [];
+    expect(totpUriA).toContain('otpauth://totp/');
   });
 
-  test('20. Verify TOTP setup for Investor A', async () => {
-    if (!totpUriA) {
-      // TOTP URI not available — skip verification gracefully
-      return;
-    }
+  test('20. Verify TOTP code for Investor A', async () => {
+    expect(totpUriA).toBeTruthy();
     const code = generateTotpCode(totpUriA);
-    const loginRes = await loginViaApi(sharedApiRequest, INVESTOR_A.email, INVESTOR_A.password);
-    expect(loginRes.status).toBe(200);
-
-    const verifyRes = await apiFetch(sharedApiRequest, '/api/auth/two-factor/verify', {
-      method: 'POST',
-      body: { code },
-    });
-
-    if (verifyRes.status >= 400) {
-      const enableRes = await apiFetch(sharedApiRequest, '/api/auth/two-factor/enable', {
-        method: 'POST',
-        body: { code },
-      });
-      expect(enableRes.status).toBe(200);
-      const body = enableRes.body as { data?: { backupCodes?: string[] } };
-      if (body.data?.backupCodes) {
-        backupCodesA = body.data.backupCodes;
-      }
-    }
+    const verifyRes = await authPage.request.post('/api/auth/two-factor/verify-totp', authMutationOptions({ code }));
+    expect(verifyRes.status()).toBe(200);
+    const sessionRes = await authPage.request.get('/api/auth/get-session');
+    expect(sessionRes.status()).toBe(200);
+    const session = await sessionRes.json() as { user?: { twoFactorEnabled?: boolean } } | null;
+    expect(session?.user?.twoFactorEnabled).toBe(true);
+    const reconcileRes = await authPage.request.post('/api/auth/reconcile-mfa', authMutationOptions());
+    expect(reconcileRes.status()).toBe(200);
+    userTotpUris.set(INVESTOR_A.email, totpUriA);
   });
 
   test('21. Backup codes are captured and shown once', async () => {
-    // If TOTP was successfully set up, backup codes should exist
-    if (backupCodesA.length > 0) {
-      expect(backupCodesA.length).toBeGreaterThanOrEqual(5);
-    }
-    // If TOTP setup was skipped, backupCodesA is empty — skip assertion
+    expect(backupCodesA.length).toBeGreaterThanOrEqual(5);
   });
 
   test('22. Investor A is active after MFA setup', async () => {
     const res = await apiFetch(sharedApiRequest, `/api/e2e/auth/user-status?email=${encodeURIComponent(INVESTOR_A.email)}`, {
       headers: { 'x-e2e-secret': E2E_SECRET },
     });
-    if (res.status === 200) {
-      const data = res.body as { data?: { status?: string } };
-      // Accept active (MFA completed) or pending_mfa (MFA not fully set up yet)
-      expect(data.data?.status).toMatch(/active|pending_mfa/);
-    }
+    expect(res.status).toBe(200);
+    const data = res.body as { data?: { status?: string } };
+    expect(data.data?.status).toBe('active');
   });
 });
 
@@ -453,100 +567,95 @@ test.describe('Activation & MFA Flow', () => {
 test.describe('Authorization & IDOR', () => {
   test.describe.configure({ mode: 'serial', timeout: 120_000 });
 
-  test.beforeAll(async () => {
-    // Grant project A to Investor A, project B to Investor B
-    const grantARes = await apiFetch(sharedApiRequest, '/api/e2e/auth/grant-project', {
+  let contextA: BrowserContext;
+  let contextB: BrowserContext;
+  let projectAId = '';
+  let projectBId = '';
+
+  test.beforeAll(async ({ browser }) => {
+    await ensureActiveInvestor(sharedApiRequest, browser, INVESTOR_A);
+    await ensureActiveInvestor(sharedApiRequest, browser, INVESTOR_B);
+
+    const projectsRes = await apiFetch(sharedApiRequest, '/api/e2e/auth/ensure-projects', {
       method: 'POST',
-      body: { email: INVESTOR_A.email, projectSlug: 'plaza-america' },
+      body: {},
       headers: { 'x-e2e-secret': E2E_SECRET },
     });
-    if (grantARes.status !== 200) {
-      // Project might not exist with that slug — try from opportunities list
-      const oppsRes = await apiFetch(sharedApiRequest, '/api/opportunities');
-      const opps = (oppsRes.body as { data?: Array<{ slug: string }> }).data || [];
-      if (opps.length > 0) {
-        await apiFetch(sharedApiRequest, '/api/e2e/auth/grant-project', {
-          method: 'POST',
-          body: { email: INVESTOR_A.email, projectSlug: opps[0].slug },
-          headers: { 'x-e2e-secret': E2E_SECRET },
-        });
-      }
-    }
+    expect(projectsRes.status).toBe(200);
+    const projects = (projectsRes.body as { data?: { projects?: Array<{ id: string; slug: string }> } }).data?.projects || [];
+    projectAId = projects.find(p => p.slug === 'e2e-project-a')?.id || '';
+    projectBId = projects.find(p => p.slug === 'e2e-project-b')?.id || '';
+    expect(projectAId).toBeTruthy();
+    expect(projectBId).toBeTruthy();
+
+    const grantARes = await apiFetch(sharedApiRequest, '/api/e2e/auth/grant-project', {
+      method: 'POST',
+      body: { email: INVESTOR_A.email, projectSlug: 'e2e-project-a' },
+      headers: { 'x-e2e-secret': E2E_SECRET },
+    });
+    expect(grantARes.status).toBe(200);
 
     const grantBRes = await apiFetch(sharedApiRequest, '/api/e2e/auth/grant-project', {
       method: 'POST',
-      body: { email: INVESTOR_B.email, projectSlug: 'castrelos' },
+      body: { email: INVESTOR_B.email, projectSlug: 'e2e-project-b' },
       headers: { 'x-e2e-secret': E2E_SECRET },
     });
-    if (grantBRes.status !== 200) {
-      const oppsRes = await apiFetch(sharedApiRequest, '/api/opportunities');
-      const opps = (oppsRes.body as { data?: Array<{ slug: string }> }).data || [];
-      if (opps.length > 1) {
-        await apiFetch(sharedApiRequest, '/api/e2e/auth/grant-project', {
-          method: 'POST',
-          body: { email: INVESTOR_B.email, projectSlug: opps[1].slug },
-          headers: { 'x-e2e-secret': E2E_SECRET },
-        });
-      }
-    }
+    expect(grantBRes.status).toBe(200);
+
+    contextA = await loginInvestorWithMfa(browser, INVESTOR_A);
+    contextB = await loginInvestorWithMfa(browser, INVESTOR_B);
+  });
+
+  test.afterAll(async () => {
+    await contextA?.close();
+    await contextB?.close();
   });
 
   test('23. Investor A can access dashboard via API', async () => {
-    const loginRes = await loginViaApi(sharedApiRequest, INVESTOR_A.email, INVESTOR_A.password);
-    if (loginRes.status === 200) {
-      const dashRes = await apiFetch(sharedApiRequest, '/api/investor/dashboard');
-      // Accept 200 (active with MFA), 403 (pending_mfa, no MFA yet), 500 (transient)
-      expect([200, 403, 500]).toContain(dashRes.status);
-    }
+    const dashRes = await contextA.request.get('/api/investor/dashboard');
+    expect(dashRes.status()).toBe(200);
   });
 
   test('24. Investor A sees only their projects', async () => {
-    const loginRes = await loginViaApi(sharedApiRequest, INVESTOR_A.email, INVESTOR_A.password);
-    if (loginRes.status !== 200) return;
-    const projRes = await apiFetch(sharedApiRequest, '/api/investor/projects');
-    if (projRes.status === 200) {
-      const projects = (projRes.body as { data?: Array<{ slug: string }> }).data || [];
-      for (const p of projects) {
-        expect(p.slug).not.toBe('castrelos');
-      }
-    }
+    const projRes = await contextA.request.get('/api/investor/projects');
+    expect(projRes.status()).toBe(200);
+    const body = await projRes.json() as { data?: Array<{ id: string; slug: string }> };
+    const projects = body.data || [];
+    expect(projects.some(p => p.slug === 'e2e-project-a')).toBe(true);
+    expect(projects.some(p => p.slug === 'e2e-project-b')).toBe(false);
   });
 
   test('25. Investor cannot access another investor project by UUID', async () => {
-    const loginRes = await loginViaApi(sharedApiRequest, INVESTOR_A.email, INVESTOR_A.password);
-    if (loginRes.status !== 200) return;
-    const oppsRes = await apiFetch(sharedApiRequest, '/api/opportunities');
-    const opps = (oppsRes.body as { data?: Array<{ id: string; slug: string }> }).data || [];
-    const projectB = opps.find(o => o.slug === 'castrelos');
-    if (!projectB) return;
-    const accessRes = await apiFetch(sharedApiRequest, `/api/investor/projects/${projectB.id}`);
-    expect(accessRes.status).toBe(403);
+    const accessRes = await contextA.request.get(`/api/investor/projects/${projectBId}`);
+    expect(accessRes.status()).toBe(403);
   });
 
   test('26. Investor cannot access project by slug with manipulated client role', async () => {
-    const res = await apiFetch(sharedApiRequest, '/api/investor/dashboard', {
-      method: 'GET',
-      body: { role: 'admin' },
+    const res = await contextA.request.get('/api/investor/dashboard?role=admin');
+    expect(res.status()).toBe(200);
+    const forbidden = await contextA.request.get(`/api/investor/projects/${encodeURIComponent('e2e-project-b')}`, {
+      headers: { 'x-user-role': 'admin' },
     });
-    expect(res.status).toBeGreaterThanOrEqual(400);
+    expect([400, 403, 404]).toContain(forbidden.status());
   });
 
   test('27. Investor cannot access staff-only endpoints', async () => {
-    const res = await apiFetch(sharedApiRequest, '/api/v1/admin/dashboard');
-    expect(res.status).toBeGreaterThanOrEqual(400);
+    const res = await contextA.request.get('/api/v1/admin/dashboard');
+    expect(res.status()).toBeGreaterThanOrEqual(400);
   });
 
   test('28. Role sent in request body is ignored', async () => {
-    const res = await apiFetch(sharedApiRequest, '/api/investor/projects', {
-      method: 'GET',
+    const res = await contextA.request.get('/api/investor/projects', {
       headers: { 'x-user-role': 'admin' },
     });
-    expect(res.status).toBeGreaterThanOrEqual(400);
+    expect(res.status()).toBe(200);
+    const body = await res.json() as { data?: Array<{ slug: string }> };
+    expect((body.data || []).some(p => p.slug === 'e2e-project-b')).toBe(false);
   });
 
   test('29. User ID sent in query string is ignored', async () => {
-    const res = await apiFetch(sharedApiRequest, '/api/investor/dashboard?userId=00000000-0000-0000-0000-000000000001');
-    expect(res.status).toBeGreaterThanOrEqual(400);
+    const res = await contextB.request.get(`/api/investor/projects/${projectAId}?userId=00000000-0000-0000-0000-000000000001`);
+    expect(res.status()).toBe(403);
   });
 });
 
@@ -554,90 +663,97 @@ test.describe('Authorization & IDOR', () => {
 // SUITE 7: Session & Account Security (serial)
 // ═════════════════════════════════════════════════════════════════════════
 test.describe('Session & Account Security', () => {
-  test.describe.configure({ mode: 'serial', timeout: 120_000 });
+  test.describe.configure({ mode: 'serial', timeout: 180_000 });
+
+  let contextA: BrowserContext;
+  let contextB: BrowserContext;
+
+  test.beforeAll(async ({ browser }) => {
+    await ensureActiveInvestor(sharedApiRequest, browser, INVESTOR_A);
+    await ensureActiveInvestor(sharedApiRequest, browser, INVESTOR_B);
+    const projectsRes = await apiFetch(sharedApiRequest, '/api/e2e/auth/ensure-projects', {
+      method: 'POST',
+      body: {},
+      headers: { 'x-e2e-secret': E2E_SECRET },
+    });
+    expect(projectsRes.status).toBe(200);
+    const grantARes = await apiFetch(sharedApiRequest, '/api/e2e/auth/grant-project', {
+      method: 'POST',
+      body: { email: INVESTOR_A.email, projectSlug: 'e2e-project-a' },
+      headers: { 'x-e2e-secret': E2E_SECRET },
+    });
+    expect(grantARes.status).toBe(200);
+    contextA = await loginInvestorWithMfa(browser, INVESTOR_A);
+    contextB = await loginInvestorWithMfa(browser, INVESTOR_B);
+  });
+
+  test.afterAll(async () => {
+    await contextA?.close();
+    await contextB?.close();
+  });
 
   test('30. Suspension blocks access immediately', async () => {
-    await apiFetch(sharedApiRequest, '/api/e2e/auth/suspend-user', {
+    const before = await contextA.request.get('/api/investor/dashboard');
+    expect(before.status()).toBe(200);
+    const suspendRes = await apiFetch(sharedApiRequest, '/api/e2e/auth/suspend-user', {
       method: 'POST',
       body: { email: INVESTOR_A.email },
       headers: { 'x-e2e-secret': E2E_SECRET },
     });
-    const dashRes = await apiFetch(sharedApiRequest, '/api/investor/dashboard');
-    expect(dashRes.status).toBeGreaterThanOrEqual(400);
+    expect(suspendRes.status).toBe(200);
+    const dashRes = await contextA.request.get('/api/investor/dashboard');
+    expect(dashRes.status()).toBe(403);
   });
 
   test('31. Reactivation succeeds but revoked permissions stay revoked', async () => {
-    await apiFetch(sharedApiRequest, '/api/e2e/auth/revoke-project', {
+    const revokeRes = await apiFetch(sharedApiRequest, '/api/e2e/auth/revoke-project', {
       method: 'POST',
-      body: { email: INVESTOR_A.email, projectSlug: 'plaza-america' },
+      body: { email: INVESTOR_A.email, projectSlug: 'e2e-project-a' },
       headers: { 'x-e2e-secret': E2E_SECRET },
     });
+    expect(revokeRes.status).toBe(200);
     const reactRes = await apiFetch(sharedApiRequest, '/api/e2e/auth/reactivate-user', {
       method: 'POST',
       body: { email: INVESTOR_A.email },
       headers: { 'x-e2e-secret': E2E_SECRET },
     });
     expect(reactRes.status).toBe(200);
+    const projectsRes = await contextA.request.get('/api/investor/projects');
+    expect(projectsRes.status()).toBe(200);
+    const projectsBody = await projectsRes.json() as { data?: Array<{ slug: string }> };
+    expect((projectsBody.data || []).some(p => p.slug === 'e2e-project-a')).toBe(false);
   });
 
-  test('32. Logout removes current session', async ({ page: p }) => {
-    await p.goto('/acceso/login');
-    await p.fill('input[type="email"]', INVESTOR_B.email);
-    await p.fill('input[type="password"]', INVESTOR_B.password);
-    await p.click('button[type="submit"]');
-    await p.waitForTimeout(3000);
-    // Use page.request (shares browser cookies)
-    // Accept 500 if login failed (no session), 200/302/303 if login succeeded
-    const signOutRes = await p.request.post('/api/auth/sign-out', {
-      headers: { 'Content-Type': 'application/json' },
-    });
-    expect([200, 302, 303, 500]).toContain(signOutRes.status());
-    // If sign-out succeeded, verify dashboard is now blocked
-    if (signOutRes.status() !== 500) {
-      const dashRes = await p.request.get('/api/investor/dashboard');
-      expect(dashRes.status()).toBeGreaterThanOrEqual(400);
-    }
+  test('32. Logout removes current session', async ({ browser }) => {
+    const context = await loginInvestorWithMfa(browser, INVESTOR_B);
+    const signOutRes = await context.request.post('/api/auth/sign-out', authMutationOptions());
+    expect([200, 302, 303]).toContain(signOutRes.status());
+    const sessionRes = await context.request.get('/api/auth/get-session');
+    expect(sessionRes.status()).toBe(200);
+    const sessionBody = await sessionRes.json().catch(() => null) as { user?: unknown } | null;
+    expect(sessionBody?.user ?? null).toBeNull();
+    const meRes = await context.request.get('/api/auth/me');
+    expect(meRes.status()).toBe(401);
+    await context.close();
   });
 
-  test('33. Password reset flow', async () => {
+  test('33. Password reset request returns generic success', async () => {
     await clearCapturedEmails(sharedApiRequest);
-    const resetReqRes = await apiFetch(sharedApiRequest, '/api/auth/forgot-password', {
+    const resetReqRes = await apiFetch(sharedApiRequest, '/api/auth/request-password-reset', {
       method: 'POST',
-      body: { email: INVESTOR_B.email },
+      body: { email: INVESTOR_B.email, redirectTo: '/acceso/restablecer' },
+      headers: { Origin: API_BASE },
     });
-    // Accept 200, 404 (endpoint not registered in Better Auth v1.6.19), 503 (auth disabled)
-    if (![200, 404, 503].includes(resetReqRes.status)) {
-      expect(resetReqRes.status).toBe(200);
-    }
-    if (resetReqRes.status !== 200) return; // Skip: endpoint not available
-    const emails = await getCapturedEmails(sharedApiRequest);
-    const resetUrl = extractPasswordResetUrl(emails, INVESTOR_B.email);
-    if (resetUrl) {
-      const newPwd = 'NewTest1234!Bcdefg';
-      const resetRes = await apiFetch(sharedApiRequest, resetUrl.replace(API_BASE, ''), {
-        method: 'POST',
-        body: { password: newPwd, confirmPassword: newPwd },
-      });
-      expect(resetRes.status).toBe(200);
-      const oldLoginRes = await loginViaApi(sharedApiRequest, INVESTOR_B.email, INVESTOR_B.password);
-      expect(oldLoginRes.status).toBeGreaterThanOrEqual(400);
-      const newLoginRes = await loginViaApi(sharedApiRequest, INVESTOR_B.email, newPwd);
-      expect(newLoginRes.status).toBe(200);
-    }
+    expect(resetReqRes.status).toBe(200);
   });
 
-  test('34. Logout-all revokes all sessions', async () => {
-    const loginRes = await loginViaApi(sharedApiRequest, INVESTOR_B.email, INVESTOR_B.password);
-    if (loginRes.status !== 200) return; // Can't test without a session
-    const res = await apiFetch(sharedApiRequest, '/api/auth/sign-out', {
-      method: 'POST',
-      body: { all: true },
-    });
-    expect([200, 302, 500]).toContain(res.status);
-    if (res.status !== 500) {
-      const dashRes = await apiFetch(sharedApiRequest, '/api/investor/dashboard');
-      expect(dashRes.status).toBeGreaterThanOrEqual(400);
-    }
+  test('34. Logout-all revokes all sessions', async ({ browser }) => {
+    const context = await loginInvestorWithMfa(browser, INVESTOR_B);
+    const res = await context.request.post('/api/auth/sign-out', authMutationOptions({ all: true }));
+    expect([200, 302, 303]).toContain(res.status());
+    const dashRes = await context.request.get('/api/investor/dashboard');
+    expect(dashRes.status()).toBe(401);
+    await context.close();
   });
 });
 
@@ -702,16 +818,15 @@ test.describe('Edge Cases & Cleanup', () => {
     }
   });
 
-  test('40. Second complete flow is idempotent', async () => {
-    const loginRes = await loginViaApi(sharedApiRequest, INVESTOR_B.email, INVESTOR_B.password);
-    // Accept 200 (success), 403 (email not verified / account blocked), 429 (rate limited)
-    // All three mean the second flow is properly gated — idempotent
-    expect([200, 403, 429]).toContain(loginRes.status);
+  test('40. Invalid invitation token is rejected deterministically', async () => {
     const signUpRes = await signUpViaApi(
-      sharedApiRequest, 'fresh@e2e.test', 'Test1234!Fresh', 'Fresh attempt',
+      sharedApiRequest,
+      'fresh@e2e.test',
+      'Test1234!Fresh',
+      'Fresh attempt',
       'bogus-token-not-valid',
     );
-    expect(signUpRes.status).toBeGreaterThanOrEqual(400);
+    expect(signUpRes.status).toBe(403);
   });
 
   test('41. Path traversal in document access is rejected', async () => {

@@ -70,7 +70,7 @@ async function startEphemeralPostgres(): Promise<EphemeralPostgres> {
     `-e POSTGRES_USER=realstate ` +
     `-e POSTGRES_PASSWORD=${pw} ` +
     `-e POSTGRES_DB=realstate_test ` +
-    `-e POSTGRES_INITDB_ARGS='--auth-host=scram-sha-256 --auth-local=peer' ` +
+    `-e POSTGRES_INITDB_ARGS='--auth-host=scram-sha-256 --auth-local=scram-sha-256' ` +
     `-p 127.0.0.1:${port}:5432 ` +
     `postgres:16-alpine`,
     { stdio: 'pipe' },
@@ -95,7 +95,14 @@ async function startEphemeralPostgres(): Promise<EphemeralPostgres> {
     throw new Error('PostgreSQL not ready after 60s');
   }
 
-  return { containerName: cn, networkName: netName, volumeName: vol, dbUrl: `postgresql://realstate:${pw}@127.0.0.1:${port}/realstate_test`, port, password: pw };
+  return {
+    containerName: cn,
+    networkName: netName,
+    volumeName: vol,
+    dbUrl: 'postgresql://realstate:' + encodeURIComponent(pw) + `@127.0.0.1:${port}/realstate_test`,
+    port,
+    password: pw,
+  };
 }
 
 function cleanup(pg: EphemeralPostgres): void {
@@ -166,7 +173,7 @@ function buildAuthApp(pool: Pool) {
 
 async function seedTestData(pool: Pool) {
   // Create auth users (Better Auth IDs are text)
-  await pool.query(`INSERT INTO auth."user" (id, email, "emailVerified", name, created_at, updated_at) VALUES
+  await pool.query(`INSERT INTO auth."user" (id, email, email_verified, name, created_at, updated_at) VALUES
     ('ba_user_a', 'investor_a@idor.test', true, 'Inversor A', now(), now()),
     ('ba_user_b', 'investor_b@idor.test', true, 'Inversor B', now(), now())`);
 
@@ -182,13 +189,25 @@ async function seedTestData(pool: Pool) {
     (gen_random_uuid(), 'ba_staff', 'staff@idor.test', 'Staff', 'staff', 'active', now(), now(), now(), now(), now())`);
 
   // Create opportunities
-  await pool.query(`INSERT INTO opportunities (id, slug, title, status, city) VALUES
-    (gen_random_uuid(), 'plaza-america', 'Plaza América', 'in_execution', 'Vigo'),
-    (gen_random_uuid(), 'castrelos', 'Castrelos', 'in_study', 'Vigo')`);
+  await pool.query(`INSERT INTO opportunities (
+    id, slug, title, short_description, description, city, country_code,
+    asset_type, strategy, status, visibility, currency,
+    target_amount_cents, committed_amount_cents, minimum_investment_cents,
+    estimated_term_months, target_return_type, target_return_bps,
+    risk_level, published_at, editorial_status
+  ) VALUES
+    (gen_random_uuid(), 'plaza-america', 'Plaza América', 'Proyecto A', 'Proyecto A privado', 'Vigo', 'ES',
+     'residential', 'value_add', 'in_execution', 'private', 'EUR',
+     100000000, 0, 500000, 18, 'target_total_return', 850,
+     'medium', now(), 'published'),
+    (gen_random_uuid(), 'castrelos', 'Castrelos', 'Proyecto B', 'Proyecto B privado', 'Vigo', 'ES',
+     'residential', 'value_add', 'in_study', 'private', 'EUR',
+     100000000, 0, 500000, 18, 'target_total_return', 850,
+     'medium', now(), 'published')`);
 
   // Create documents
   await pool.query(`INSERT INTO documents (id, title, type, status, version, mime_type, byte_size, owner_type, owner_id, visibility, created_at, updated_at)
-    SELECT gen_random_uuid(), 'Test Document A', 'plan', 'final', 1, 'application/pdf', 1024, 'opportunity', id, 'private', now(), now()
+    SELECT gen_random_uuid(), 'Test Document A', 'pitch_deck', 'active', 1, 'application/pdf', 1024, 'opportunity', id, 'private', now(), now()
     FROM opportunities WHERE slug = 'plaza-america'`);
 }
 
@@ -229,9 +248,12 @@ describe('IDOR — Authorization Boundaries', () => {
   let pg: EphemeralPostgres;
   let pool: Pool;
   let app: any;
+  let originalDatabaseUrl: string | undefined;
 
   beforeAll(async () => {
     pg = await startEphemeralPostgres();
+    originalDatabaseUrl = process.env.DATABASE_URL;
+    process.env.DATABASE_URL = pg.dbUrl;
 
     // Build API
     execSync('pnpm --filter @realstate/api build', { cwd: ROOT, stdio: 'pipe', timeout: 120_000 });
@@ -257,6 +279,11 @@ describe('IDOR — Authorization Boundaries', () => {
     await app?.close().catch(() => {});
     await pool?.end().catch(() => {});
     cleanup(pg);
+    if (originalDatabaseUrl === undefined) {
+      delete process.env.DATABASE_URL;
+    } else {
+      process.env.DATABASE_URL = originalDatabaseUrl;
+    }
   });
 
   // ──────────────────────────────────────────────────────────────────────
@@ -424,6 +451,7 @@ describe('IDOR — Authorization Boundaries', () => {
   it('Project listing filters by app_user_id in SQL (not post-load)', async () => {
     // Verified by code review: requireProjectAccess middleware in middleware.ts
     // uses SQL WHERE app_user_id = $1 AND status = 'active' to filter at DB level
+    await grantProjectAccess(pool, 'investor_a@idor.test', 'plaza-america');
     const uid = await getUserId(pool, 'investor_a@idor.test');
     const pid = await getProjectId(pool, 'plaza-america');
     const { rows } = await pool.query(
