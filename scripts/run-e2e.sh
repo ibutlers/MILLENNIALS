@@ -11,7 +11,7 @@ cleanup() {
   local status=$?
   echo ""
   echo "=== E2E TEARDOWN (${SUITE}) ==="
-  docker compose -f "$E2E_COMPOSE" -p "$E2E_PROJECT" down -v --remove-orphans 2>/dev/null || true
+  docker compose --env-file "$ENV_FILE" -f "$E2E_COMPOSE" -p "$E2E_PROJECT" down -v --remove-orphans 2>/dev/null || true
   rm -f "$ENV_FILE"
   unset E2E_INTERNAL_SECRET
 
@@ -51,11 +51,12 @@ export E2E_INTERNAL_SECRET
 export BETTER_AUTH_SECRET
 printf 'POSTGRES_PASSWORD=%s\n' "$PG_PASSWORD" > "$ENV_FILE"
 printf 'BETTER_AUTH_SECRET=%s\n' "$BETTER_AUTH_SECRET" >> "$ENV_FILE"
+printf 'E2E_INTERNAL_SECRET=%s\n' "$E2E_INTERNAL_SECRET" >> "$ENV_FILE"
 chmod 600 "$ENV_FILE"
 echo "Generated ephemeral credentials (redacted)."
 
 echo "-> Tearing down any previous E2E environment..."
-docker compose -f "$E2E_COMPOSE" -p "$E2E_PROJECT" down -v --remove-orphans --timeout 10 2>&1 || true
+docker compose --env-file "$ENV_FILE" -f "$E2E_COMPOSE" -p "$E2E_PROJECT" down -v --remove-orphans --timeout 10 2>&1 || true
 docker volume rm -f "$E2E_PROJECT"_e2e_postgres_data 2>/dev/null || true
 sleep 3
 
@@ -65,29 +66,29 @@ if docker ps -a --filter "name=${E2E_PROJECT}" -q 2>/dev/null | grep -q .; then
 fi
 
 POSTGRES_PASSWORD="$PG_PASSWORD" E2E_INTERNAL_SECRET="$E2E_INTERNAL_SECRET" BETTER_AUTH_SECRET="$BETTER_AUTH_SECRET" \
-  docker compose -f "$E2E_COMPOSE" -p "$E2E_PROJECT" up -d --wait --build 2>&1
+  docker compose --env-file "$ENV_FILE" -f "$E2E_COMPOSE" -p "$E2E_PROJECT" up -d --wait --build 2>&1
 
-if ! docker compose -f "$E2E_COMPOSE" -p "$E2E_PROJECT" ps --status running 2>/dev/null | grep -q postgres; then
+if ! docker compose --env-file "$ENV_FILE" -f "$E2E_COMPOSE" -p "$E2E_PROJECT" ps --status running 2>/dev/null | grep -q postgres; then
   echo "ERROR: PostgreSQL failed to start. Logs:" >&2
-  docker compose -f "$E2E_COMPOSE" -p "$E2E_PROJECT" logs postgres 2>&1 | tail -40 >&2
+  docker compose --env-file "$ENV_FILE" -f "$E2E_COMPOSE" -p "$E2E_PROJECT" logs postgres 2>&1 | tail -40 >&2
   exit 1
 fi
 
-if ! docker compose -f "$E2E_COMPOSE" -p "$E2E_PROJECT" ps --status running 2>/dev/null | grep -q api; then
+if ! docker compose --env-file "$ENV_FILE" -f "$E2E_COMPOSE" -p "$E2E_PROJECT" ps --status running 2>/dev/null | grep -q api; then
   echo "ERROR: API failed to start. Logs:" >&2
-  docker compose -f "$E2E_COMPOSE" -p "$E2E_PROJECT" logs api 2>&1 | tail -40 >&2
+  docker compose --env-file "$ENV_FILE" -f "$E2E_COMPOSE" -p "$E2E_PROJECT" logs api 2>&1 | tail -40 >&2
   exit 1
 fi
 
 echo "Running migrations..."
-docker compose -f "$E2E_COMPOSE" -p "$E2E_PROJECT" exec -T api node apps/api/dist/db/migrate.js
+docker compose --env-file "$ENV_FILE" -f "$E2E_COMPOSE" -p "$E2E_PROJECT" exec -T api node apps/api/dist/db/migrate.js
 
 echo "Running seed..."
-docker compose -f "$E2E_COMPOSE" -p "$E2E_PROJECT" exec -T api node apps/api/dist/db/seed.js
+docker compose --env-file "$ENV_FILE" -f "$E2E_COMPOSE" -p "$E2E_PROJECT" exec -T api node apps/api/dist/db/seed.js
 
 if [[ "$ADMIN_FIXTURES" == "true" ]]; then
   echo "Creating admin fixtures..."
-  docker compose -f "$E2E_COMPOSE" -p "$E2E_PROJECT" exec -T api node apps/api/dist/fixtures/create-e2e-users.js
+  docker compose --env-file "$ENV_FILE" -f "$E2E_COMPOSE" -p "$E2E_PROJECT" exec -T api node apps/api/dist/fixtures/create-e2e-users.js
 fi
 
 echo "Waiting for proxy/frontend readiness..."

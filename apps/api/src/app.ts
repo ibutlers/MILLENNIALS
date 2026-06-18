@@ -144,7 +144,7 @@ export function buildApp(dependencies: AppDependencies = {}): FastifyInstance {
             `UPDATE access_invitations
              SET status = 'accepted', accepted_at = now(), better_auth_user_id = $1
              WHERE email_normalized = $2 AND token_hash = $3 AND status = 'pending' AND expires_at > now()
-             RETURNING id, public_reference`,
+             RETURNING id, public_reference, intended_role`,
             [baUserId, email, tokenHash],
           );
 
@@ -154,9 +154,9 @@ export function buildApp(dependencies: AppDependencies = {}): FastifyInstance {
             // 2. Create app_user (idempotent)
             await pgClient.query(
               `INSERT INTO app_users (better_auth_user_id, email_normalized, display_name, role, status)
-               VALUES ($1, $2, $3, 'investor', 'pending_email')
+               VALUES ($1, $2, $3, $4, 'pending_email')
                ON CONFLICT (better_auth_user_id) DO NOTHING`,
-              [baUserId, email, userName || email],
+              [baUserId, email, userName || email, inv.intended_role || 'investor'],
             );
 
             // 3. Fetch the app_user id
@@ -212,7 +212,7 @@ export function buildApp(dependencies: AppDependencies = {}): FastifyInstance {
           if (existing.rows.length === 0) {
             // Find a pending invitation for this email
             const pendingInv = await pgClient.query(
-              `SELECT id, public_reference FROM access_invitations
+              `SELECT id, public_reference, intended_role FROM access_invitations
                WHERE email_normalized = $1 AND status = 'pending' AND expires_at > now()
                ORDER BY created_at ASC LIMIT 1`,
               [email],
@@ -224,9 +224,9 @@ export function buildApp(dependencies: AppDependencies = {}): FastifyInstance {
               // Create app_user
               await pgClient.query(
                 `INSERT INTO app_users (better_auth_user_id, email_normalized, display_name, role, status)
-                 VALUES ($1, $2, $3, 'investor', 'pending_email')
+                 VALUES ($1, $2, $3, $4, 'pending_email')
                  ON CONFLICT (better_auth_user_id) DO NOTHING`,
-                [baUserId, email, email],
+                [baUserId, email, email, inv.intended_role || 'investor'],
               );
 
               const appUser = await pgClient.query(

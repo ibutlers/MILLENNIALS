@@ -3,7 +3,7 @@ services:
     image: postgres:16-alpine
     environment:
       POSTGRES_USER: realstate_e2e
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-e2e_test_password}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
       POSTGRES_DB: realstate_e2e
     ports:
       - "127.0.0.1:5433:5432"
@@ -27,10 +27,11 @@ services:
       AUTH_MODE: better-auth
       AUTH_EMAIL_MODE: capture
       BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET:?BETTER_AUTH_SECRET is required}
-      BETTER_AUTH_URL: http://127.0.0.1:8089
-      BETTER_AUTH_TRUSTED_ORIGINS: http://127.0.0.1:8090,http://127.0.0.1:8089
+      BETTER_AUTH_URL: http://127.0.0.1:8090
+      BETTER_AUTH_TRUSTED_ORIGINS: http://127.0.0.1:8090,http://localhost:8090
+      BETTER_AUTH_ALLOWED_HOSTS: 127.0.0.1,localhost
       BETTER_AUTH_COOKIE_PREFIX: mc
-      BETTER_AUTH_REQUIRE_2FA: "false"
+      BETTER_AUTH_REQUIRE_2FA: "true"
       AUTH_EMAIL_FROM: e2e@realstate.test
       AUTH_EMAIL_REPLY_TO: e2e@realstate.test
       ADMIN_ENABLED: "true"
@@ -39,9 +40,10 @@ services:
       LEADS_ENABLED: "true"
       NODE_ENV: "e2e"
       E2E_TEST_MODE: "true"
-      E2E_INTERNAL_SECRET: "${E2E_INTERNAL_SECRET:-e2e-ephemeral}"
-      AUTH_RATE_LIMIT_MAX: "100"
-      APP_BASE_URL: http://127.0.0.1:8089
+      E2E_INTERNAL_SECRET: ${E2E_INTERNAL_SECRET:?E2E_INTERNAL_SECRET is required}
+      AUTH_RATE_LIMIT_MAX: "10000"
+      AUTH_RATE_LIMIT_WINDOW_MS: "1000"
+      APP_BASE_URL: http://127.0.0.1:8090
       SESSION_COOKIE_SECURE: "false"
       PRIVACY_CONTROLLER_NAME: "Realstate E2E Test"
       PRIVACY_CONTACT_EMAIL: "e2e@realstate.test"

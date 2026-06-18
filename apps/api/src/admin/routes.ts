@@ -498,7 +498,7 @@ export function registerAdminRoutes(app: FastifyInstance, options: { pool: Pool;
     const body = leadNoteSchema.parse(req.body);
     const { rows: [lead] } = await pool.query('SELECT id FROM leads WHERE public_reference=$1', [(req.params as any).reference]);
     if (!lead) return reply.status(404).send({ error: { code: 'not_found', message: 'Lead no encontrado.' } });
-    await pool.query('INSERT INTO lead_notes (lead_id, author_id, content) VALUES ($1,$2,$3)', [lead.id, '00000000-0000-0000-0000-000000000000', body.content]);
+    await pool.query('INSERT INTO lead_notes (lead_id, author_id, body) VALUES ($1,$2,$3)', [lead.id, null, body.content]);
     await pool.query("INSERT INTO audit_events (user_id, event_type, entity_type, entity_reference, summary) VALUES ($1,$2,$3,$4,$5)", [null, 'lead_note_added', 'lead', (req.params as any).reference, 'Note added']).catch(() => {});
     return reply.status(201).send({ data: { created: true } });
   });
