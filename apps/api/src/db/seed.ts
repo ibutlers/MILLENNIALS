@@ -73,8 +73,8 @@ export const seedOpportunities: SeedOpportunity[] = [
   {
     slug: 'promocion-25-viviendas-castrelos-vigo',
     title: 'Promoción de 25 viviendas en Castrelos',
-    shortDescription: 'Proyecto de promoción residencial de veinticinco viviendas en Castrelos, actualmente en fase de estudio, análisis de viabilidad y definición del proyecto.',
-    description: 'Proyecto de promoción residencial de veinticinco viviendas en la zona de Castrelos, Vigo. La operación se encuentra en fase de estudio, con trabajos en curso de análisis de viabilidad urbanística, técnica y financiera, así como definición del anteproyecto.',
+    shortDescription: 'Promoción residencial de 25 viviendas en Castrelos, Vigo, actualmente en fase de estudio y anteproyecto, con una superficie aproximada de 2.900 m².',
+    description: 'Proyecto de promoción residencial de 25 viviendas en la zona de Castrelos, Vigo. La operación se encuentra en fase de estudio y anteproyecto, con una superficie aproximada de 2.900 m² y análisis en curso de viabilidad urbanística, técnica y financiera.',
     city: 'Vigo',
     countryCode: 'ES',
     district: 'Castrelos',
@@ -83,47 +83,50 @@ export const seedOpportunities: SeedOpportunity[] = [
     status: 'in_study',
     visibility: 'public',
     currency: 'EUR',
-    targetAmountCents: 1,
+    targetAmountCents: 200000000,
     committedAmountCents: 0,
-    minimumInvestmentCents: 1,
-    estimatedTermMonths: 1,
+    minimumInvestmentCents: 500000,
+    estimatedTermMonths: 42,
     targetReturnType: 'target_annual_return',
-    targetReturnBps: null,
+    targetReturnBps: 700,
     riskLevel: 'medium',
     closingDate: null,
     publishedAt: '2026-06-15T08:00:00Z',
     image: { url: '/images/opportunity-patio.webp', altText: 'Imagen provisional. Proyecto residencial de veinticinco viviendas en Castrelos, Vigo' },
     highlights: [
-      { label: 'Viviendas', value: '25 unidades' },
-      { label: 'Fase', value: 'Estudio y análisis de viabilidad' },
-      { label: 'Ubicación', value: 'Castrelos, Vigo' }
+      { label: 'Viviendas previstas', value: '25 unidades' },
+      { label: 'Superficie aproximada', value: '2.900 m²' },
+      { label: 'Estado', value: 'Estudio y anteproyecto' }
     ],
     risks: [
-      { title: 'Riesgo de viabilidad', description: 'El proyecto está en fase de estudio y los análisis urbanísticos, técnicos y financieros pueden concluir que no es viable en los términos actuales.' },
-      { title: 'Riesgo urbanístico', description: 'La viabilidad depende de la compatibilidad urbanística de la parcela con el programa de viviendas previsto.' }
+      { title: 'Riesgo urbanístico', description: 'La operación está en fase de anteproyecto y depende de la validación urbanística y técnica del desarrollo previsto.' },
+      { title: 'Riesgo de costes y ejecución', description: 'Los costes de construcción, plazos de obra y disponibilidad de proveedores pueden variar durante la definición del proyecto.' },
+      { title: 'Riesgo comercial', description: 'La velocidad de comercialización dependerá de la demanda residencial en Vigo y de las condiciones de mercado durante el periodo de ejecución.' }
     ],
     milestones: [
-      { title: 'Análisis de viabilidad', description: 'Estudio urbanístico, técnico y financiero del proyecto.', plannedDate: '2026-09-30', completedAt: null },
-      { title: 'Definición del anteproyecto', description: 'Elaboración del programa de viviendas y documento preliminar.', plannedDate: '2026-12-31', completedAt: null }
+      { title: 'Cierre del anteproyecto', description: 'Definición preliminar del programa residencial y encaje técnico de las 25 viviendas.', plannedDate: '2026-09-30', completedAt: null },
+      { title: 'Validación urbanística', description: 'Revisión de criterios urbanísticos y técnicos antes de avanzar a fases posteriores.', plannedDate: '2026-12-31', completedAt: null },
+      { title: 'Estructuración de la operación', description: 'Preparación de documentación, presupuesto y condiciones de inversión.', plannedDate: '2027-03-31', completedAt: null },
+      { title: 'Inicio estimado de ejecución', description: 'Arranque previsto de la fase de ejecución si se cumplen las condiciones previas.', plannedDate: '2027-06-30', completedAt: null }
     ]
   },
   {
     slug: 'cambio-uso-hostal-maria-berdiales-vigo',
     title: 'Cambio de uso en María Berdiales',
-    shortDescription: 'Proyecto de transformación de un edificio de uso residencial en un establecimiento de alojamiento tipo hostal en María Berdiales, Vigo. La operación se encuentra actualmente en fase de estudio y análisis de viabilidad.',
-    description: 'Proyecto de transformación de un edificio de uso residencial en un establecimiento de alojamiento tipo hostal en la zona de María Berdiales, Vigo. La operación contempla el cambio de uso del inmueble y se encuentra en fase de estudio, con análisis de viabilidad urbanística, adecuación normativa y modelo de explotación.',
+    shortDescription: 'Proyecto de cambio de uso de viviendas a hostal con 10 apartamentos en María Berdiales, Vigo. La operación está en estudio y cuenta con 800.000€ ya comprometidos sobre un capital objetivo de 1,1M€.',
+    description: 'Proyecto de transformación de un inmueble actualmente destinado a viviendas en un hostal con 10 apartamentos en la zona de María Berdiales, Vigo. La operación se encuentra en fase de estudio, con análisis de cambio de uso, adecuación normativa, obra y modelo de explotación.',
     city: 'Vigo',
     countryCode: 'ES',
     district: 'María Berdiales',
-    assetType: 'Residencial',
-    strategy: 'Cambio de uso',
+    assetType: 'Alojamiento',
+    strategy: 'Cambio de uso a hostal',
     status: 'in_study',
     visibility: 'public',
     currency: 'EUR',
-    targetAmountCents: 1,
-    committedAmountCents: 0,
-    minimumInvestmentCents: 1,
-    estimatedTermMonths: 1,
+    targetAmountCents: 110000000,
+    committedAmountCents: 80000000,
+    minimumInvestmentCents: 1000000,
+    estimatedTermMonths: 38,
     targetReturnType: 'target_annual_return',
     targetReturnBps: null,
     riskLevel: 'medium',
@@ -131,17 +134,20 @@ export const seedOpportunities: SeedOpportunity[] = [
     publishedAt: '2026-06-14T08:00:00Z',
     image: { url: '/images/opportunity-rehabilitacion.webp', altText: 'Imagen provisional. Edificio objeto de estudio para cambio de uso a hostal en María Berdiales, Vigo' },
     highlights: [
-      { label: 'Uso actual', value: 'Residencial' },
-      { label: 'Uso previsto', value: 'Alojamiento tipo hostal' },
-      { label: 'Fase', value: 'Estudio y análisis de viabilidad' }
+      { label: 'Uso previsto', value: 'Hostal con 10 apartamentos' },
+      { label: 'Capital comprometido', value: '800.000€ de 1,1M€' },
+      { label: 'Fase', value: 'Estudio de cambio de uso' }
     ],
     risks: [
-      { title: 'Riesgo normativo', description: 'El cambio de uso requiere cumplir la normativa urbanística y sectorial de alojamiento turístico.' },
-      { title: 'Riesgo de viabilidad', description: 'Los análisis pueden determinar que la operación no es viable en los términos estudiados inicialmente.' }
+      { title: 'Riesgo de cambio de uso', description: 'La viabilidad depende de la compatibilidad urbanística, licencias y requisitos normativos para el uso previsto.' },
+      { title: 'Riesgo de adecuación y obra', description: 'La transformación del inmueble puede requerir ajustes técnicos, licencias, costes adicionales o cambios en el alcance de obra.' },
+      { title: 'Riesgo de explotación', description: 'El rendimiento dependerá de la ocupación, la demanda local y la gestión operativa del alojamiento una vez finalizado.' }
     ],
     milestones: [
-      { title: 'Estudio urbanístico', description: 'Verificación de la compatibilidad urbanística del cambio de uso.', plannedDate: '2026-10-31', completedAt: null },
-      { title: 'Análisis de explotación', description: 'Modelo de negocio y proyecciones del establecimiento.', plannedDate: '2026-12-31', completedAt: null }
+      { title: 'Estudio de cambio de uso', description: 'Análisis urbanístico y normativo del paso de viviendas a alojamiento tipo hostal.', plannedDate: '2026-09-30', completedAt: null },
+      { title: 'Anteproyecto de adecuación', description: 'Definición preliminar de distribución, alcance técnico y necesidades de obra.', plannedDate: '2026-12-31', completedAt: null },
+      { title: 'Estructuración financiera', description: 'Revisión del capital comprometido, capital pendiente y condiciones de participación.', plannedDate: '2027-03-31', completedAt: null },
+      { title: 'Inicio estimado de adecuación', description: 'Arranque previsto de trabajos si se validan licencias, presupuesto y documentación.', plannedDate: '2027-06-30', completedAt: null }
     ]
   },
   {
