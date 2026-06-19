@@ -35,8 +35,8 @@ export const seedOpportunities: SeedOpportunity[] = [
   {
     slug: 'promocion-9-viviendas-plaza-america-vigo',
     title: 'Promoción de 9 viviendas en Plaza América',
-    shortDescription: 'Promoción residencial de un edificio de nueve viviendas en Travesía de la calle Coruña, en la zona de Plaza América, Vigo. La financiación está completamente cubierta y el proyecto se encuentra actualmente en ejecución.',
-    description: 'Promoción residencial de nueve viviendas en Travesía de la calle Coruña, en la zona de Plaza América, Vigo. El proyecto cuenta con financiación cerrada y se encuentra en fase de ejecución. Los datos financieros detallados no se publican en esta fase.',
+    shortDescription: 'Promoción residencial de un edificio de 9 viviendas en Travesía de la calle Coruña, zona Plaza América, Vigo. El proyecto está en marcha, con financiación cerrada, proyecto básico presentado y licencia pendiente.',
+    description: 'Promoción residencial de 9 viviendas en Travesía de la calle Coruña, en la zona de Plaza América, Vigo. El proyecto está en marcha, cuenta con financiación cerrada, proyecto básico presentado y se encuentra pendiente de licencia. Los datos publicados tienen carácter informativo y pueden actualizarse durante la tramitación y ejecución.',
     city: 'Vigo',
     countryCode: 'ES',
     district: 'Travesía de la calle Coruña · Plaza América',
@@ -45,10 +45,10 @@ export const seedOpportunities: SeedOpportunity[] = [
     status: 'in_execution',
     visibility: 'public',
     currency: 'EUR',
-    targetAmountCents: 1,
-    committedAmountCents: 1,
-    minimumInvestmentCents: 1,
-    estimatedTermMonths: 1,
+    targetAmountCents: 80000000,
+    committedAmountCents: 80000000,
+    minimumInvestmentCents: 500000,
+    estimatedTermMonths: 36,
     targetReturnType: 'target_annual_return',
     targetReturnBps: null,
     riskLevel: 'medium',
@@ -57,17 +57,18 @@ export const seedOpportunities: SeedOpportunity[] = [
     image: { url: '/images/plaza-america.jpg', altText: 'Fachada del edificio en Plaza América, Vigo' },
     highlights: [
       { label: 'Viviendas', value: '9 unidades' },
-      { label: 'Ubicación', value: 'Travesía de la calle Coruña · Plaza América' },
-      { label: 'Financiación', value: 'Capital cubierto · 100%' }
+      { label: 'Financiación', value: '800.000€ cubiertos · 100%' },
+      { label: 'Estado', value: 'Proyecto básico presentado · licencia pendiente' }
     ],
     risks: [
       { title: 'Riesgo de ejecución', description: 'El calendario de obra puede verse afectado por disponibilidad de materiales o condiciones meteorológicas.' },
       { title: 'Riesgo de mercado', description: 'La velocidad de comercialización depende de la demanda local en el momento de finalización.' }
     ],
     milestones: [
-      { title: 'Financiación cerrada', description: 'Capital completamente cubierto para la ejecución del proyecto.', plannedDate: '2026-03-01', completedAt: '2026-03-01T10:00:00Z' },
-      { title: 'Inicio de obra', description: 'Comienzo de los trabajos de construcción.', plannedDate: '2026-04-15', completedAt: '2026-04-15T10:00:00Z' },
-      { title: 'Finalización prevista', description: 'Entrega estimada de las viviendas.', plannedDate: '2027-06-30', completedAt: null }
+      { title: 'Financiación cerrada', description: 'Capital objetivo de 800.000€ completamente cubierto para el desarrollo del proyecto.', plannedDate: '2026-03-01', completedAt: '2026-03-01T10:00:00Z' },
+      { title: 'Proyecto básico presentado', description: 'Presentación del proyecto básico para avanzar en la tramitación de licencia.', plannedDate: '2026-06-15', completedAt: '2026-06-15T10:00:00Z' },
+      { title: 'Licencia pendiente', description: 'Seguimiento de la tramitación administrativa previa al inicio de obra.', plannedDate: '2026-10-31', completedAt: null },
+      { title: 'Inicio estimado de obra', description: 'Arranque de los trabajos una vez obtenida la licencia y cerrada la planificación de ejecución.', plannedDate: '2027-01-31', completedAt: null }
     ]
   },
   {
@@ -128,7 +129,7 @@ export const seedOpportunities: SeedOpportunity[] = [
     minimumInvestmentCents: 1000000,
     estimatedTermMonths: 38,
     targetReturnType: 'target_annual_return',
-    targetReturnBps: null,
+    targetReturnBps: 690,
     riskLevel: 'medium',
     closingDate: null,
     publishedAt: '2026-06-14T08:00:00Z',
