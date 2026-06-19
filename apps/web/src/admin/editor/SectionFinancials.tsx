@@ -1,5 +1,5 @@
 import type { FormState } from './useEditorForm';
-import { centsToEur, bpsToPct, eurToCents, pctToBps } from './finance';
+import { centsToEur, bpsToPct, eurToCents, pctToBps, parseLocaleNumber } from './finance';
 
 interface SectionFinancialsProps {
   values: Pick<FormState, 'currency' | 'targetAmountCents' | 'committedAmountCents' | 'minimumInvestmentCents' | 'estimatedTermMonths' | 'targetReturnType' | 'targetReturnBps' | 'riskLevel' | 'closingDate'>;
@@ -13,50 +13,46 @@ export default function SectionFinancials({ values, onChange, errors, showValida
     <div className="space-y-5 max-w-2xl">
       <h3 className="font-serif text-lg text-[#7FA88C]">Métricas financieras</h3>
       <p className="text-xs text-[#5C8D7A]">
-        Los importes se introducen en euros y se convierten a céntimos. Los porcentajes se convierten a basis points.
+        Los importes se introducen en euros y se convierten a céntimos. Acepta 250000, 250.000,50 o 250,000.50. Los porcentajes se convierten a basis points.
       </p>
       <div className="grid gap-4 sm:grid-cols-2">
         <label className="block">
           <span className="text-sm text-[#9B7E5F]">Capital objetivo (€) *</span>
           <input
-            type="number"
-            min="0"
-            step="0.01"
+            type="text"
+            inputMode="decimal"
             value={values.targetAmountCents ? centsToEur(values.targetAmountCents) : '0.00'}
-            onChange={(e) => onChange('targetAmountCents', eurToCents(parseFloat(e.target.value) || 0))}
+            onChange={(e) => onChange('targetAmountCents', eurToCents(parseLocaleNumber(e.target.value)))}
             className="mt-1 block w-full rounded border border-[#1A3E48] bg-[#0F2A30] px-3 py-2 text-[#FBF7F0] focus:border-[#7FA88C] focus:outline-none focus:ring-1 focus:ring-[#7FA88C]"
           />
         </label>
         <label className="block">
           <span className="text-sm text-[#9B7E5F]">Capital comprometido (€)</span>
           <input
-            type="number"
-            min="0"
-            step="0.01"
+            type="text"
+            inputMode="decimal"
             value={values.committedAmountCents ? centsToEur(values.committedAmountCents) : '0.00'}
-            onChange={(e) => onChange('committedAmountCents', eurToCents(parseFloat(e.target.value) || 0))}
+            onChange={(e) => onChange('committedAmountCents', eurToCents(parseLocaleNumber(e.target.value)))}
             className="mt-1 block w-full rounded border border-[#1A3E48] bg-[#0F2A30] px-3 py-2 text-[#FBF7F0] focus:border-[#7FA88C] focus:outline-none focus:ring-1 focus:ring-[#7FA88C]"
           />
         </label>
         <label className="block">
           <span className="text-sm text-[#9B7E5F]">Ticket mínimo (€) *</span>
           <input
-            type="number"
-            min="0"
-            step="0.01"
+            type="text"
+            inputMode="decimal"
             value={values.minimumInvestmentCents ? centsToEur(values.minimumInvestmentCents) : '0.00'}
-            onChange={(e) => onChange('minimumInvestmentCents', eurToCents(parseFloat(e.target.value) || 0))}
+            onChange={(e) => onChange('minimumInvestmentCents', eurToCents(parseLocaleNumber(e.target.value)))}
             className="mt-1 block w-full rounded border border-[#1A3E48] bg-[#0F2A30] px-3 py-2 text-[#FBF7F0] focus:border-[#7FA88C] focus:outline-none focus:ring-1 focus:ring-[#7FA88C]"
           />
         </label>
         <label className="block">
           <span className="text-sm text-[#9B7E5F]">Plazo estimado (meses) *</span>
           <input
-            type="number"
-            min="1"
-            max="360"
+            type="text"
+            inputMode="numeric"
             value={values.estimatedTermMonths || 12}
-            onChange={(e) => onChange('estimatedTermMonths', parseInt(e.target.value) || 0)}
+            onChange={(e) => onChange('estimatedTermMonths', Math.max(0, Math.round(parseLocaleNumber(e.target.value))))}
             className="mt-1 block w-full rounded border border-[#1A3E48] bg-[#0F2A30] px-3 py-2 text-[#FBF7F0] focus:border-[#7FA88C] focus:outline-none focus:ring-1 focus:ring-[#7FA88C]"
           />
         </label>
@@ -79,24 +75,25 @@ export default function SectionFinancials({ values, onChange, errors, showValida
         <label className="block">
           <span className="text-sm text-[#9B7E5F]">Retorno objetivo (%)</span>
           <input
-            type="number"
-            min="0"
-            max="1000"
-            step="0.01"
+            type="text"
+            inputMode="decimal"
             value={values.targetReturnBps ? bpsToPct(values.targetReturnBps) : ''}
-            onChange={(e) => onChange('targetReturnBps', pctToBps(parseFloat(e.target.value) || 0))}
+            onChange={(e) => onChange('targetReturnBps', pctToBps(parseLocaleNumber(e.target.value)))}
             className="mt-1 block w-full rounded border border-[#1A3E48] bg-[#0F2A30] px-3 py-2 text-[#FBF7F0] focus:border-[#7FA88C] focus:outline-none focus:ring-1 focus:ring-[#7FA88C]"
           />
         </label>
       </div>
       <label className="block">
         <span className="text-sm text-[#9B7E5F]">Moneda</span>
-        <input
-          value={values.currency}
-          onChange={(e) => onChange('currency', e.target.value.toUpperCase())}
-          maxLength={3}
-          className="mt-1 block w-24 rounded border border-[#1A3E48] bg-[#0F2A30] px-3 py-2 text-[#FBF7F0] focus:border-[#7FA88C] focus:outline-none focus:ring-1 focus:ring-[#7FA88C] uppercase"
-        />
+        <select
+          value={values.currency || 'EUR'}
+          onChange={(e) => onChange('currency', e.target.value)}
+          className="mt-1 block w-32 rounded border border-[#1A3E48] bg-[#0F2A30] px-3 py-2 text-[#FBF7F0] focus:border-[#7FA88C] focus:outline-none focus:ring-1 focus:ring-[#7FA88C] uppercase"
+        >
+          <option value="EUR">EUR</option>
+          <option value="USD">USD</option>
+          <option value="GBP">GBP</option>
+        </select>
       </label>
       <hr className="border-[#1A3E48]" />
       <div className="grid gap-4 sm:grid-cols-2">

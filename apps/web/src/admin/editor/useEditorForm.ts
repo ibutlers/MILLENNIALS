@@ -157,6 +157,14 @@ export function oppToForm(opp: OppFull): FormState {
 }
 
 export function formToApiPayload(form: FormState): Record<string, any> {
+  const positiveInt = (value: number, fallback = 0) => Number.isFinite(value) ? Math.max(0, Math.round(value)) : fallback;
+  const boundedTerm = Number.isFinite(form.estimatedTermMonths)
+    ? Math.min(360, Math.max(1, Math.round(form.estimatedTermMonths)))
+    : 12;
+  const currency = /^[A-Z]{3}$/.test((form.currency || '').trim().toUpperCase())
+    ? form.currency.trim().toUpperCase()
+    : 'EUR';
+
   return {
     title: form.title,
     slug: form.slug,
@@ -170,13 +178,13 @@ export function formToApiPayload(form: FormState): Record<string, any> {
     editorialStatus: form.editorialStatus,
     visibility: form.visibility,
     status: form.status,
-    currency: form.currency,
-    targetAmountCents: form.targetAmountCents,
-    committedAmountCents: form.committedAmountCents,
-    minimumInvestmentCents: form.minimumInvestmentCents,
-    estimatedTermMonths: form.estimatedTermMonths,
+    currency,
+    targetAmountCents: positiveInt(form.targetAmountCents),
+    committedAmountCents: positiveInt(form.committedAmountCents),
+    minimumInvestmentCents: positiveInt(form.minimumInvestmentCents),
+    estimatedTermMonths: boundedTerm,
     targetReturnType: form.targetReturnType || null,
-    targetReturnBps: form.targetReturnBps || null,
+    targetReturnBps: form.targetReturnBps > 0 ? positiveInt(form.targetReturnBps) : null,
     riskLevel: form.riskLevel,
     closingDate: form.closingDate ? new Date(`${form.closingDate}T00:00:00.000Z`).toISOString() : null,
     disclaimer: form.disclaimer || null,
