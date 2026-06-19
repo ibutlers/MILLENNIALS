@@ -18,7 +18,7 @@ interface ListResponse {
 }
 
 const STATUS_COLORS: Record<string, string> = {
-  active: 'bg-[#7FA88C] text-[#08191C]', suspended: 'bg-[#9B7E5F] text-[#08191C]', disabled: 'bg-[#1A3E48] text-[#9B7E5F]',
+  active: 'bg-[#7FA88C] text-[#08191C]', suspended: 'bg-[#9B7E5F] text-[#08191C]', revoked: 'bg-[#1A3E48] text-[#9B7E5F]',
 };
 
 export default function AdminUserList() {

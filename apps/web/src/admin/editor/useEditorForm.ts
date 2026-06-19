@@ -3,7 +3,6 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useParams, useNavigate } from 'react-router';
 import { apiFetch } from '../../api/client';
 import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
-import { useAuth } from '../../auth/context';
 import {
   type HighlightItem,
   type RiskItem,
@@ -319,7 +318,6 @@ export function useEditorForm(): UseEditorFormReturn {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const { user } = useAuth();
   const isNew = !id;
 
   const [form, setForm] = useState<FormState>(EMPTY_FORM);
@@ -656,7 +654,10 @@ export function useEditorForm(): UseEditorFormReturn {
 
   const isSaving = saveMutation.isPending || createMutation.isPending || subentityMutation.isPending;
   const isPublishing = publishMutation.isPending;
-  const canPublish = user?.roles?.some((r: string) => ['admin', 'operator'].includes(r)) ?? false;
+  // Backend endpoints are the RBAC source of truth. Better Auth session data
+  // does not carry the local app_users role, so do not hide publish/review
+  // actions from valid admins based on incomplete client state.
+  const canPublish = true;
 
   const subEntityCounts = useMemo(() => ({
     highlights: highlights.length,

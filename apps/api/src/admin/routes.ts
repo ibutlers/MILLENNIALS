@@ -44,7 +44,7 @@ const leadNoteSchema = z.object({
 });
 
 const userStatusSchema = z.object({
-  status: z.enum(['active','suspended','disabled']),
+  status: z.enum(['active','suspended','revoked']),
 });
 
 const userRoleSchema = z.object({
@@ -509,10 +509,19 @@ export function registerAdminRoutes(app: FastifyInstance, options: { pool: Pool;
   }, async (req, reply) => {
     const q = paginationSchema.parse(req.query);
     const { rows } = await pool.query(
-      'SELECT u.id, u.public_reference, substring(u.email,1,2)||$1 as email, u.status, u.email_verified_at, u.created_at, COALESCE(json_agg(ur.role) FILTER (WHERE ur.role IS NOT NULL), $2) as roles FROM users u LEFT JOIN user_roles ur ON ur.user_id=u.id GROUP BY u.id ORDER BY u.created_at DESC LIMIT $3 OFFSET $4',
-      ['***', '[]', q.limit, q.offset]
+      `SELECT au.id,
+              au.id::text AS public_reference,
+              au.email_normalized AS email,
+              au.status,
+              au.email_verified_at,
+              au.created_at,
+              ARRAY[au.role::text] AS roles
+       FROM app_users au
+       ORDER BY au.created_at DESC
+       LIMIT $1 OFFSET $2`,
+      [q.limit, q.offset]
     );
-    const { rows: [{ count }] } = await pool.query('SELECT count(*)::int FROM users');
+    const { rows: [{ count }] } = await pool.query('SELECT count(*)::int FROM app_users');
     return buildPaginatedResponse(rows, Number(count), q.limit, q.offset);
   });
 
@@ -521,12 +530,32 @@ export function registerAdminRoutes(app: FastifyInstance, options: { pool: Pool;
     preHandler: [adminGate(config), requireRole(pool, 'admin')]
   }, async (req, reply) => {
     const { rows } = await pool.query(
-      'SELECT u.*, COALESCE(json_agg(ur.role) FILTER (WHERE ur.role IS NOT NULL), $2) as roles, (SELECT count(*) FROM sessions WHERE user_id=u.id AND revoked_at IS NULL) as active_sessions FROM users u LEFT JOIN user_roles ur ON ur.user_id=u.id WHERE u.public_reference=$1 GROUP BY u.id',
-      [(req.params as any).reference, '[]']
+      `SELECT au.id,
+              au.id::text AS public_reference,
+              au.better_auth_user_id,
+              au.email_normalized AS email,
+              au.display_name,
+              au.role,
+              au.status,
+              au.email_verified_at,
+              au.mfa_enabled_at,
+              au.activated_at,
+              au.suspended_at,
+              au.revoked_at,
+              au.last_login_at,
+              au.created_at,
+              au.updated_at,
+              ARRAY[au.role::text] AS roles,
+              (SELECT count(*)::int FROM auth.session s WHERE s.user_id = au.better_auth_user_id AND s.expires_at > now()) AS active_sessions,
+              ba.email_verified AS better_auth_email_verified,
+              ba."twoFactorEnabled" AS better_auth_two_factor_enabled
+       FROM app_users au
+       LEFT JOIN auth."user" ba ON ba.id = au.better_auth_user_id
+       WHERE au.id::text = $1`,
+      [(req.params as any).reference]
     );
     if (!rows[0]) return reply.status(404).send({ error: { code: 'not_found', message: 'Usuario no encontrado.' } });
-    const { password_hash: _ph, ...safe } = rows[0];
-    return { data: safe };
+    return { data: rows[0] };
   });
 
   // ═══ User Status ═══
@@ -534,9 +563,27 @@ export function registerAdminRoutes(app: FastifyInstance, options: { pool: Pool;
     preHandler: [adminGate(config), requireRole(pool, 'admin')]
   }, async (req, reply) => {
     const body = userStatusSchema.parse(req.body);
+    const ref = (req.params as any).reference;
+    if (body.status !== 'active') {
+      const { rows: [target] } = await pool.query('SELECT id, role, status FROM app_users WHERE id::text=$1', [ref]);
+      if (!target) return reply.status(404).send({ error: { code: 'not_found', message: 'Usuario no encontrado.' } });
+      if (target.role === 'admin' && target.status === 'active') {
+        const { rows: [{ count }] } = await pool.query("SELECT count(*)::int FROM app_users WHERE role='admin' AND status='active' AND id <> $1", [target.id]);
+        if (Number(count) === 0) {
+          return reply.status(409).send({ error: { code: 'last_admin', message: 'No se puede desactivar el último admin activo.' } });
+        }
+      }
+    }
     const { rows } = await pool.query(
-      'UPDATE users SET status=$2 WHERE public_reference=$1 RETURNING id, email, status',
-      [(req.params as any).reference, body.status]
+      `UPDATE app_users
+       SET status=$2::app_user_status,
+           suspended_at = CASE WHEN $2 = 'suspended' THEN now() ELSE suspended_at END,
+           revoked_at = CASE WHEN $2 = 'revoked' THEN now() ELSE revoked_at END,
+           activated_at = CASE WHEN $2 = 'active' THEN COALESCE(activated_at, now()) ELSE activated_at END,
+           updated_at=now()
+       WHERE id::text=$1
+       RETURNING id::text AS public_reference, email_normalized AS email, status, role`,
+      [ref, body.status]
     );
     if (!rows[0]) return reply.status(404).send({ error: { code: 'not_found', message: 'Usuario no encontrado.' } });
     return { data: rows[0] };
@@ -547,18 +594,32 @@ export function registerAdminRoutes(app: FastifyInstance, options: { pool: Pool;
     preHandler: [adminGate(config), requireRole(pool, 'admin')]
   }, async (req, reply) => {
     const body = userRoleSchema.parse(req.body);
-    const { rows: [u] } = await pool.query('SELECT id FROM users WHERE public_reference=$1', [(req.params as any).reference]);
+    const { rows: [u] } = await pool.query(
+      `UPDATE app_users SET role=$2::app_user_role, updated_at=now()
+       WHERE id::text=$1
+       RETURNING id::text AS public_reference, role`,
+      [(req.params as any).reference, body.role]
+    );
     if (!u) return reply.status(404).send({ error: { code: 'not_found', message: 'Usuario no encontrado.' } });
-    await pool.query('INSERT INTO user_roles (user_id, role) VALUES ($1,$2) ON CONFLICT DO NOTHING', [u.id, body.role]);
-    return reply.status(201).send({ data: { created: true, role: body.role } });
+    return reply.status(201).send({ data: { created: true, role: u.role } });
   });
 
   app.delete('/api/v1/admin/users/:reference/roles/:role', {
     preHandler: [adminGate(config), requireRole(pool, 'admin')]
   }, async (req, reply) => {
-    const { rows: [u] } = await pool.query('SELECT id FROM users WHERE public_reference=$1', [(req.params as any).reference]);
-    if (!u) return reply.status(404).send({ error: { code: 'not_found', message: 'Usuario no encontrado.' } });
-    await pool.query('DELETE FROM user_roles WHERE user_id=$1 AND role=$2', [u.id, (req.params as any).role]);
+    const ref = (req.params as any).reference;
+    const role = (req.params as any).role;
+    const { rows: [target] } = await pool.query('SELECT id, role, status FROM app_users WHERE id::text=$1', [ref]);
+    if (!target) return reply.status(404).send({ error: { code: 'not_found', message: 'Usuario no encontrado.' } });
+    if (role === 'admin' && target.role === 'admin' && target.status === 'active') {
+      const { rows: [{ count }] } = await pool.query("SELECT count(*)::int FROM app_users WHERE role='admin' AND status='active' AND id <> $1", [target.id]);
+      if (Number(count) === 0) {
+        return reply.status(409).send({ error: { code: 'last_admin', message: 'No se puede retirar el rol del último admin activo.' } });
+      }
+    }
+    if (target.role === role) {
+      await pool.query("UPDATE app_users SET role='investor', updated_at=now() WHERE id=$1", [target.id]);
+    }
     return { data: { removed: true } };
   });
 
@@ -566,9 +627,9 @@ export function registerAdminRoutes(app: FastifyInstance, options: { pool: Pool;
   app.delete('/api/v1/admin/users/:reference/sessions', {
     preHandler: [adminGate(config), requireRole(pool, 'admin')]
   }, async (req, reply) => {
-    const { rows: [u] } = await pool.query('SELECT id FROM users WHERE public_reference=$1', [(req.params as any).reference]);
+    const { rows: [u] } = await pool.query('SELECT better_auth_user_id FROM app_users WHERE id::text=$1', [(req.params as any).reference]);
     if (!u) return reply.status(404).send({ error: { code: 'not_found', message: 'Usuario no encontrado.' } });
-    await pool.query("UPDATE sessions SET revoked_at=now() WHERE user_id=$1 AND revoked_at IS NULL", [u.id]);
+    await pool.query('DELETE FROM auth.session WHERE user_id=$1', [u.better_auth_user_id]);
     return { data: { revoked: true } };
   });
 
@@ -578,10 +639,35 @@ export function registerAdminRoutes(app: FastifyInstance, options: { pool: Pool;
   }, async (req, reply) => {
     const q = paginationSchema.parse(req.query);
     const { rows } = await pool.query(
-      'SELECT id, user_id, event_type, entity_type, entity_reference, summary, created_at FROM audit_events ORDER BY created_at DESC LIMIT $1 OFFSET $2',
+      `SELECT * FROM (
+         SELECT id::text,
+                user_id::text,
+                event_type,
+                entity_type,
+                entity_reference,
+                summary,
+                created_at
+         FROM audit_events
+         UNION ALL
+         SELECT id::text,
+                actor_id::text AS user_id,
+                action AS event_type,
+                resource_type AS entity_type,
+                resource_id::text AS entity_reference,
+                result AS summary,
+                created_at
+         FROM auth_audit_events
+       ) events
+       ORDER BY created_at DESC
+       LIMIT $1 OFFSET $2`,
       [q.limit, q.offset]
     );
-    const { rows: [{ count }] } = await pool.query('SELECT count(*)::int FROM audit_events');
+    const { rows: [{ count }] } = await pool.query(
+      `SELECT (
+         (SELECT count(*)::int FROM audit_events) +
+         (SELECT count(*)::int FROM auth_audit_events)
+       )::int AS count`
+    );
     return buildPaginatedResponse(rows, Number(count), q.limit, q.offset);
   });
 

@@ -65,7 +65,7 @@ export default function AdminUserDetail() {
           <div className="flex flex-wrap gap-2 pt-2">
             <button onClick={() => statusMutation.mutate('active')} disabled={statusMutation.isPending} className="rounded bg-[#7FA88C] px-3 py-1.5 text-xs text-[#08191C] hover:bg-[#5C8D7A] disabled:opacity-50">Activar</button>
             <button onClick={() => statusMutation.mutate('suspended')} disabled={statusMutation.isPending} className="rounded bg-[#9B7E5F] px-3 py-1.5 text-xs text-[#08191C] hover:bg-[#B6946C] disabled:opacity-50">Suspender</button>
-            <button onClick={() => { if (confirm('¿Deshabilitar este usuario?')) statusMutation.mutate('disabled'); }} disabled={statusMutation.isPending} className="rounded bg-[#1A3E48] px-3 py-1.5 text-xs text-[#9B7E5F] hover:bg-[#0F2A30] disabled:opacity-50">Deshabilitar</button>
+            <button onClick={() => { if (confirm('¿Revocar este usuario? Esta acción impedirá su acceso.')) statusMutation.mutate('revoked'); }} disabled={statusMutation.isPending} className="rounded bg-[#1A3E48] px-3 py-1.5 text-xs text-[#9B7E5F] hover:bg-[#0F2A30] disabled:opacity-50">Revocar</button>
           </div>
         </div>
 

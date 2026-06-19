@@ -1,7 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Link, useSearchParams } from 'react-router';
 import { apiFetch } from '../api/client';
-import { useAuth } from '../auth/context';
 
 interface OppItem {
   id: string;
@@ -37,10 +36,11 @@ const STATUS_LABELS: Record<string, string> = {
 };
 
 export default function AdminOpportunityList() {
-  const { user } = useAuth();
   const queryClient = useQueryClient();
   const [searchParams, setSearchParams] = useSearchParams();
-  const isAdmin = user?.roles?.includes('admin');
+  // The backend is the RBAC source of truth. Show admin actions in the admin
+  // surface and let protected endpoints enforce admin/operator permissions.
+  const isAdmin = true;
 
   const limit = 20;
   const offset = Number(searchParams.get('offset') || 0);
