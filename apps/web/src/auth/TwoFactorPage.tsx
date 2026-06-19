@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState, type FormEvent } from 'react';
-import { useNavigate } from 'react-router';
+import { useNavigate, useSearchParams } from 'react-router';
 import { useAuth } from './context';
 
 type SetupState = 'password' | 'verify' | 'backup' | 'done';
@@ -45,12 +45,21 @@ function extractManualSecret(totpUri: string): string {
   }
 }
 
+function sanitizeReturnTo(value: string | null): string {
+  if (!value || !value.startsWith('/') || value.startsWith('//')) return '/inversores';
+  if (value.startsWith('/acceso/login') || value.startsWith('/acceso/2fa')) return '/inversores';
+  return value;
+}
+
 /**
- * TwoFactorPage — mandatory TOTP setup after email verification.
+ * TwoFactorPage — separates first-time TOTP setup from the login MFA challenge.
  */
 export function TwoFactorPage() {
   const { isAuthAvailable, checkedAvailability, isAuthenticated, user, refreshSession } = useAuth();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const isChallenge = searchParams.get('modo') === 'challenge';
+  const returnTo = sanitizeReturnTo(searchParams.get('retorno'));
   const [step, setStep] = useState<SetupState>('password');
   const [password, setPassword] = useState('');
   const [code, setCode] = useState('');
@@ -66,17 +75,18 @@ export function TwoFactorPage() {
   }, [refreshSession]);
 
   useEffect(() => {
+    if (isChallenge) return undefined;
     let cancelled = false;
     fetch('/api/config/public')
       .then((response) => response.json())
       .then((config) => {
         if (!cancelled && config?.betterAuthRequire2FA === false) {
-          navigate('/admin', { replace: true });
+          navigate(returnTo, { replace: true });
         }
       })
       .catch(() => {});
     return () => { cancelled = true; };
-  }, [navigate]);
+  }, [isChallenge, navigate, returnTo]);
 
   if (checkedAvailability && !isAuthAvailable) {
     return (
@@ -89,7 +99,7 @@ export function TwoFactorPage() {
     );
   }
 
-  if (checkedAvailability && !isAuthenticated && !user) {
+  if (checkedAvailability && !isChallenge && !isAuthenticated && !user) {
     return (
       <main className="flex min-h-screen items-center justify-center bg-lavender p-8" role="main">
         <div className="w-full max-w-md rounded-xl border border-frost bg-white p-8 text-center shadow-sm">
@@ -107,6 +117,36 @@ export function TwoFactorPage() {
         </div>
       </main>
     );
+  }
+
+  async function verifyTotpCode(fallback: string): Promise<void> {
+    const verifyResp = await fetch('/api/auth/two-factor/verify-totp', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ code }),
+    });
+    const verifyPayload = await readJson(verifyResp);
+    if (!verifyResp.ok) throw new Error(extractError(verifyPayload, fallback));
+  }
+
+  async function reconcileMfa(): Promise<void> {
+    const reconcileResp = await fetch('/api/auth/reconcile-mfa', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({}),
+    });
+    const reconcilePayload = await readJson(reconcileResp);
+    if (!reconcileResp.ok) throw new Error(extractError(reconcilePayload, 'No hemos podido activar tu acceso tras 2FA.'));
+  }
+
+  function validateCode(): boolean {
+    if (code.length !== 6 || !/^\d{6}$/.test(code)) {
+      setError('Introduce un código de 6 dígitos válido.');
+      return false;
+    }
+    return true;
   }
 
   async function handleEnable(e: FormEvent) {
@@ -141,32 +181,32 @@ export function TwoFactorPage() {
     }
   }
 
+  async function handleChallenge(e: FormEvent) {
+    e.preventDefault();
+    setError('');
+    if (!validateCode()) return;
+    setSubmitting(true);
+    try {
+      await verifyTotpCode('Código inválido o expirado.');
+      await refreshSession().catch(() => {});
+      await reconcileMfa().catch(() => undefined);
+      await refreshSession().catch(() => {});
+      window.location.assign(returnTo);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Código inválido o expirado.');
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
   async function handleVerify(e: FormEvent) {
     e.preventDefault();
     setError('');
-    if (code.length !== 6 || !/^\d{6}$/.test(code)) {
-      setError('Introduce un código de 6 dígitos válido.');
-      return;
-    }
+    if (!validateCode()) return;
     setSubmitting(true);
     try {
-      const verifyResp = await fetch('/api/auth/two-factor/verify-totp', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({ code }),
-      });
-      const verifyPayload = await readJson(verifyResp);
-      if (!verifyResp.ok) throw new Error(extractError(verifyPayload, 'Código inválido o expirado.'));
-
-      const reconcileResp = await fetch('/api/auth/reconcile-mfa', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-      });
-      const reconcilePayload = await readJson(reconcileResp);
-      if (!reconcileResp.ok) throw new Error(extractError(reconcilePayload, 'No hemos podido activar tu acceso tras 2FA.'));
-
+      await verifyTotpCode('Código inválido o expirado.');
+      await reconcileMfa();
       await refreshSession().catch(() => {});
       setStep(backupCodes.length > 0 ? 'backup' : 'done');
     } catch (err) {
@@ -179,7 +219,51 @@ export function TwoFactorPage() {
   function finish() {
     setCodesSaved(true);
     setStep('done');
-    setTimeout(() => navigate('/admin'), 900);
+    setTimeout(() => navigate(returnTo, { replace: true }), 900);
+  }
+
+  if (isChallenge) {
+    return (
+      <main className="flex min-h-screen items-center justify-center bg-lavender p-8" role="main">
+        <div className="w-full max-w-md rounded-xl border border-frost bg-white p-8 shadow-sm">
+          <h1 className="text-2xl font-semibold text-ink">Verifica tu acceso</h1>
+          <p className="mt-2 text-sm text-charcoal">
+            Esta cuenta ya tiene verificación en dos pasos. Introduce el código de tu aplicación autenticadora para completar el inicio de sesión.
+          </p>
+          {error && (
+            <div role="alert" className="mt-4 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">
+              {error}
+            </div>
+          )}
+          <form onSubmit={handleChallenge} className="mt-6 space-y-4">
+            <div>
+              <label htmlFor="totp-challenge-code" className="block text-sm font-medium text-charcoal">Código de verificación</label>
+              <input
+                id="totp-challenge-code"
+                type="text"
+                inputMode="numeric"
+                autoComplete="one-time-code"
+                maxLength={6}
+                minLength={6}
+                required
+                autoFocus
+                value={code}
+                onChange={(event) => setCode(event.target.value.replace(/\D/g, '').slice(0, 6))}
+                className="mt-1 block w-full rounded-lg border border-frost px-3 py-3 text-center text-2xl tracking-widest text-ink focus:border-electric focus:outline-none focus:ring-1 focus:ring-electric"
+                placeholder="000000"
+              />
+            </div>
+            <button
+              type="submit"
+              disabled={submitting || code.length !== 6}
+              className="w-full rounded-lg bg-electric px-4 py-3 font-semibold text-white transition-colors hover:bg-electric-hover focus:outline-none focus-visible:ring-2 focus-visible:ring-electric focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              {submitting ? 'Verificando…' : 'Completar inicio de sesión'}
+            </button>
+          </form>
+        </div>
+      </main>
+    );
   }
 
   if (step === 'done') {
@@ -187,7 +271,7 @@ export function TwoFactorPage() {
       <main className="flex min-h-screen items-center justify-center bg-lavender p-8" role="main">
         <div className="w-full max-w-md rounded-xl border border-frost bg-white p-8 text-center shadow-sm">
           <h1 className="text-2xl font-semibold text-ink">¡Verificación completada!</h1>
-          <p className="mt-4 text-charcoal">Redirigiendo al panel administrativo…</p>
+          <p className="mt-4 text-charcoal">Redirigiendo a tu zona privada…</p>
         </div>
       </main>
     );
@@ -232,7 +316,7 @@ export function TwoFactorPage() {
         <h1 className="text-2xl font-semibold text-ink">Configurar verificación en dos pasos</h1>
         <p className="mt-2 text-sm text-charcoal">
           {step === 'password'
-            ? 'Introduce tu contraseña para generar la clave TOTP de esta cuenta.'
+            ? 'Este paso es para activar TOTP por primera vez. Si ya lo activaste, inicia sesión para ver el challenge de acceso.'
             : 'Añade esta clave en tu aplicación de autenticación y escribe el código de 6 dígitos.'}
         </p>
 

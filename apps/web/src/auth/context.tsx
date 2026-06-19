@@ -15,7 +15,7 @@
  */
 import { createContext, useContext, useEffect, useState, useCallback, type ReactNode } from 'react';
 import { createAuthClient } from 'better-auth/client';
-import { AccountDisabledError, AuthDisabledError, AuthResponseError, InvalidCredentialsError, RateLimitedError } from './client';
+import { AccountDisabledError, AuthDisabledError, AuthResponseError, InvalidCredentialsError, RateLimitedError, TwoFactorRequiredError } from './client';
 
 export interface AuthUser {
   id: string;
@@ -124,6 +124,13 @@ export function AuthProvider({ children, baseURL }: { children: ReactNode; baseU
 
     if (!resp.ok) {
       throw mapLoginError(resp, responsePayload);
+    }
+
+    if (hasTwoFactorRedirect(responsePayload)) {
+      setUser(null);
+      setIsAuthenticated(false);
+      setSession(null);
+      throw new TwoFactorRequiredError(resp);
     }
 
     if (responsePayload && typeof responsePayload === 'object' && 'error' in responsePayload && (responsePayload as { error?: unknown }).error) {
@@ -275,6 +282,28 @@ function toAuthUser(userData: BetterAuthUserLike): AuthUser {
     status: 'active',
     createdAt: userData.createdAt,
   };
+}
+
+function hasTwoFactorRedirect(payload: unknown): boolean {
+  if (!payload || typeof payload !== 'object') return false;
+  const body = payload as {
+    twoFactorRedirect?: unknown;
+    data?: { twoFactorRedirect?: unknown };
+    error?: { code?: unknown; message?: unknown };
+    code?: unknown;
+    message?: unknown;
+  };
+  const code = String(body.error?.code || body.code || '').toLowerCase();
+  const message = String(body.error?.message || body.message || '').toLowerCase();
+  return Boolean(
+    body.twoFactorRedirect ||
+    body.data?.twoFactorRedirect ||
+    code.includes('two_factor') ||
+    code.includes('2fa') ||
+    message.includes('two-factor') ||
+    message.includes('two factor') ||
+    message.includes('2fa')
+  );
 }
 
 function mapLoginError(response: Response, payload: unknown): Error {

@@ -1,7 +1,7 @@
 import { FormEvent, useEffect, useRef, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router';
 import { useAuth } from './context';
-import { AuthDisabledError, InvalidCredentialsError, RateLimitedError, AccountDisabledError } from './client';
+import { AuthDisabledError, InvalidCredentialsError, RateLimitedError, AccountDisabledError, TwoFactorRequiredError } from './client';
 import { setPageMetadata } from '../metadata';
 
 export function LoginPage() {
@@ -51,6 +51,11 @@ export function LoginPage() {
       await login({ email: email.trim(), password });
       navigate(returnTo, { replace: true });
     } catch (err) {
+      if (err instanceof TwoFactorRequiredError) {
+        const params = new URLSearchParams({ modo: 'challenge', retorno: returnTo });
+        navigate(`/acceso/2fa?${params.toString()}`, { replace: true });
+        return;
+      }
       if (err instanceof AuthDisabledError) {
         setError('La autenticación no está disponible en este momento.');
       } else if (err instanceof InvalidCredentialsError) {

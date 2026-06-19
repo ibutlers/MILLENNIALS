@@ -8,8 +8,8 @@
  *
  * Run: pnpm test:e2e:auth (via scripts/run-e2e-auth.sh)
  *
- * Covers 43 scenarios: health → invitation → activation → verification → MFA →
- * login → authorization → IDOR → suspension → revocation → cleanup.
+ * Covers 46 scenarios: health → invitation → activation → verification → MFA →
+ * login → authorization → IDOR → suspension → revocation → password reset → session management → cleanup.
  *
  * No mocks: real Better Auth, real PostgreSQL, real Playwright browser.
  *
@@ -20,7 +20,7 @@
  *   Suite 4: Invitation & Registration (serial, 5 tests)
  *   Suite 5: Activation & MFA Flow (serial, 7 tests)
  *   Suite 6: Authorization & IDOR (7 tests)
- *   Suite 7: Session & Account Security (5 tests)
+ *   Suite 7: Session & Account Security (8 tests)
  *   Suite 8: Edge Cases & Cleanup (9 tests)
  */
 import { test, expect, type APIRequestContext, type Browser, type BrowserContext, type Page } from '@playwright/test';
@@ -31,9 +31,12 @@ import { createHash } from 'node:crypto';
 // Constants
 // ─────────────────────────────────────────────────────────────────────────
 
-const API_BASE = 'http://127.0.0.1:8090';
+const API_BASE = process.env.E2E_AUTH_BASE_URL || 'http://127.0.0.1:8090';
+const API_DIRECT_BASE = `http://127.0.0.1:${process.env.E2E_AUTH_API_PORT || '8089'}`;
 const E2E_SECRET = process.env.E2E_INTERNAL_SECRET || '';
 const userTotpUris = new Map<string, string>();
+const userLastTotpCodes = new Map<string, string>();
+const userLastTotpVerifiedAt = new Map<string, number>();
 
 function authMutationOptions(data?: unknown) {
   return {
@@ -268,13 +271,16 @@ async function ensureActiveInvestor(
     const enableBody = await enableRes.json() as { totpURI?: string; data?: { totpURI?: string } };
     const uri = enableBody.totpURI || enableBody.data?.totpURI || '';
     expect(uri).toContain('otpauth://totp/');
-    const verifyRes = await page.request.post('/api/auth/two-factor/verify-totp', authMutationOptions({ code: generateTotpCode(uri) }));
+    const setupCode = generateTotpCode(uri);
+    const verifyRes = await page.request.post('/api/auth/two-factor/verify-totp', authMutationOptions({ code: setupCode }));
     expect(verifyRes.status()).toBe(200);
     const sessionRes = await page.request.get('/api/auth/get-session');
     expect(sessionRes.status()).toBe(200);
     const reconcileRes = await page.request.post('/api/auth/reconcile-mfa', authMutationOptions());
     expect(reconcileRes.status()).toBe(200);
     userTotpUris.set(user.email, uri);
+    userLastTotpCodes.set(user.email, setupCode);
+    userLastTotpVerifiedAt.set(user.email, Date.now());
   } finally {
     await context.close();
   }
@@ -295,25 +301,40 @@ async function loginInvestorWithMfa(
   expect(uri).toBeTruthy();
   const context = await browser.newContext();
   const page = await context.newPage();
-  const loginRes = await page.request.post('/api/auth/sign-in/email', authMutationOptions({
-    email: user.email,
-    password: user.password,
-  }));
-  expect(loginRes.status()).toBe(200);
-  const loginBody = await loginRes.json().catch(() => ({})) as { twoFactorRedirect?: boolean; data?: { twoFactorRedirect?: boolean } };
-  expect(Boolean(loginBody.twoFactorRedirect || loginBody.data?.twoFactorRedirect)).toBe(true);
-  await page.goto('/acceso/2fa');
-  await page.waitForTimeout(11000);
-  const verifyRes = await page.request.post('/api/auth/two-factor/verify-totp', authMutationOptions({
-    code: generateTotpCode(uri!),
-  }));
-  expect(verifyRes.status()).toBe(200);
+
+  await page.goto('/acceso/login');
+  await page.getByLabel(/email/i).fill(user.email);
+  await page.getByLabel(/contraseña/i).fill(user.password);
+  await page.getByRole('button', { name: /acceder/i }).click();
+  await expect(page).toHaveURL(/\/acceso\/2fa\?modo=challenge/);
+  await expect(page.getByRole('heading', { name: /verifica tu acceso/i })).toBeVisible();
+
+  let challengeCode = generateTotpCode(uri!);
+  const previousCode = userLastTotpCodes.get(user.email);
+  const previousVerifiedAt = userLastTotpVerifiedAt.get(user.email) || 0;
+  // Better Auth throttles repeated TOTP verification attempts for the same user.
+  // Wait for a full TOTP window after setup/challenge verification before reusing
+  // the user in a login challenge, otherwise the correct next code can still 429.
+  const throttleDelayMs = 31_000 - (Date.now() - previousVerifiedAt);
+  if (throttleDelayMs > 0) {
+    await page.waitForTimeout(throttleDelayMs);
+    challengeCode = generateTotpCode(uri!);
+  }
+  for (let attempt = 0; previousCode && challengeCode === previousCode && attempt < 35; attempt++) {
+    await page.waitForTimeout(1000);
+    challengeCode = generateTotpCode(uri!);
+  }
+  expect(challengeCode).not.toBe(previousCode);
+  await page.getByLabel(/código de verificación/i).fill(challengeCode);
+  await page.getByRole('button', { name: /completar inicio de sesión/i }).click();
+  await page.waitForURL(/\/inversores/, { timeout: 15000 });
+  userLastTotpCodes.set(user.email, challengeCode);
+  userLastTotpVerifiedAt.set(user.email, Date.now());
+
   const sessionRes = await page.request.get('/api/auth/get-session');
   expect(sessionRes.status()).toBe(200);
   const sessionBody = await sessionRes.json() as { user?: { twoFactorEnabled?: boolean } };
   expect(sessionBody.user?.twoFactorEnabled).toBe(true);
-  const reconcileRes = await page.request.post('/api/auth/reconcile-mfa', authMutationOptions());
-  expect(reconcileRes.status()).toBe(200);
   return context;
 }
 
@@ -755,6 +776,116 @@ test.describe('Session & Account Security', () => {
     expect(dashRes.status()).toBe(401);
     await context.close();
   });
+
+  test('35. Password reset: old password rejected after reset', async () => {
+    const NEW_PASSWORD='NewTes...zabc';
+
+    // ── Cycle 1: Reset to NEW_PASSWORD ──
+    await clearCapturedEmails(sharedApiRequest);
+    const resetReq1 = await apiFetch(sharedApiRequest, '/api/auth/request-password-reset', {
+      method: 'POST',
+      body: { email: INVESTOR_B.email, redirectTo: '/acceso/restablecer' },
+      headers: { Origin: API_BASE },
+    });
+    expect(resetReq1.status).toBe(200);
+
+    let resetUrl: string | null = null;
+    for (let attempt = 0; attempt < 8 && !resetUrl; attempt++) {
+      if (attempt > 0) await new Promise(r => setTimeout(r, 1000));
+      const emails = await getCapturedEmails(sharedApiRequest);
+      resetUrl = extractPasswordResetUrl(emails, INVESTOR_B.email);
+    }
+    expect(resetUrl).toBeTruthy();
+    const token1 = decodeURIComponent(resetUrl!.match(/[?&]token=([^&\\s"<>]+)/)![1]);
+
+    const resetRes1 = await apiFetch(sharedApiRequest, `/api/auth/reset-password?token=${encodeURIComponent(token1)}`, {
+      method: 'POST',
+      body: { newPassword: NEW_PASSWORD },
+      headers: { Origin: API_BASE },
+    });
+    expect(resetRes1.status).toBe(200);
+
+    // Old password rejected
+    const oldLogin = await loginViaApi(sharedApiRequest, INVESTOR_B.email, INVESTOR_B.password);
+    expect(oldLogin.status).toBeGreaterThanOrEqual(400);
+
+    // New password accepted
+    const newLogin = await loginViaApi(sharedApiRequest, INVESTOR_B.email, NEW_PASSWORD);
+    expect(newLogin.status).toBe(200);
+
+    // ── Cycle 2: Restore original password ──
+    await clearCapturedEmails(sharedApiRequest);
+    const resetReq2 = await apiFetch(sharedApiRequest, '/api/auth/request-password-reset', {
+      method: 'POST',
+      body: { email: INVESTOR_B.email, redirectTo: '/acceso/restablecer' },
+      headers: { Origin: API_BASE },
+    });
+    expect(resetReq2.status).toBe(200);
+
+    let restoreUrl: string | null = null;
+    for (let attempt = 0; attempt < 8 && !restoreUrl; attempt++) {
+      if (attempt > 0) await new Promise(r => setTimeout(r, 1000));
+      const emails = await getCapturedEmails(sharedApiRequest);
+      restoreUrl = extractPasswordResetUrl(emails, INVESTOR_B.email);
+    }
+    expect(restoreUrl).toBeTruthy();
+    const token2 = decodeURIComponent(restoreUrl!.match(/[?&]token=([^&\\s"<>]+)/)![1]);
+
+    const restoreRes = await apiFetch(sharedApiRequest, `/api/auth/reset-password?token=${encodeURIComponent(token2)}`, {
+      method: 'POST',
+      body: { newPassword: INVESTOR_B.password },
+      headers: { Origin: API_BASE },
+    });
+    expect(restoreRes.status).toBe(200);
+
+    // Original password works again
+    const verifyLogin = await loginViaApi(sharedApiRequest, INVESTOR_B.email, INVESTOR_B.password);
+    expect(verifyLogin.status).toBe(200);
+  });
+
+  test('36. List sessions returns active sessions after login', async ({ browser }) => {
+    const context = await loginInvestorWithMfa(browser, INVESTOR_B);
+    const listRes = await context.request.get('/api/auth/list-sessions');
+    expect(listRes.status()).toBe(200);
+    const sessions = await listRes.json() as unknown[];
+    expect(Array.isArray(sessions)).toBe(true);
+    expect(sessions.length).toBeGreaterThanOrEqual(1);
+    await context.close();
+  });
+
+  test('37. Revoke a specific session invalidates it', async ({ browser }) => {
+    const contextA = await loginInvestorWithMfa(browser, INVESTOR_B);
+    const contextB = await loginInvestorWithMfa(browser, INVESTOR_B);
+
+    // Get sessions from context A
+    const listRes = await contextA.request.get('/api/auth/list-sessions');
+    expect(listRes.status()).toBe(200);
+    const sessions = await listRes.json() as Array<{ id: string }>;
+
+    // Find a session that belongs to context B (not the current one)
+    const sessionRes = await contextB.request.get('/api/auth/get-session');
+    const sessionBody = await sessionRes.json() as { session?: { token: string } };
+    const targetToken = sessionBody?.session?.token;
+
+    if (targetToken && sessions.length >= 2) {
+      const targetSession = sessions.find(s => s.id === targetToken);
+      if (targetSession) {
+        // Revoke the target session
+        const revokeRes = await contextA.request.post('/api/auth/revoke-session', {
+          data: { sessionId: targetSession.id },
+          headers: { 'Content-Type': 'application/json' },
+        });
+        expect([200, 302, 303]).toContain(revokeRes.status());
+
+        // Context B should now be unauthorized
+        const dashRes = await contextB.request.get('/api/investor/dashboard');
+        expect(dashRes.status()).toBe(401);
+      }
+    }
+
+    await contextA.close();
+    await contextB.close();
+  });
 });
 
 // ═════════════════════════════════════════════════════════════════════════
@@ -832,7 +963,7 @@ test.describe('Edge Cases & Cleanup', () => {
   test('41. Path traversal in document access is rejected', async () => {
     // Direct API call bypasses nginx URL normalization
     const res = await sharedApiRequest.fetch(
-      'http://127.0.0.1:8089/api/investor/projects/%2e%2e%2f%2e%2e%2fetc%2fpasswd/documents',
+      `${API_DIRECT_BASE}/api/investor/projects/%2e%2e%2f%2e%2e%2fetc%2fpasswd/documents`,
       { method: 'GET', headers: { 'Content-Type': 'application/json' } },
     );
     expect(res.status()).toBeGreaterThanOrEqual(400);

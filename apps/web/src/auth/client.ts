@@ -33,6 +33,10 @@ export class AccountDisabledError extends AuthResponseError {
   constructor(response: Response) { super('Account disabled', response); this.name = 'AccountDisabledError'; }
 }
 
+export class TwoFactorRequiredError extends AuthResponseError {
+  constructor(response: Response) { super('Two-factor verification required', response); this.name = 'TwoFactorRequiredError'; }
+}
+
 // ── Legacy API functions ──
 
 export interface UserResponse {

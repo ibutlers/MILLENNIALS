@@ -1,5 +1,7 @@
 import { defineConfig } from '@playwright/test';
 
+const BASE_URL = process.env.E2E_AUTH_BASE_URL || 'http://127.0.0.1:8090';
+
 export default defineConfig({
   testDir: './e2e',
   testMatch: 'auth.spec.ts',
@@ -10,7 +12,7 @@ export default defineConfig({
   retries: 0,
   reporter: [['line'], ['html', { open: 'never' }]],
   use: {
-    baseURL: 'http://127.0.0.1:8090',
+    baseURL: BASE_URL,
     trace: 'on-first-retry',
     screenshot: 'only-on-failure',
     extraHTTPHeaders: {},
