@@ -162,6 +162,23 @@ describe('investment requests migration', () => {
 });
 
 
+describe('opportunity project financing migration', () => {
+  const sql = readFileSync(resolve(__dirname, 'db/migrations/0017_add_opportunity_project_financing.sql'), 'utf8');
+
+  it('adds explicit public project total and bank financing amounts', () => {
+    expect(sql).toMatch(/ALTER\s+TABLE\s+opportunities[\s\S]*ADD\s+COLUMN\s+project_total_amount_cents\s+bigint/i);
+    expect(sql).toMatch(/ADD\s+COLUMN\s+bank_financing_amount_cents\s+bigint/i);
+    expect(sql).toMatch(/project_total_amount_cents\s+IS\s+NULL\s+OR\s+project_total_amount_cents\s+>=\s+0/i);
+    expect(sql).toMatch(/bank_financing_amount_cents\s+IS\s+NULL\s+OR\s+bank_financing_amount_cents\s+>=\s+0/i);
+  });
+
+  it('is runner-owned and deterministic', () => {
+    expect(sql).not.toMatch(/IF\s+NOT\s+EXISTS/i);
+    expect(sql).not.toMatch(/schema_migrations/i);
+  });
+});
+
+
 describe('migration directory resolution', () => {
   const originalNodeEnv = process.env.NODE_ENV;
   const originalMigrationsDir = process.env.MIGRATIONS_DIR;

@@ -125,6 +125,8 @@ describe("shared contracts", () => {
         currency: "EUR",
         targetAmount: { cents: 100000, currency: "EUR", formatted: "€1,000" },
         committedAmount: null,
+        projectTotalAmount: { cents: 250000, currency: "EUR", formatted: "€2,500" },
+        bankFinancingAmount: { cents: 150000, currency: "EUR", formatted: "€1,500" },
         minimumInvestment: { cents: 10000, currency: "EUR", formatted: "€100" },
         estimatedTermMonths: 12,
         targetReturnType: "target_irr",

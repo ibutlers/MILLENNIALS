@@ -68,6 +68,8 @@ export const opportunitySummarySchema = z.object({
   currency: z.string(),
   targetAmount: moneyResponseSchema,
   committedAmount: moneyResponseSchema,
+  projectTotalAmount: moneyResponseSchema,
+  bankFinancingAmount: moneyResponseSchema,
   minimumInvestment: moneyResponseSchema,
   estimatedTermMonths: z.number().int(),
   targetReturnType: returnTypeSchema,

@@ -22,6 +22,8 @@ export const opportunitySummarySchema = z.object({
   currency: z.string(),
   targetAmount: moneySchema,
   committedAmount: moneySchema,
+  projectTotalAmount: moneySchema,
+  bankFinancingAmount: moneySchema,
   minimumInvestment: moneySchema,
   estimatedTermMonths: z.number().int(),
   targetReturnType: opportunityReturnTypeSchema,
@@ -154,11 +156,11 @@ export function formatMoneyFromCents(cents: number, currency = 'EUR') {
   }).format(Math.max(0, cents) / 100);
 }
 
-export function getInvestmentBreakdown(opportunity: Pick<PublicOpportunity, 'targetAmount' | 'committedAmount' | 'currency'>) {
-  const currency = opportunity.targetAmount?.currency ?? opportunity.committedAmount?.currency ?? opportunity.currency ?? 'EUR';
-  const totalCents = opportunity.targetAmount?.cents ?? 0;
+export function getInvestmentBreakdown(opportunity: Pick<PublicOpportunity, 'targetAmount' | 'committedAmount' | 'projectTotalAmount' | 'bankFinancingAmount' | 'currency'>) {
+  const currency = opportunity.projectTotalAmount?.currency ?? opportunity.targetAmount?.currency ?? opportunity.committedAmount?.currency ?? opportunity.currency ?? 'EUR';
+  const totalCents = opportunity.projectTotalAmount?.cents ?? opportunity.targetAmount?.cents ?? 0;
   const contributedCents = opportunity.committedAmount?.cents ?? 0;
-  const bankFinancedCents = Math.max(0, totalCents - contributedCents);
+  const bankFinancedCents = opportunity.bankFinancingAmount?.cents ?? Math.max(0, totalCents - contributedCents);
 
   return {
     total: formatMoneyFromCents(totalCents, currency),

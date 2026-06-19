@@ -21,6 +21,8 @@ type DbOpportunity = {
   currency: string;
   target_amount_cents: string;
   committed_amount_cents: string;
+  project_total_amount_cents: string | null;
+  bank_financing_amount_cents: string | null;
   minimum_investment_cents: string;
   estimated_term_months: number;
   target_return_type: string;
@@ -63,6 +65,8 @@ function mapSummary(row: DbOpportunity, media: DbMedia | null = null) {
     currency,
     targetAmount: serializeMoney(row.target_amount_cents, currency),
     committedAmount: serializeMoney(row.committed_amount_cents, currency),
+    projectTotalAmount: serializeMoney(row.project_total_amount_cents ?? row.target_amount_cents, currency),
+    bankFinancingAmount: serializeMoney(row.bank_financing_amount_cents ?? Math.max(0, Number(row.target_amount_cents) - Number(row.committed_amount_cents)), currency),
     minimumInvestment: serializeMoney(row.minimum_investment_cents, currency),
     estimatedTermMonths: row.estimated_term_months,
     targetReturnType: row.target_return_type,

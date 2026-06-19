@@ -13,6 +13,8 @@ export const opportunitySummary = {
   currency: 'EUR',
   targetAmount: { cents: 125000000, currency: 'EUR', formatted: '1.250.000 €' },
   committedAmount: { cents: 53000000, currency: 'EUR', formatted: '530.000 €' },
+  projectTotalAmount: { cents: 68000000, currency: 'EUR', formatted: '680.000 €' },
+  bankFinancingAmount: { cents: 15000000, currency: 'EUR', formatted: '150.000 €' },
   minimumInvestment: { cents: 1500000, currency: 'EUR', formatted: '15.000 €' },
   estimatedTermMonths: 18,
   targetReturnType: 'target_annual_return',
