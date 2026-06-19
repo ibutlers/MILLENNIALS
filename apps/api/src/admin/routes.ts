@@ -650,7 +650,7 @@ export function registerAdminRoutes(app: FastifyInstance, options: { pool: Pool;
       `SELECT * FROM (
          SELECT id::text,
                 user_id::text,
-                event_type,
+                event_type::text AS event_type,
                 entity_type,
                 entity_reference,
                 summary,

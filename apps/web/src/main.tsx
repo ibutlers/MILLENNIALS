@@ -9,12 +9,12 @@ import './styles.css';
 
 // ── Existing lazy pages ──
 const PlannedAccess = lazy(() => import('./PlannedAccess').then((module) => ({ default: module.PlannedAccess })));
-const PrivateAccessPage = lazy(() => import('./PrivateAccessPage').then((module) => ({ default: module.PrivateAccessPage })));
 const OpportunityDetailPage = lazy(() => import('./opportunities/OpportunityDetailPage').then((module) => ({ default: module.OpportunityDetailPage })));
 const LeadFormPage = lazy(() => import('./leads/LeadFormPage').then((module) => ({ default: module.LeadFormPage })));
 const PrivacyPage = lazy(() => import('./leads/PrivacyPage').then((module) => ({ default: module.PrivacyPage })));
 
 // ── Auth pages ──
+const AccessEntryPage = lazy(() => import('./auth/AccessEntryPage').then((module) => ({ default: module.AccessEntryPage })));
 const LoginPage = lazy(() => import('./auth/LoginPage').then((module) => ({ default: module.LoginPage })));
 const RegisterPage = lazy(() => import('./auth/RegisterPage').then((module) => ({ default: module.RegisterPage })));
 const VerifyEmailPage = lazy(() => import('./auth/VerifyEmailPage').then((module) => ({ default: module.VerifyEmailPage })));
@@ -88,7 +88,7 @@ const router = createBrowserRouter([
   { path: '/solicitar-acceso', loader: redirectTo('/coinvierte'), element: null as unknown as React.ReactNode },
 
   // ── Auth routes ──
-  { path: '/acceso', element: lazyPage(<PrivateAccessPage />) },
+  { path: '/acceso', element: lazyPage(<AccessEntryPage />) },
   { path: '/acceso/login', element: lazyPage(<LoginPage />) },
   { path: '/acceso/activar', element: lazyPage(<ActivationPage />) },
   { path: '/acceso/verificar', element: lazyPage(<VerifyEmailPage />) },
