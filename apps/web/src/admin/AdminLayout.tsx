@@ -50,6 +50,12 @@ export default function AdminLayout() {
         <div className="mx-auto max-w-3xl px-6 py-20 text-center">
           <h1 className="font-serif text-4xl">Acceso restringido</h1>
           <p className="mt-4 text-[#9B7E5F]">Inicia sesión para acceder al panel.</p>
+          <Link
+            to={`/acceso/login?retorno=${encodeURIComponent(location.pathname + location.search)}`}
+            className="mt-8 inline-flex rounded bg-[#7FA88C] px-5 py-3 font-medium text-[#08191C] transition-colors hover:bg-[#5C8D7A] focus:outline-2 focus:outline-offset-2 focus:outline-[#7FA88C]"
+          >
+            Iniciar sesión
+          </Link>
         </div>
       </main>
     );
