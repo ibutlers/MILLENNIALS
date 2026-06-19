@@ -444,7 +444,7 @@ function OpportunityCard({ opportunity }: { opportunity: PublicOpportunity }) {
         <p className="mt-3 leading-7 text-charcoal/70 line-clamp-4">{opportunity.shortDescription}</p>
         {showFinancials ? (
           <dl className="mt-5 grid grid-cols-2 gap-px overflow-hidden rounded-lg border border-frost bg-frost text-sm">
-            <div className="bg-white p-3"><dt className="text-charcoal/60">{returnTypeLabel(opportunity.targetReturnType)}</dt><dd className="mt-1 font-serif text-2xl text-ink">{formatReturnValue(opportunity.targetReturn)}</dd></div>
+            <div className="bg-white p-3"><dt className="text-charcoal/60">{returnTypeLabel(opportunity.targetReturnType)}</dt><dd className="mt-1 font-serif text-2xl text-ink">{formatReturnValue(opportunity.targetReturn, opportunity.estimatedTermMonths)}</dd></div>
             <div className="bg-white p-3"><dt className="text-charcoal/60">Plazo estimado</dt><dd className="mt-1 font-semibold text-ink">{opportunity.estimatedTermMonths} meses</dd></div>
             <div className="bg-white p-3"><dt className="text-charcoal/60">Ticket mínimo</dt><dd className="mt-1 font-semibold text-ink">{opportunity.minimumInvestment?.formatted ?? '—'}</dd></div>
             <div className="bg-white p-3"><dt className="text-charcoal/60">Capital objetivo</dt><dd className="mt-1 font-semibold text-ink">{opportunity.targetAmount?.formatted ?? '—'}</dd></div>

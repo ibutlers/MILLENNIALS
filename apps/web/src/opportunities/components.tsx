@@ -83,7 +83,7 @@ export function OpportunityCard({ opportunity, preserveSearch = true }: { opport
             <Metric label="Capital objetivo" value={opportunity.targetAmount?.formatted ?? '—'} />
             <Metric label="Comprometido" value={opportunity.committedAmount?.formatted ?? '—'} />
             <Metric label="Plazo" value={`${opportunity.estimatedTermMonths} meses`} />
-            <Metric label={returnTypeLabel(opportunity.targetReturnType)} value={formatReturnValue(opportunity.targetReturn)} emphasis />
+            <Metric label={returnTypeLabel(opportunity.targetReturnType)} value={formatReturnValue(opportunity.targetReturn, opportunity.estimatedTermMonths)} emphasis />
             <Metric label="Cierre" value={formatDate(opportunity.closingDate)} />
           </dl>
         ) : null}

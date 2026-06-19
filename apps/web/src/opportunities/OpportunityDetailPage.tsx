@@ -119,7 +119,7 @@ export function OpportunityDetailPage() {
                   <Metric label="Capital comprometido" value={opportunity.committedAmount?.formatted ?? '—'} />
                   <Metric label="Ticket mínimo" value={opportunity.minimumInvestment?.formatted ?? '—'} />
                   <Metric label="Plazo" value={`${opportunity.estimatedTermMonths} meses`} />
-                  <Metric label={returnTypeLabel(opportunity.targetReturnType)} value={formatReturnValue(opportunity.targetReturn)} emphasis />
+                  <Metric label={returnTypeLabel(opportunity.targetReturnType)} value={formatReturnValue(opportunity.targetReturn, opportunity.estimatedTermMonths)} emphasis />
                   <Metric label="Riesgo" value={`Riesgo ${riskLabel(opportunity.riskLevel)} · no regulatorio`} />
                   <Metric label="Cierre" value={formatDate(opportunity.closingDate)} />
                   <Metric label="Estado" value={statusLabel(opportunity.status)} />

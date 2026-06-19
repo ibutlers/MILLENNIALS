@@ -146,8 +146,13 @@ export function returnTypeLabel(type: OpportunityReturnType) {
   }[type];
 }
 
-export function formatReturnValue(value: { formatted: string | null }) {
-  return value.formatted ? `${value.formatted} +50%*` : '—';
+export function formatReturnValue(value: { basisPoints: number | null; formatted: string | null }, estimatedTermMonths: number) {
+  if (value.basisPoints === null) return '—';
+
+  const totalReturnPercent = (value.basisPoints / 100) * (estimatedTermMonths / 12);
+  const formattedTotal = new Intl.NumberFormat('es-ES', { maximumFractionDigits: 1 }).format(totalReturnPercent);
+
+  return `${formattedTotal}% +50%*`;
 }
 
 export function formatDate(value: string | null) {
