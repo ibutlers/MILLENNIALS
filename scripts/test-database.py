@@ -41,6 +41,7 @@ EXPECTED = [
     '0015_add_project_access_capital.sql',
     '0016_add_investment_requests.sql',
     '0017_add_opportunity_project_financing.sql',
+    '0018_align_leads_assigned_user_to_app_users.sql',
 ]
 FAILED = False
 
@@ -205,7 +206,7 @@ def main():
         r = _psql(cn, sec, 'SELECT count(*) FROM schema_migrations')
         mc = r.stdout.strip()
         print('  migrations=' + mc)
-        _check(mc == '17', 'esperadas 17 migraciones, hay ' + mc)
+        _check(mc == '18', 'esperadas 18 migraciones, hay ' + mc)
 
         r = _psql(cn, sec,
                   'SELECT id FROM schema_migrations ORDER BY applied_at')
@@ -225,6 +226,10 @@ def main():
             with open(mp, 'rb') as f:
                 file_cs = hashlib.sha256(f.read()).hexdigest()
             _check(db_cs == file_cs, 'checksum mismatch: ' + name)
+
+        fk = _psql(cn, sec,
+                   "SELECT confrelid::regclass::text FROM pg_constraint WHERE conrelid = 'leads'::regclass AND conname = 'leads_assigned_user_id_fkey'").stdout.strip()
+        _check(fk == 'app_users', 'leads.assigned_user_id debe referenciar app_users, referencia ' + fk)
         print('    OK')
 
         # second migrate: no-op
@@ -350,14 +355,14 @@ def main():
         cc = _psql_host(cn, sec,
                         'SELECT count(*) FROM schema_migrations',
                         db=cdb).stdout.strip()
-        _check(cc == '17', 'concurrencia: esperadas 16, hay ' + cc)
-        print('  concurrency: OK (17 migraciones, 0 duplicados)')
+        _check(cc == '18', 'concurrencia: esperadas 18, hay ' + cc)
+        print('  concurrency: OK (18 migraciones, 0 duplicados)')
         du = _psql_host(cn, sec,
                         'SELECT id, count(*) FROM schema_migrations '
                         'GROUP BY id HAVING count(*) > 1',
                         db=cdb).stdout.strip()
         _check(du == '', 'filas duplicadas: ' + du)
-        print('  concurrency: OK (17 migraciones, 0 duplicados)')
+        print('  concurrency: OK (18 migraciones, 0 duplicados)')
 
         # ─────────────────────────────────────────────────────────────────
         # Backup/restore auth tables
