@@ -4,6 +4,7 @@ import { useParams, useNavigate } from 'react-router';
 import { apiFetch } from '../../api/client';
 import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { assetUrl, getAssetById } from '../assetCatalog';
+import { makeClientId } from './ids';
 import {
   type HighlightItem,
   type RiskItem,
@@ -371,19 +372,19 @@ export function useEditorForm(): UseEditorFormReturn {
   useEffect(() => {
     if (subData?.data) {
       const h: HighlightItem[] = (subData.data.highlights || []).map((item, i) => ({
-        _id: crypto.randomUUID(),
+        _id: makeClientId(),
         label: item.label,
         value: item.value,
         position: item.position ?? i,
       }));
       const r: RiskItem[] = (subData.data.risks || []).map((item, i) => ({
-        _id: crypto.randomUUID(),
+        _id: makeClientId(),
         title: item.title,
         description: item.description,
         position: item.position ?? i,
       }));
       const m: MilestoneItem[] = (subData.data.milestones || []).map((item, i) => ({
-        _id: crypto.randomUUID(),
+        _id: makeClientId(),
         title: item.title,
         description: item.description,
         plannedDate: item.planned_date || '',
@@ -391,7 +392,7 @@ export function useEditorForm(): UseEditorFormReturn {
         position: item.position ?? i,
       }));
       const med: MediaItem[] = (subData.data.media || []).map((item, i) => ({
-        _id: crypto.randomUUID(),
+        _id: makeClientId(),
         assetId: item.url || item.asset_id || '',
         alt: item.alt_text || '',
         primary: i === 0,

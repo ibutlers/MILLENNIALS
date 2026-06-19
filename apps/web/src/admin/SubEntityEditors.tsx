@@ -1,8 +1,9 @@
 import { useState } from 'react';
+import { makeClientId } from './editor/ids';
 
 interface Identifiable { _id: string }
 
-function makeId(): string { return crypto.randomUUID(); }
+function makeId(): string { return makeClientId(); }
 
 // ── Reorder helper ──
 function reorder<T extends Identifiable>(items: T[], from: number, to: number): T[] {
