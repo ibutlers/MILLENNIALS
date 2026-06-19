@@ -3,6 +3,7 @@ import type { Pool, PoolClient } from 'pg';
 export type LeadConversionMode =
   | 'activated_existing_user'
   | 'created_from_better_auth_user'
+  | 'created_pending_user'
   | 'invitation_required';
 
 export interface LeadConversionResult {
@@ -24,6 +25,10 @@ export interface ProjectCapitalAssignmentInput {
 
 function normalizeEmail(email: string): string {
   return email.trim().toLowerCase();
+}
+
+function pendingLeadAuthId(leadId: string): string {
+  return `pending-lead:${leadId}`;
 }
 
 async function audit(client: PoolClient, params: {
@@ -115,6 +120,21 @@ export async function convertLeadToInvestor(
         );
         appUserId = created.id;
         mode = 'created_from_better_auth_user';
+      } else {
+        const displayName = [lead.first_name, lead.last_name].filter(Boolean).join(' ').trim() || emailNormalized;
+        const { rows: [created] } = await client.query(
+          `INSERT INTO app_users (
+             better_auth_user_id, email_normalized, display_name, role, status
+           ) VALUES ($1,$2,$3,'investor','pending_email')
+           ON CONFLICT (email_normalized) DO UPDATE SET
+             display_name = COALESCE(app_users.display_name, EXCLUDED.display_name),
+             role = CASE WHEN app_users.role = 'admin' THEN app_users.role ELSE 'investor'::app_user_role END,
+             updated_at = now()
+           RETURNING id, status, role`,
+          [pendingLeadAuthId(String(lead.id)), emailNormalized, displayName],
+        );
+        appUserId = created.id;
+        mode = 'created_pending_user';
       }
     }
 

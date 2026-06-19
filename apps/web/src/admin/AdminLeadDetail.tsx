@@ -111,6 +111,8 @@ export default function AdminLeadDetail() {
       const mode = result?.meta?.conversion?.mode;
       if (mode === 'activated_existing_user' || mode === 'created_from_better_auth_user') {
         setConversionNotice('Solicitud convertida: usuario inversor activo y listo para asignar capital por proyecto.');
+      } else if (mode === 'created_pending_user') {
+        setConversionNotice('Solicitud convertida: usuario inversor creado en estado pendiente. Ya aparece en Usuarios; falta enviar/completar la invitación de acceso.');
       } else if (mode === 'invitation_required') {
         setConversionNotice('Solicitud convertida: todavía no existe cuenta para este email. Hay que enviar invitación de acceso antes de que pueda aparecer como usuario activo.');
       } else {

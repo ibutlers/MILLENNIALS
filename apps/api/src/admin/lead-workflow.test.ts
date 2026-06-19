@@ -35,22 +35,25 @@ describe('lead workflow', () => {
     expect(calls.some((c) => /UPDATE leads/i.test(c.sql) && /status='converted'/i.test(c.sql))).toBe(true);
   });
 
-  it('does not fake an active user when the lead has no Better Auth/app user yet', async () => {
+  it('creates a pending investor user when converting a lead without a Better Auth/app user yet', async () => {
     const { pool, calls } = makeClient([
       [],
       [{ id: 'lead-1', public_reference: 'RS-1', email: 'new@example.com', first_name: 'New', last_name: 'Lead' }],
       [],
       [],
-      [{ id: 'lead-1', public_reference: 'RS-1', status: 'converted', assigned_user_id: null }],
+      [{ id: 'app-1', status: 'pending_email', role: 'investor' }],
+      [{ id: 'lead-1', public_reference: 'RS-1', status: 'converted', assigned_user_id: 'app-1' }],
       [],
       [],
     ]);
 
     const result = await convertLeadToInvestor(pool as never, { reference: 'RS-1', actorId: 'admin-1' });
 
-    expect(result.mode).toBe('invitation_required');
-    expect(result.appUserId).toBeNull();
-    expect(calls.some((c) => /INSERT INTO app_users/i.test(c.sql))).toBe(false);
+    expect(result.mode).toBe('created_pending_user');
+    expect(result.appUserId).toBe('app-1');
+    expect(calls.some((c) => /INSERT INTO app_users/i.test(c.sql) && /pending_email/i.test(c.sql))).toBe(true);
+    expect(calls.some((c) => c.params?.includes('pending-lead:lead-1'))).toBe(true);
+    expect(calls.some((c) => /UPDATE leads/i.test(c.sql) && /assigned_user_id/i.test(c.sql))).toBe(true);
   });
 
   it('upserts project access with committed capital and recomputes project committed amount', async () => {

@@ -29,6 +29,7 @@ import { createBetterAuthServer } from './auth/better-auth-server.js';
 import { createAuthEmailProvider } from './auth/email-provider.js';
 import { InvitationRepository } from './auth/invitations.js';
 import { registerInvitationRoutes } from './auth/invitation-routes.js';
+import { registerE2EAuthHelpers } from './auth/e2e-auth-helpers.js';
 
 export type AppDependencies = {
   pool?: Pool;
@@ -151,13 +152,26 @@ export function buildApp(dependencies: AppDependencies = {}): FastifyInstance {
           if (invResult.rows.length > 0) {
             const inv = invResult.rows[0];
 
-            // 2. Create app_user (idempotent)
-            await pgClient.query(
-              `INSERT INTO app_users (better_auth_user_id, email_normalized, display_name, role, status)
-               VALUES ($1, $2, $3, $4, 'pending_email')
-               ON CONFLICT (better_auth_user_id) DO NOTHING`,
+            // 2. Link a provisional lead-created app_user when present, otherwise create it.
+            const linkedPending = await pgClient.query(
+              `UPDATE app_users
+               SET better_auth_user_id = $1,
+                   display_name = COALESCE(display_name, $3),
+                   role = CASE WHEN role = 'admin' THEN role ELSE $4::app_user_role END,
+                   updated_at = now()
+               WHERE email_normalized = $2 AND better_auth_user_id LIKE 'pending-lead:%'
+               RETURNING id`,
               [baUserId, email, userName || email, inv.intended_role || 'investor'],
             );
+
+            if (linkedPending.rows.length === 0) {
+              await pgClient.query(
+                `INSERT INTO app_users (better_auth_user_id, email_normalized, display_name, role, status)
+                 VALUES ($1, $2, $3, $4, 'pending_email')
+                 ON CONFLICT (better_auth_user_id) DO NOTHING`,
+                [baUserId, email, userName || email, inv.intended_role || 'investor'],
+              );
+            }
 
             // 3. Fetch the app_user id
             const appUser = await pgClient.query(
@@ -221,13 +235,25 @@ export function buildApp(dependencies: AppDependencies = {}): FastifyInstance {
             if (pendingInv.rows.length > 0) {
               const inv = pendingInv.rows[0];
 
-              // Create app_user
-              await pgClient.query(
-                `INSERT INTO app_users (better_auth_user_id, email_normalized, display_name, role, status)
-                 VALUES ($1, $2, $3, $4, 'pending_email')
-                 ON CONFLICT (better_auth_user_id) DO NOTHING`,
+              const linkedPending = await pgClient.query(
+                `UPDATE app_users
+                 SET better_auth_user_id = $1,
+                     display_name = COALESCE(display_name, $3),
+                     role = CASE WHEN role = 'admin' THEN role ELSE $4::app_user_role END,
+                     updated_at = now()
+                 WHERE email_normalized = $2 AND better_auth_user_id LIKE 'pending-lead:%'
+                 RETURNING id`,
                 [baUserId, email, email, inv.intended_role || 'investor'],
               );
+
+              if (linkedPending.rows.length === 0) {
+                await pgClient.query(
+                  `INSERT INTO app_users (better_auth_user_id, email_normalized, display_name, role, status)
+                   VALUES ($1, $2, $3, $4, 'pending_email')
+                   ON CONFLICT (better_auth_user_id) DO NOTHING`,
+                  [baUserId, email, email, inv.intended_role || 'investor'],
+                );
+              }
 
               const appUser = await pgClient.query(
                 `SELECT id FROM app_users WHERE better_auth_user_id = $1`,
@@ -592,11 +618,7 @@ export function buildApp(dependencies: AppDependencies = {}): FastifyInstance {
 
   // ── E2E Auth helper routes (test-only, protected by x-e2e-secret) ──
   if (isBetterAuthEnabled(config) && config.e2eTestMode) {
-    import('./auth/e2e-auth-helpers.js').then(({ registerE2EAuthHelpers }) => {
-      registerE2EAuthHelpers(app, pool as Pool, config);
-    }).catch((err) => {
-      app.log.error({ err }, 'failed to register E2E auth helpers');
-    });
+    registerE2EAuthHelpers(app, pool as Pool, config);
   }
 
   // ── Investor routes (legacy, for AUTH_MODE=*** ──
