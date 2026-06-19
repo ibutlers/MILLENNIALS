@@ -43,9 +43,11 @@ async function getBetterAuthUserFromRequest(request: FastifyRequest, pool: Pool)
 
   const appUser = result.rows[0];
   if (!appUser) return null;
-  if (appUser.status !== 'active') return null;
-  if (!appUser.email_verified_at || !appUser.mfa_enabled_at) return null;
-  if (!session.user.twoFactorEnabled) return null;
+
+  const require2FA = process.env.BETTER_AUTH_REQUIRE_2FA !== 'false';
+  if (appUser.status !== 'active' && !(appUser.status === 'pending_mfa' && !require2FA)) return null;
+  if (!appUser.email_verified_at) return null;
+  if (require2FA && (!appUser.mfa_enabled_at || !session.user.twoFactorEnabled)) return null;
 
   const roles = [appUser.role];
   if (appUser.role === 'staff') roles.push('operator');

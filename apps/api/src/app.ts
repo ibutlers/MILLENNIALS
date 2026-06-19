@@ -269,24 +269,27 @@ export function buildApp(dependencies: AppDependencies = {}): FastifyInstance {
       },
 
       /**
-       * Transitions app_users from pending_email to pending_mfa after
-       * Better Auth email verification succeeds. Idempotent — safe to
-       * call multiple times; never upgrades from suspended/revoked/active,
-       * only from pending_email.
+       * Transitions app_users from pending_email after Better Auth email
+       * verification succeeds. If 2FA is required, the next state is
+       * pending_mfa; otherwise the user is activated directly.
+       * Idempotent — safe to call multiple times; never upgrades from
+       * suspended/revoked/active, only from pending_email.
        */
       transitionAfterEmailVerification: async (baUserId: string) => {
         const pgClient = await (pool as Pool).connect();
+        const nextStatus = config.betterAuthRequire2FA ? 'pending_mfa' : 'active';
         try {
           await pgClient.query('BEGIN');
 
           const result = await pgClient.query(
             `UPDATE app_users
-             SET status = 'pending_mfa',
+             SET status = $2::app_user_status,
                  email_verified_at = COALESCE(email_verified_at, now()),
+                 activated_at = CASE WHEN $2 = 'active' THEN COALESCE(activated_at, now()) ELSE activated_at END,
                  updated_at = now()
              WHERE better_auth_user_id = $1 AND status = 'pending_email'
-             RETURNING id, email_normalized`,
-            [baUserId],
+             RETURNING id, email_normalized, status`,
+            [baUserId, nextStatus],
           );
 
           if (result.rows.length > 0) {
@@ -297,7 +300,7 @@ export function buildApp(dependencies: AppDependencies = {}): FastifyInstance {
               [user.id, user.id, user.id],
             );
             const emailPrefix = String(user.email_normalized || '').slice(0, 3);
-            app.log.info({ baUserId, email: emailPrefix + '***' }, 'post-verification: pending_email→pending_mfa');
+            app.log.info({ baUserId, email: emailPrefix + '***', status: user.status }, 'post-verification: app_user transitioned');
           }
 
           await pgClient.query('COMMIT');
@@ -403,6 +406,7 @@ export function buildApp(dependencies: AppDependencies = {}): FastifyInstance {
   // ── Public config endpoint (minimal, no secrets exposed) ──
   app.get('/api/config/public', async () => ({
     authEnabled: isBetterAuthEnabled(config),
+    betterAuthRequire2FA: config.betterAuthRequire2FA,
   }));
 
   // ── Opportunities ──

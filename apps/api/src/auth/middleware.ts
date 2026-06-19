@@ -149,6 +149,8 @@ export function requireVerifiedEmail() {
  */
 export function requireMfa() {
   return async function preHandler(request: FastifyRequest, reply: FastifyReply) {
+    if (process.env.BETTER_AUTH_REQUIRE_2FA === 'false') return;
+
     const user = (request as any).appUser;
     const session = (request as any).betterAuthSession;
 
