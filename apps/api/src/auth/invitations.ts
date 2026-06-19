@@ -20,7 +20,7 @@ export interface AccessInvitation {
   coinvestLeadId: string | null;
   betterAuthUserId: string | null;
   appUserId: string | null;
-  intendedRole: 'investor' | 'staff' | 'admin';
+  intendedRole: 'investor' | 'staff' | 'admin' | 'operator';
   status: 'pending' | 'accepted' | 'expired' | 'revoked' | 'failed';
   createdAt: string;
   expiresAt: string;
@@ -36,7 +36,7 @@ export interface AccessInvitation {
 export interface CreateInvitationInput {
   emailNormalized: string;
   coinvestLeadId?: string;
-  intendedRole?: 'investor' | 'staff' | 'admin';
+  intendedRole?: 'investor' | 'staff' | 'admin' | 'operator';
   createdBy?: string;
   ttlHours?: number;
 }

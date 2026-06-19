@@ -1,16 +1,22 @@
 /**
  * Invitation API Routes
  *
- * Endpoints for staff/admin to manage access invitations.
- * All require authentication + staff or admin role.
+ * Endpoints for operator/admin to manage access invitations.
+ * Legacy staff rows are normalised by auth middleware.
  */
 
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import type { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import type { Pool } from 'pg';
 import { InvitationRepository } from './invitations.js';
 import { requireBetterAuthSession, requireActiveAppUser, requireRole } from './middleware.js';
 import type { AuthEmailProvider } from './email-provider.js';
+import { isAcceptedAppUserRole, toDatabaseAppUserRole } from './roles.js';
+
+type AppError = Error & { code?: string; statusCode?: number };
+
+function asAppError(error: unknown): AppError {
+  return error instanceof Error ? error as AppError : new Error('unknown_error');
+}
 
 function errorId(): string {
   return `err_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
@@ -32,14 +38,13 @@ export function registerInvitationRoutes(
   const { pool, emailProvider } = options;
   const repo = new InvitationRepository(pool);
 
-  // ── POST /api/v1/invitations — create invitation ──
+  // ---------- POST /api/v1/invitations ----------
   app.post('/api/v1/invitations', {
     preHandler: [
       requireBetterAuthSession(),
       requireActiveAppUser(pool),
-      requireRole('staff', 'admin'),
+      requireRole('operator', 'admin'),
     ],
-   
   }, async (request: FastifyRequest, reply: FastifyReply) => {
     const body = request.body as Record<string, unknown>;
     const email = typeof body.email === 'string' ? body.email : null;
@@ -52,17 +57,15 @@ export function registerInvitationRoutes(
 
     const emailNormalized = email.toLowerCase().trim();
 
-    // Validate role
-    if (!['investor', 'staff', 'admin'].includes(intendedRole)) {
-      return reply.status(400).send(publicError('invalid_request', 'Rol no válido.'));
+    if (!isAcceptedAppUserRole(intendedRole) && intendedRole !== 'staff') {
+      return reply.status(400).send(publicError('invalid_request', 'Rol no valido.'));
     }
 
     try {
-      // Find coinvest lead if reference provided
       let coinvestLeadId: string | null = null;
       if (coinvestLeadReference) {
         const leadResult = await pool.query(
-          `SELECT id FROM leads WHERE public_reference = $1`,
+          'SELECT id FROM leads WHERE public_reference = $1',
           [coinvestLeadReference],
         );
         if (leadResult.rows.length > 0) {
@@ -70,23 +73,22 @@ export function registerInvitationRoutes(
         }
       }
 
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const appUser = (request as any).appUser;
 
-      const { invitation } = await repo.create({
+      const { invitation, token } = await repo.create({
         emailNormalized,
         coinvestLeadId: coinvestLeadId || undefined,
-        intendedRole: intendedRole as 'investor' | 'staff' | 'admin',
+        intendedRole: toDatabaseAppUserRole(intendedRole),
         createdBy: appUser?.id,
       });
 
-      // Send invitation email
       try {
-        await emailProvider.sendInvitation(emailNormalized, invitation.publicReference);
+        await emailProvider.sendInvitation(emailNormalized, '/acceso/activar#token=' + token);
       } catch {
         request.log.warn({ ref: invitation.publicReference }, 'failed to send invitation email');
       }
 
-      // DO NOT return the token — it should be sent via email only
       return reply.status(201).send({
         data: {
           publicReference: invitation.publicReference,
@@ -96,30 +98,30 @@ export function registerInvitationRoutes(
         },
       });
     } catch (err) {
-      const code = (err as any).code;
-      const statusCode = (err as any).statusCode || 500;
+      const appError = asAppError(err);
+      const code = appError.code;
+      const statusCode = appError.statusCode || 500;
 
       if (code === 'duplicate_invitation') {
-        return reply.status(409).send(publicError('conflict', 'Ya existe una invitación activa para este email.'));
+        return reply.status(409).send(publicError('conflict', 'Ya existe una invitacion activa para este email.'));
       }
       if (code === 'active_user_exists') {
         return reply.status(409).send(publicError('conflict', 'Ya existe un usuario activo con este email.'));
       }
 
       request.log.error({ err }, 'invitation creation failed');
-      return reply.status(statusCode).send(publicError('internal_error', 'No se ha podido crear la invitación.'));
+      return reply.status(statusCode).send(publicError('internal_error', 'No se ha podido crear la invitacion.'));
     }
   });
 
-  // ── GET /api/v1/invitations — list invitations ──
+  // ---------- GET /api/v1/invitations ----------
   app.get('/api/v1/invitations', {
     preHandler: [
       requireBetterAuthSession(),
       requireActiveAppUser(pool),
-      requireRole('staff', 'admin'),
+      requireRole('operator', 'admin'),
     ],
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  }, async (request: FastifyRequest, reply: FastifyReply) => {
+  }, async (request: FastifyRequest, _reply: FastifyReply) => {
     const query = request.query as Record<string, string>;
     const result = await repo.list({
       status: query.status,
@@ -128,7 +130,6 @@ export function registerInvitationRoutes(
       offset: query.offset ? parseInt(query.offset, 10) : undefined,
     });
 
-    // Redact token hashes from response
     const safe = result.invitations.map((inv) => ({
       publicReference: inv.publicReference,
       emailNormalized: inv.emailNormalized,
@@ -145,7 +146,7 @@ export function registerInvitationRoutes(
     return { data: safe, meta: { total: result.total } };
   });
 
-  // ── POST /api/v1/invitations/validate — validate an invitation token (public, no auth needed) ──
+  // ---------- POST /api/v1/invitations/validate ----------
   app.post('/api/v1/invitations/validate', async (request: FastifyRequest, reply: FastifyReply) => {
     const body = request.body as Record<string, unknown>;
     const token = typeof body.token === 'string' ? body.token : null;
@@ -158,7 +159,7 @@ export function registerInvitationRoutes(
     const result = email ? await repo.validateToken(token, email) : await repo.validateTokenForActivation(token);
 
     if (!result.valid) {
-      return reply.status(400).send(publicError(`invitation_${result.reason}`, 'La invitación no es válida o ha expirado.'));
+      return reply.status(400).send(publicError('invitation_' + result.reason, 'La invitacion no es valida o ha expirado.'));
     }
 
     return {
@@ -170,28 +171,28 @@ export function registerInvitationRoutes(
     };
   });
 
-  // ── POST /api/v1/invitations/:reference/revoke — revoke an invitation ──
+  // ---------- POST /api/v1/invitations/:reference/revoke ----------
   app.post('/api/v1/invitations/:reference/revoke', {
     preHandler: [
       requireBetterAuthSession(),
       requireActiveAppUser(pool),
-      requireRole('staff', 'admin'),
+      requireRole('operator', 'admin'),
     ],
-   
   }, async (request: FastifyRequest, reply: FastifyReply) => {
     const { reference } = request.params as { reference: string };
     const body = request.body as Record<string, unknown> || {};
     const reason = typeof body.reason === 'string' ? body.reason : undefined;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const appUser = (request as any).appUser;
 
     const invitation = await repo.findByReference(reference);
     if (!invitation) {
-      return reply.status(404).send(publicError('not_found', 'Invitación no encontrada.'));
+      return reply.status(404).send(publicError('not_found', 'Invitacion no encontrada.'));
     }
 
     const revoked = await repo.revoke(invitation.id, appUser.id, reason);
     if (!revoked) {
-      return reply.status(409).send(publicError('conflict', 'La invitación ya no está activa.'));
+      return reply.status(409).send(publicError('conflict', 'La invitacion ya no esta activa.'));
     }
 
     return { data: { publicReference: revoked.publicReference, status: revoked.status } };

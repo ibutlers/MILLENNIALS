@@ -15,13 +15,15 @@ import type { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import type { Pool } from 'pg';
 import type { AppConfig } from '../config.js';
 
+export interface BetterAuthSession {
+  user: { id: string; email: string; name?: string; emailVerified: boolean; twoFactorEnabled?: boolean };
+  session: { id: string; expiresAt: Date; token: string };
+}
+
 interface BetterAuthServer {
   handler: (request: Request) => Promise<Response>;
   api: {
-    getSession: (context: { headers: Headers }) => Promise<{
-      user: { id: string; email: string; name?: string; emailVerified: boolean; twoFactorEnabled?: boolean };
-      session: { id: string; expiresAt: Date; token: string };
-    } | null>;
+    getSession: (context: { headers: Headers }) => Promise<BetterAuthSession | null>;
     signOut: (headers: Headers) => Promise<void>;
   };
 }
@@ -314,10 +316,8 @@ export async function betterAuthPlugin(
       if (request.method === 'GET' && request.url.startsWith('/api/auth/verify-email') && webResponse.ok && invitationValidator) {
         try {
           const responseBody = await webResponse.clone().json().catch(() => null);
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          const baUser = (responseBody as any)?.user as Record<string, unknown> | undefined;
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          const betterAuthUserId = String(baUser?.id || (responseBody as any)?.id || '');
+          const baUser = extractBetterAuthUser(responseBody);
+          const betterAuthUserId = typeof baUser?.id === 'string' ? baUser.id : '';
           if (betterAuthUserId) {
             await invitationValidator.transitionAfterEmailVerification(betterAuthUserId);
           }
