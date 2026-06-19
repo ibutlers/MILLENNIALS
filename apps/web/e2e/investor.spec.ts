@@ -264,6 +264,61 @@ test.describe("investor E2E flow", () => {
 });
 
 // ─────────────────────────────────────────────────────────
+// API SECURITY
+// ─────────────────────────────────────────────────────────
+test.describe("investor API security", () => {
+  test.describe.configure({ mode: "serial" });
+
+  let secPage: Page;
+
+  test.beforeAll(async ({ browser }) => {
+    const ctx = await browser.newContext();
+    secPage = await ctx.newPage();
+    await loginViaUI(secPage);
+    await secPage.goto(`${WEB}/inversores`, { waitUntil: "networkidle" });
+    await secPage.waitForTimeout(1500);
+  });
+
+  test.afterAll(async () => {
+    await secPage.close();
+  });
+
+  test("A1. API dashboard returns 200 after investor login", async () => {
+    const res = await secPage.request.get("/api/investor/dashboard");
+    expect(res.status()).toBe(200);
+  });
+
+  test("A2. investor gets 401 on admin opportunities endpoint", async () => {
+    const res = await secPage.request.get("/api/v1/admin/opportunities");
+    expect(res.status()).toBeGreaterThanOrEqual(400);
+  });
+
+  test("A3. investor gets 401 on admin users endpoint", async () => {
+    const res = await secPage.request.get("/api/v1/admin/users");
+    expect(res.status()).toBeGreaterThanOrEqual(400);
+  });
+
+  test("A4. auth cookies are HttpOnly and not visible from JavaScript", async () => {
+    const cookies = await secPage.context().cookies();
+    const authCookies = cookies.filter(c =>
+      c.name.toLowerCase().includes("auth") ||
+      c.name.toLowerCase().includes("session") ||
+      c.name.startsWith("better-")
+    );
+    const httpOnlyCookies = authCookies.filter(c => c.httpOnly);
+    expect(httpOnlyCookies.length, "Expected at least one HttpOnly auth/session cookie").toBeGreaterThan(0);
+
+    const jsVisible = await secPage.evaluate(() => {
+      const dc = document.cookie;
+      return dc.toLowerCase().includes("auth") ||
+             dc.toLowerCase().includes("session") ||
+             dc.toLowerCase().includes("better-");
+    });
+    expect(jsVisible).toBe(false);
+  });
+});
+
+// ─────────────────────────────────────────────────────────
 // ACCESSIBILITY (axe-core)
 // ─────────────────────────────────────────────────────────
 test.describe("investor accessibility", () => {

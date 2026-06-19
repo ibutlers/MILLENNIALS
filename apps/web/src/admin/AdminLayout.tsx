@@ -1,5 +1,7 @@
 import React, { Suspense, useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { Link, Outlet, useLocation } from 'react-router';
+import { apiFetch } from '../api/client';
 import { useAuth } from '../auth/context';
 
 const NAV_ITEMS: Array<{ path: string; label: string; exact?: boolean; roles?: string[] }> = [
@@ -22,52 +24,113 @@ function AdminGuardLoader() {
   );
 }
 
+type AdminApiError = Error & { status?: number; code?: string };
+
+function AdminAccessMessage({
+  title,
+  message,
+  detail,
+  children,
+}: {
+  title: string;
+  message: string;
+  detail?: string;
+  children?: React.ReactNode;
+}) {
+  return (
+    <main className="min-h-screen bg-[#08191C] text-[#FBF7F0]" role="main">
+      <div className="mx-auto max-w-3xl px-6 py-20 text-center">
+        <h1 className="font-serif text-4xl tracking-tight">{title}</h1>
+        <p className="mt-6 text-lg text-[#9B7E5F]">{message}</p>
+        {detail ? <p className="mt-2 text-sm text-[#5C8D7A]">{detail}</p> : null}
+        {children}
+      </div>
+    </main>
+  );
+}
+
 export default function AdminLayout() {
   const { user, isAuthenticated, isLoading, checkedAvailability, isAuthAvailable, logout } = useAuth();
   const location = useLocation();
   const [mobileOpen, setMobileOpen] = useState(false);
 
+  const adminAccessQuery = useQuery({
+    queryKey: ['admin', 'dashboard'],
+    queryFn: () => apiFetch('/api/v1/admin/dashboard'),
+    enabled: checkedAvailability && isAuthAvailable === true && isAuthenticated && !!user,
+    retry: false,
+    staleTime: 30_000,
+  });
+
   if (isLoading || !checkedAvailability) return <AdminGuardLoader />;
 
   if (!isAuthAvailable) {
     return (
-      <main className="min-h-screen bg-[#08191C] text-[#FBF7F0]" role="main">
-        <div className="mx-auto max-w-3xl px-6 py-20 text-center">
-          <h1 className="font-serif text-4xl tracking-tight">Panel en preparación</h1>
-          <p className="mt-6 text-lg text-[#9B7E5F]">
-            El panel administrativo estará disponible cuando la autenticación y el dominio HTTPS estén configurados.
-          </p>
-          <p className="mt-2 text-sm text-[#5C8D7A]">
-            Requisitos: HTTPS, AUTH_ENABLED=true, ADMIN_ENABLED=true
-          </p>
-        </div>
-      </main>
+      <AdminAccessMessage
+        title="Panel en preparación"
+        message="El panel administrativo estará disponible cuando la autenticación y el dominio HTTPS estén configurados."
+        detail="Requisitos: HTTPS, AUTH_ENABLED=*** ADMIN_ENABLED=true"
+      />
     );
   }
 
   if (!isAuthenticated || !user) {
     return (
-      <main className="min-h-screen bg-[#08191C] text-[#FBF7F0]" role="main">
-        <div className="mx-auto max-w-3xl px-6 py-20 text-center">
-          <h1 className="font-serif text-4xl">Acceso restringido</h1>
-          <p className="mt-4 text-[#9B7E5F]">Inicia sesión para acceder al panel.</p>
+      <AdminAccessMessage title="Acceso restringido" message="Inicia sesión para acceder al panel.">
+        <Link
+          to={`/acceso/login?retorno=${encodeURIComponent(location.pathname + location.search)}`}
+          className="mt-8 inline-flex rounded bg-[#7FA88C] px-5 py-3 font-medium text-[#08191C] transition-colors hover:bg-[#5C8D7A] focus:outline-2 focus:outline-offset-2 focus:outline-[#7FA88C]"
+        >
+          Iniciar sesión
+        </Link>
+      </AdminAccessMessage>
+    );
+  }
+
+  if (adminAccessQuery.isLoading || adminAccessQuery.isFetching) return <AdminGuardLoader />;
+
+  if (adminAccessQuery.isError) {
+    const error = adminAccessQuery.error as AdminApiError;
+    if (error.status === 401) {
+      return (
+        <AdminAccessMessage title="Acceso restringido" message="Tu sesión no permite abrir el panel administrativo.">
           <Link
             to={`/acceso/login?retorno=${encodeURIComponent(location.pathname + location.search)}`}
             className="mt-8 inline-flex rounded bg-[#7FA88C] px-5 py-3 font-medium text-[#08191C] transition-colors hover:bg-[#5C8D7A] focus:outline-2 focus:outline-offset-2 focus:outline-[#7FA88C]"
           >
-            Iniciar sesión
+            Iniciar sesión con otra cuenta
           </Link>
-        </div>
-      </main>
+        </AdminAccessMessage>
+      );
+    }
+    if (error.status === 403) {
+      return (
+        <AdminAccessMessage
+          title="Sin permisos"
+          message="Tu cuenta está autenticada, pero no tiene rol administrativo u operador para acceder al panel."
+        />
+      );
+    }
+    if (error.status === 503 || error.code === 'admin_disabled') {
+      return (
+        <AdminAccessMessage
+          title="Panel en preparación"
+          message="El panel administrativo todavía no está habilitado."
+          detail="Backend administrativo no disponible para esta sesión."
+        />
+      );
+    }
+    return (
+      <AdminAccessMessage
+        title="No se pudo verificar el acceso"
+        message="El panel no se renderiza hasta confirmar el permiso administrativo con el servidor."
+        detail={error.message || 'Error desconocido'}
+      />
     );
   }
 
   const userRoles = user.roles || [];
-  // Better Auth session data does not carry the local app_users role. Do not
-  // enforce admin authorization in the SPA from this potentially incomplete
-  // client-side field; backend admin endpoints remain the source of truth and
-  // return 401/403 when the local role is not admin/operator.
-  const navRoles = userRoles.some((role) => ['admin', 'operator'].includes(role)) ? userRoles : ['admin'];
+  const navRoles = userRoles.some((role) => ['admin', 'operator'].includes(role)) ? userRoles : ['operator'];
 
   const currentLabel = NAV_ITEMS.find((item) => {
     if (item.exact) return location.pathname === item.path;
