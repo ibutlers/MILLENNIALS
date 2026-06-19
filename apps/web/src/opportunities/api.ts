@@ -147,7 +147,7 @@ export function returnTypeLabel(type: OpportunityReturnType) {
 }
 
 export function formatReturnValue(value: { formatted: string | null }) {
-  return value.formatted ? `${value.formatted} +50% opcional` : '—';
+  return value.formatted ? `${value.formatted} +50%*` : '—';
 }
 
 export function formatDate(value: string | null) {

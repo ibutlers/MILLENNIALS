@@ -53,7 +53,7 @@ describe('public opportunities catalog', () => {
     expect(within(card).getByRole('progressbar', { name: /financiación/i })).toHaveAttribute('aria-valuenow', '42.4');
     expect(within(card).getByText(/18 meses/i)).toBeInTheDocument();
     expect(within(card).getByText(/rentabilidad total/i)).toBeInTheDocument();
-    expect(within(card).getByText(/8,2% \+50% opcional/i)).toBeInTheDocument();
+    expect(within(card).getByText(/8,2% \+50%\*/i)).toBeInTheDocument();
     expect(within(card).getByText(/cierre/i)).toBeInTheDocument();
     expect(within(card).getByRole('link', { name: /ver proyecto/i })).toHaveAttribute('href', '/proyectos/eixample-rehabilitacion-luminosa');
     expect(screen.getAllByText(/objetivos no están garantizados/i).length).toBeGreaterThan(0);
@@ -104,7 +104,7 @@ describe('public opportunity detail', () => {
     expect(screen.getByRole('progressbar', { name: /financiación/i })).toHaveAttribute('aria-valuenow', '42.4');
     expect(screen.getByText(/ticket mínimo/i)).toBeInTheDocument();
     expect(screen.getByText(/rentabilidad total objetivo estimada/i)).toBeInTheDocument();
-    expect(screen.getByText(/8,2% \+50% opcional/i)).toBeInTheDocument();
+    expect(screen.getByText(/8,2% \+50%\*/i)).toBeInTheDocument();
     expect(screen.getAllByText(/riesgo medio/i).length).toBeGreaterThan(0);
     expect(screen.getByRole('heading', { name: /highlights/i })).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: /riesgos/i })).toBeInTheDocument();
