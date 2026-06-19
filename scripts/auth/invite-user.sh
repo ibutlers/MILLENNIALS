@@ -16,4 +16,8 @@ usage() {
 [[ "${1:-}" == "--help" ]] && usage
 
 cd "$ROOT"
-exec npx tsx apps/api/src/auth/cli.ts invite-email "$@"
+if docker ps --format '{{.Names}}' 2>/dev/null | grep -q '^current-api-1$'; then
+  exec docker exec -i current-api-1 node apps/api/dist/auth/cli.js invite-email "$@"
+else
+  exec npx tsx apps/api/src/auth/cli.ts invite-email "$@"
+fi

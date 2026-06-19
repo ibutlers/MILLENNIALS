@@ -15,6 +15,7 @@
  *   reactivate-user      <email>
  *   revoke-user          <email>
  *   revoke-sessions      <email>
+ *   reset-mfa            <email> [--yes]
  *   grant-project        --email <email> --project-slug <slug>
  *   revoke-project       --email <email> --project-slug <slug> [--reason ...]
  *   audit-log            [--limit 50] [--action ...] [--actor <email>]
@@ -51,6 +52,7 @@ Comandos:
   reactivate-user          <email>
   revoke-user              <email>
   revoke-sessions          <email>
+  reset-mfa                <email> [--yes]
   grant-project            --email <email> --project-slug <slug>
   revoke-project           --email <email> --project-slug <slug> [--reason ...]
   audit-log                [--limit 50] [--action ...] [--actor <email>]
@@ -299,6 +301,43 @@ async function main(): Promise<void> {
         console.log('El usuario no tiene Better Auth ID vinculado');
       }
       await pool.query(`INSERT INTO auth_audit_events (action, subject_id, result, metadata) VALUES ('sessions_revoked', $1, 'success', $2)`, [user.rows[0].id, JSON.stringify({ email: normalized })]);
+      break;
+    }
+
+    case 'reset-mfa': {
+      const email = posArgs[0] || args['email'];
+      if (!email) { console.error('ERROR: Email requerido'); process.exit(1); }
+      if (!autoYes) { console.error('ERROR: --yes requerido. Esta operación es DESTRUCTIVA (revoca sesiones + desactiva MFA).'); process.exit(1); }
+      const normalized = email.toLowerCase().trim();
+      const user = await pool.query(
+        `SELECT id, better_auth_user_id, status FROM app_users WHERE email_normalized = $1`,
+        [normalized],
+      );
+      if (user.rows.length === 0) { console.error('ERROR: Usuario no encontrado'); process.exit(1); }
+      const u = user.rows[0];
+      const baId = u.better_auth_user_id;
+      if (!baId) { console.error('ERROR: El usuario no tiene Better Auth ID vinculado'); process.exit(1); }
+      console.log(`Reset MFA para: ${showPii ? normalized : maskEmail(normalized)} (status=${u.status})`);
+
+      await pool.query('BEGIN');
+      try {
+        await pool.query(`DELETE FROM auth."twoFactor" WHERE "userId" = $1`, [baId]);
+        await pool.query(`UPDATE auth."user" SET "twoFactorEnabled" = false WHERE id = $1`, [baId]);
+        await pool.query(
+          `UPDATE app_users SET status = 'pending_mfa', mfa_enabled_at = NULL, updated_at = now() WHERE id = $1`,
+          [u.id],
+        );
+        await pool.query(`DELETE FROM auth.session WHERE user_id = $1`, [baId]);
+        await pool.query(
+          `INSERT INTO auth_audit_events (action, subject_id, result, metadata) VALUES ('mfa_reset', $1, 'success', $2)`,
+          [u.id, JSON.stringify({ email: normalized, reason: 'operational recovery' })],
+        );
+        await pool.query('COMMIT');
+        console.log('✓ MFA reseteado, sesiones revocadas. El usuario debe reconfigurar TOTP.');
+      } catch (err) {
+        await pool.query('ROLLBACK').catch(() => {});
+        throw err;
+      }
       break;
     }
 

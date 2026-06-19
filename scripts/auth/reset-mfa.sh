@@ -15,4 +15,8 @@ usage() {
 [[ -z "${1:-}" ]] && { echo "ERROR: Email requerido"; exit 1; }
 
 cd "$ROOT"
-exec npx tsx apps/api/src/auth/cli.ts reset-mfa "$@"
+if docker ps --format '{{.Names}}' 2>/dev/null | grep -q '^current-api-1$'; then
+  exec docker exec -i current-api-1 node apps/api/dist/auth/cli.js reset-mfa "$@"
+else
+  exec npx tsx apps/api/src/auth/cli.ts reset-mfa "$@"
+fi
