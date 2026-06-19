@@ -56,18 +56,11 @@ export default function AdminLayout() {
   }
 
   const userRoles = user.roles || [];
-  const isAdmin = userRoles.includes('admin');
-  const isOperator = userRoles.includes('operator');
-  if (!isAdmin && !isOperator) {
-    return (
-      <main className="min-h-screen bg-[#08191C] text-[#FBF7F0]" role="main">
-        <div className="mx-auto max-w-3xl px-6 py-20 text-center">
-          <h1 className="font-serif text-4xl">Sin permisos</h1>
-          <p className="mt-4 text-[#9B7E5F]">No tienes permisos para acceder al panel administrativo.</p>
-        </div>
-      </main>
-    );
-  }
+  // Better Auth session data does not carry the local app_users role. Do not
+  // enforce admin authorization in the SPA from this potentially incomplete
+  // client-side field; backend admin endpoints remain the source of truth and
+  // return 401/403 when the local role is not admin/operator.
+  const navRoles = userRoles.some((role) => ['admin', 'operator'].includes(role)) ? userRoles : ['admin'];
 
   const currentLabel = NAV_ITEMS.find((item) => {
     if (item.exact) return location.pathname === item.path;
@@ -115,7 +108,7 @@ export default function AdminLayout() {
               <p className="mt-1 text-xs text-[#5C8D7A]">Panel administrativo</p>
             </div>
             <nav className="flex-1 space-y-1 px-3 py-4" aria-label="Navegación administrativa">
-              {NAV_ITEMS.filter((item) => !item.roles || item.roles.some((r) => userRoles.includes(r))).map((item) => (
+              {NAV_ITEMS.filter((item) => !item.roles || item.roles.some((r) => navRoles.includes(r))).map((item) => (
                 <Link
                   key={item.path}
                   to={item.path}
