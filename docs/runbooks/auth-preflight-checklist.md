@@ -1,25 +1,28 @@
 # Checklist previo a la activación de Better Auth en producción
 
-> Estado objetivo de este documento: preparar la activación futura. No autoriza activar `AUTH_MODE=better-auth`, `AUTH_EMAIL_MODE=smtp` ni `ADMIN_ENABLED=true`.
+> Estado objetivo de este documento: preparar la activación definitiva. No autoriza cambios en producción sin plan explícito.
 
-## Estado base aceptado
+## Estado base actual (ventana temporal)
 
-- Producción sigue en modo seguro:
-  - `AUTH_MODE=disabled`
-  - `AUTH_EMAIL_MODE=disabled`
-  - `ADMIN_ENABLED=false`
-- Better Auth está implementado, migrado y validado en E2E, pero no activo para usuarios reales.
-- No se debe editar `/srv/deployments/realstate/shared/.env` sin backup previo, plan exacto y confirmación explícita.
+> **Actualizado 2026-06-19**: Producción NO está en modo seguro. Por decisión de Víctor (Kanban t_1245c893), se mantiene una ventana temporal controlada con auth/admin/email activos sobre IP/HTTP. Ver `docs/PENDIENTES.md` sección «Aceptación formal de riesgo» para caducidad, responsable y controles compensatorios.
+
+- Producción en ventana temporal controlada:
+  - Better Auth activo
+  - SMTP activo
+  - Admin activo
+  - Override HTTP/IP activo
+  - 2FA no obligatorio
+- Better Auth está implementado, migrado, validado en E2E y **activo** para usuarios reales (1 admin).
+- **No se debe editar `/srv/deployments/realstate/shared/.env` sin backup previo, plan exacto y confirmación explícita de Víctor.**
 - El acceso al servidor debe hacerse solo con el alias SSH `jarvis-realstate`.
 
-## No hacer todavía
+## No hacer sin plan explícito
 
-- [ ] No activar `AUTH_MODE=better-auth`.
-- [ ] No activar `AUTH_EMAIL_MODE=smtp`.
-- [ ] No activar `ADMIN_ENABLED=true`.
+- [ ] No desactivar auth/admin/SMTP sin plan de rollback a modo seguro documentado.
+- [ ] No activar 2FA obligatorio sin segundo admin real y procedimiento de recuperación.
 - [ ] No crear administradores reales con datos ficticios.
-- [ ] No enviar correos reales.
-- [ ] No editar `.env` de producción.
+- [ ] No enviar correos reales sin SPF/DKIM/DMARC.
+- [ ] No editar `.env` de producción sin backup previo.
 - [ ] No tocar DNS.
 - [ ] No cambiar Caddy/proxy.
 - [ ] No borrar datos.
@@ -43,7 +46,6 @@
 ### SMTP y entregabilidad
 
 - [ ] Proveedor SMTP real contratado y operativo.
-- [ ] `AUTH_EMAIL_MODE=smtp` preparado, pero no activado hasta la ventana de activación.
 - [ ] `SMTP_HOST` definido.
 - [ ] `SMTP_PORT` definido.
 - [ ] `SMTP_SECURE` definido según el proveedor.
@@ -84,7 +86,7 @@
 
 ## Variables de producción que deben estar preparadas
 
-No aplicar estos cambios hasta la ventana de activación aprobada.
+No aplicar estos cambios hasta la ventana de activación definitiva (dominio + HTTPS + legal + 2 admins).
 
 ```env
 AUTH_MODE=better-auth
@@ -158,6 +160,6 @@ Comprobar:
 - [ ] Política de cookies publicada.
 - [ ] Dos admins reales preparados.
 - [ ] Backup previo planificado.
-- [ ] Plan de rollback a `AUTH_MODE=disabled` preparado.
+- [ ] Plan de rollback a modo seguro preparado.
 - [ ] Ventana de activación acordada.
 - [ ] Persona responsable disponible para validar correo real, MFA y acceso admin.
