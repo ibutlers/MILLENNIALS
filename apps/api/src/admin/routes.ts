@@ -577,8 +577,8 @@ export function registerAdminRoutes(app: FastifyInstance, options: { pool: Pool;
     const { rows } = await pool.query(
       `UPDATE app_users
        SET status=$2::app_user_status,
-           suspended_at = CASE WHEN $2 = 'suspended' THEN now() ELSE suspended_at END,
-           revoked_at = CASE WHEN $2 = 'revoked' THEN now() ELSE revoked_at END,
+           suspended_at = CASE WHEN $2 = 'suspended' THEN now() WHEN $2 = 'active' THEN NULL ELSE suspended_at END,
+           revoked_at = CASE WHEN $2 = 'revoked' THEN now() WHEN $2 = 'active' THEN NULL ELSE revoked_at END,
            activated_at = CASE WHEN $2 = 'active' THEN COALESCE(activated_at, now()) ELSE activated_at END,
            updated_at=now()
        WHERE id::text=$1
@@ -594,13 +594,21 @@ export function registerAdminRoutes(app: FastifyInstance, options: { pool: Pool;
     preHandler: [adminGate(config), requireRole(pool, 'admin')]
   }, async (req, reply) => {
     const body = userRoleSchema.parse(req.body);
+    const ref = (req.params as any).reference;
+    const { rows: [target] } = await pool.query('SELECT id, role, status FROM app_users WHERE id::text=$1', [ref]);
+    if (!target) return reply.status(404).send({ error: { code: 'not_found', message: 'Usuario no encontrado.' } });
+    if (body.role !== 'admin' && target.role === 'admin' && target.status === 'active') {
+      const { rows: [{ count }] } = await pool.query("SELECT count(*)::int FROM app_users WHERE role='admin' AND status='active' AND id <> $1", [target.id]);
+      if (Number(count) === 0) {
+        return reply.status(409).send({ error: { code: 'last_admin', message: 'No se puede retirar el rol del último admin activo.' } });
+      }
+    }
     const { rows: [u] } = await pool.query(
       `UPDATE app_users SET role=$2::app_user_role, updated_at=now()
-       WHERE id::text=$1
+       WHERE id=$1
        RETURNING id::text AS public_reference, role`,
-      [(req.params as any).reference, body.role]
+      [target.id, body.role]
     );
-    if (!u) return reply.status(404).send({ error: { code: 'not_found', message: 'Usuario no encontrado.' } });
     return reply.status(201).send({ data: { created: true, role: u.role } });
   });
 
