@@ -139,11 +139,15 @@ export function statusLabel(status: OpportunityStatus) {
 
 export function returnTypeLabel(type: OpportunityReturnType) {
   return {
-    target_annual_return: 'Rentabilidad anual objetivo estimada',
+    target_annual_return: 'Rentabilidad total objetivo estimada',
     target_total_return: 'Rentabilidad total objetivo estimada',
-    target_irr: 'TIR objetivo estimada',
-    target_roi: 'ROI objetivo estimado'
+    target_irr: 'Rentabilidad total objetivo estimada',
+    target_roi: 'Rentabilidad total objetivo estimada'
   }[type];
+}
+
+export function formatReturnValue(value: { formatted: string | null }) {
+  return value.formatted ? `${value.formatted} +50% opcional` : '—';
 }
 
 export function formatDate(value: string | null) {

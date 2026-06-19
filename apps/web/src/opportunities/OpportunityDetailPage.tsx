@@ -2,7 +2,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect } from 'react';
 import { Link, useParams, useSearchParams } from 'react-router';
 import { setPageMetadata } from '../metadata';
-import { fetchOpportunityDetail, formatDate, returnTypeLabel, riskLabel, statusLabel } from './api';
+import { fetchOpportunityDetail, formatDate, formatReturnValue, returnTypeLabel, riskLabel, statusLabel } from './api';
 import { FundingProgress, Metric, RiskBadge, StatusBadge } from './components';
 
 export function OpportunityDetailPage() {
@@ -119,7 +119,7 @@ export function OpportunityDetailPage() {
                   <Metric label="Capital comprometido" value={opportunity.committedAmount?.formatted ?? '—'} />
                   <Metric label="Ticket mínimo" value={opportunity.minimumInvestment?.formatted ?? '—'} />
                   <Metric label="Plazo" value={`${opportunity.estimatedTermMonths} meses`} />
-                  <Metric label={returnTypeLabel(opportunity.targetReturnType)} value={opportunity.targetReturn.formatted ?? '—'} emphasis />
+                  <Metric label={returnTypeLabel(opportunity.targetReturnType)} value={formatReturnValue(opportunity.targetReturn)} emphasis />
                   <Metric label="Riesgo" value={`Riesgo ${riskLabel(opportunity.riskLevel)} · no regulatorio`} />
                   <Metric label="Cierre" value={formatDate(opportunity.closingDate)} />
                   <Metric label="Estado" value={statusLabel(opportunity.status)} />

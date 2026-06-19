@@ -15,7 +15,7 @@ export const opportunitySummary = {
   committedAmount: { cents: 53000000, currency: 'EUR', formatted: '530.000 €' },
   minimumInvestment: { cents: 1500000, currency: 'EUR', formatted: '15.000 €' },
   estimatedTermMonths: 18,
-  targetReturnType: 'target_annual_return',
+  targetReturnType: 'target_total_return',
   targetReturn: { basisPoints: 820, decimal: 0.082, formatted: '8,2%' },
   riskLevel: 'medium',
   closingDate: '2026-10-15',

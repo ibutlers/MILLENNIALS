@@ -1,5 +1,5 @@
 import { Link } from 'react-router';
-import { formatDate, formatProgress, returnTypeLabel, riskLabel, statusLabel, type PublicOpportunity } from './api';
+import { formatDate, formatProgress, formatReturnValue, returnTypeLabel, riskLabel, statusLabel, type PublicOpportunity } from './api';
 
 export function Metric({ label, value, emphasis = false }: { label: string; value: string; emphasis?: boolean }) {
   return (
@@ -83,7 +83,7 @@ export function OpportunityCard({ opportunity, preserveSearch = true }: { opport
             <Metric label="Capital objetivo" value={opportunity.targetAmount?.formatted ?? '—'} />
             <Metric label="Comprometido" value={opportunity.committedAmount?.formatted ?? '—'} />
             <Metric label="Plazo" value={`${opportunity.estimatedTermMonths} meses`} />
-            <Metric label={returnTypeLabel(opportunity.targetReturnType)} value={opportunity.targetReturn.formatted ?? '—'} emphasis />
+            <Metric label={returnTypeLabel(opportunity.targetReturnType)} value={formatReturnValue(opportunity.targetReturn)} emphasis />
             <Metric label="Cierre" value={formatDate(opportunity.closingDate)} />
           </dl>
         ) : null}
