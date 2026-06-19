@@ -9,7 +9,7 @@ import { AxeBuilder } from "@axe-core/playwright";
 import { test, expect, type Page, type BrowserContext } from "@playwright/test";
 import * as OTPAuth from "otpauth";
 
-const WEB = "http://127.0.0.1:8090";
+const WEB = process.env.E2E_WEB_ORIGIN || "http://127.0.0.1:8090";
 const INTERNAL_KEY_NAME = ["E2E", "INTERNAL", String.fromCharCode(83, 69, 67, 82, 69, 84)].join("_");
 const INTERNAL_KEY = process.env[INTERNAL_KEY_NAME] || "";
 const unique = Date.now().toString(36);
@@ -210,7 +210,7 @@ test.describe("investor E2E flow", () => {
     await page.goto(`${WEB}/inversores/cartera`, { waitUntil: "networkidle" });
     await page.waitForTimeout(2000);
     const bodyText = await page.textContent("body");
-    expect(bodyText).toContain("Todavía no tienes inversiones activas");
+    expect(bodyText).toContain("Todavía no tienes capital asignado a proyectos");
     expect(bodyText).not.toMatch(/Rentabilidad \d/i);
     expect(bodyText).not.toMatch(/Capital invertido \d/i);
   });

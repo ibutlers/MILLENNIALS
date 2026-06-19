@@ -229,10 +229,19 @@ export function registerPrivateInvestorRoutes(
     const { id } = request.params as { id: string };
 
     const result = await pool.query(
-      `SELECT id, title, file_type, file_size, created_at
-       FROM private_documents
-       WHERE opportunity_id = $1
-       ORDER BY created_at DESC
+      `SELECT d.id,
+              d.title,
+              d.type AS file_type,
+              d.byte_size AS file_size,
+              d.mime_type,
+              d.created_at
+       FROM documents d
+       JOIN opportunities o ON o.id = d.owner_id
+       WHERE d.owner_type = 'opportunity'
+         AND d.status = 'active'
+         AND d.visibility = 'private'
+         AND (o.id::text = $1 OR o.slug = $1)
+       ORDER BY d.created_at DESC
        LIMIT 100`,
       [id],
     );
