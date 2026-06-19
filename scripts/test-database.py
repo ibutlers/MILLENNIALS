@@ -37,6 +37,7 @@ EXPECTED = [
     '0011_fix_two_factor_column.sql',
     '0012_rename_plugin_columns_to_camelcase.sql',
     '0013_rename_two_factor_table_to_runtime_model.sql',
+    '0014_add_opportunity_disclaimer.sql',
 ]
 FAILED = False
 
@@ -201,7 +202,7 @@ def main():
         r = _psql(cn, sec, 'SELECT count(*) FROM schema_migrations')
         mc = r.stdout.strip()
         print('  migrations=' + mc)
-        _check(mc == '13', 'esperadas 13 migraciones, hay ' + mc)
+        _check(mc == '14', 'esperadas 14 migraciones, hay ' + mc)
 
         r = _psql(cn, sec,
                   'SELECT id FROM schema_migrations ORDER BY applied_at')
@@ -346,14 +347,14 @@ def main():
         cc = _psql_host(cn, sec,
                         'SELECT count(*) FROM schema_migrations',
                         db=cdb).stdout.strip()
-        _check(cc == '13', 'concurrencia: esperadas 13, hay ' + cc)
-        print('  concurrency: OK (13 migraciones, 0 duplicados)')
+        _check(cc == '14', 'concurrencia: esperadas 14, hay ' + cc)
+        print('  concurrency: OK (14 migraciones, 0 duplicados)')
         du = _psql_host(cn, sec,
                         'SELECT id, count(*) FROM schema_migrations '
                         'GROUP BY id HAVING count(*) > 1',
                         db=cdb).stdout.strip()
         _check(du == '', 'filas duplicadas: ' + du)
-        print('  concurrency: OK (13 migraciones, 0 duplicados)')
+        print('  concurrency: OK (14 migraciones, 0 duplicados)')
 
         # ─────────────────────────────────────────────────────────────────
         # Backup/restore auth tables

@@ -153,7 +153,7 @@ test.describe('public landing and projects', () => {
     await page.getByLabel(/Email/i).fill('ada.form@example.test');
     await page.getByLabel(/Perfil/i).selectOption('Inversor particular');
     await page.getByLabel(/Experiencia/i).selectOption('Sin experiencia previa');
-    await page.getByLabel(/Acepto que los datos facilitados/i).check();
+    await page.getByLabel(/Acepto que mis datos/i).check();
     await page.waitForTimeout(3000);
     await page.getByRole('button', { name: /solicitar acceso/i }).click();
     await expect(page.getByText(/Solicitud recibida/i).first()).toBeVisible({ timeout: 15000 });

@@ -20,7 +20,7 @@ function renderPrivateAccessPage() {
   );
 }
 
-describe('PrivateAccessPage — acceso privado informativo', () => {
+describe('PrivateAccessPage — solicitud de acceso simplificada', () => {
   afterEach(() => {
     vi.unstubAllGlobals();
   });
@@ -37,49 +37,31 @@ describe('PrivateAccessPage — acceso privado informativo', () => {
     expect(returnLink.getAttribute('href')).toBe('/');
   });
 
-  it('muestra el panel editorial oscuro con eyebrow, título y puntos', () => {
+  it('presenta una sola introducción y un único formulario', () => {
     mockFetch();
     renderPrivateAccessPage();
 
-    expect(screen.getByText('ÁREA PRIVADA')).toBeInTheDocument();
-    expect(
-      screen.getByRole('heading', { level: 1, name: /acceso para inversores/i })
-    ).toBeInTheDocument();
-    expect(screen.getByText(/la zona privada reunirá/i)).toBeInTheDocument();
-    expect(screen.getByText('Documentación centralizada')).toBeInTheDocument();
-    expect(screen.getByText('Seguimiento de proyectos')).toBeInTheDocument();
-    expect(screen.getByText('Comunicaciones privadas')).toBeInTheDocument();
-    expect(
-      screen.getByText(/el acceso se habilitará individualmente/i)
-    ).toBeInTheDocument();
+    expect(screen.getByText('Acceso privado')).toBeInTheDocument();
+    expect(screen.getByRole('heading', { level: 1, name: /solicita acceso al club/i })).toBeInTheDocument();
+    expect(screen.getByText(/déjanos tus datos/i)).toBeInTheDocument();
+
+    expect(screen.queryByText(/Coinvierte con nosotros/i)).not.toBeInTheDocument();
+    expect(screen.queryByRole('heading', { name: /cuéntanos tu perfil inversor/i })).not.toBeInTheDocument();
+    expect(screen.queryByText(/la zona privada está reservada/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/solicitud sin compromiso/i)).not.toBeInTheDocument();
   });
 
-  it('muestra el panel informativo con CTAs correctos', () => {
+  it('mantiene el formulario con los campos mínimos necesarios', () => {
     mockFetch();
     renderPrivateAccessPage();
 
-    expect(screen.getByText('ACCESO PRIVADO')).toBeInTheDocument();
-    expect(
-      screen.getByRole('heading', { level: 2, name: /la zona de inversores está en preparación/i })
-    ).toBeInTheDocument();
-    expect(
-      screen.getByText(/el acceso estará reservado a inversores previamente validados/i)
-    ).toBeInTheDocument();
-
-    // CTA principal → #solicitud (ancla en la misma página)
-    const solicitarLink = screen.getByRole('link', { name: /solicitar acceso/i });
-    expect(solicitarLink).toBeInTheDocument();
-    expect(solicitarLink.getAttribute('href')).toBe('#solicitud');
-
-    // CTA secundario
-    const proyectosLink = screen.getByRole('link', { name: /ver proyectos/i });
-    expect(proyectosLink).toBeInTheDocument();
-    expect(proyectosLink.getAttribute('href')).toBe('/#proyectos');
-
-    // Disclaimer
-    expect(
-      screen.getByText(/enviar una solicitud no garantiza el acceso/i)
-    ).toBeInTheDocument();
+    expect(screen.getByLabelText(/Nombre/)).toBeInTheDocument();
+    expect(screen.getByLabelText(/Email/)).toBeInTheDocument();
+    expect(screen.getByLabelText(/Perfil/)).toBeInTheDocument();
+    expect(screen.getByLabelText(/Experiencia/)).toBeInTheDocument();
+    expect(screen.getByLabelText(/Intereses/)).toBeInTheDocument();
+    expect(screen.queryByLabelText(/Teléfono/)).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /solicitar acceso/i })).toBeInTheDocument();
   });
 
   it('no muestra breadcrumbs ni textos antiguos', () => {
@@ -89,17 +71,6 @@ describe('PrivateAccessPage — acceso privado informativo', () => {
     expect(screen.queryByText('Inicio')).not.toBeInTheDocument();
     expect(screen.queryByText(/próximamente/i)).not.toBeInTheDocument();
     expect(screen.queryByText(/cartera/i)).not.toBeInTheDocument();
-  });
-
-  it('incluye el formulario de solicitud de acceso', () => {
-    mockFetch();
-    renderPrivateAccessPage();
-
-    // El formulario de coinvestir debe estar presente (CoinvestSection)
-    expect(screen.getByText(/Coinvierte con nosotros/i)).toBeInTheDocument();
-    expect(screen.getByLabelText(/Nombre/)).toBeInTheDocument();
-    expect(screen.getByLabelText(/Email/)).toBeInTheDocument();
-    expect(screen.getByLabelText(/Perfil/)).toBeInTheDocument();
-    expect(screen.getByLabelText(/Experiencia/)).toBeInTheDocument();
+    expect(screen.queryByRole('heading', { name: /acceso para inversores/i })).not.toBeInTheDocument();
   });
 });

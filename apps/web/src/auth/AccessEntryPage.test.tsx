@@ -45,19 +45,19 @@ describe('AccessEntryPage', () => {
     expect(screen.getByRole('button', { name: /acceder/i })).toBeInTheDocument();
   });
 
-  it('mantiene la página informativa en /acceso cuando la autenticación está desactivada', async () => {
+  it('mantiene la página de solicitud en /acceso cuando la autenticación está desactivada', async () => {
     renderAccessEntry(false);
 
     await waitFor(() => {
-      expect(screen.getByText('ACCESO PRIVADO')).toBeInTheDocument();
+      expect(screen.getByText('Acceso privado')).toBeInTheDocument();
     });
-    expect(screen.getByText('La zona de inversores está en preparación.')).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: /solicita acceso al club/i })).toBeInTheDocument();
   });
 
   it('mantiene el formulario de solicitud en /acceso#solicitud aunque la autenticación esté activa', async () => {
     renderAccessEntry(true, '/acceso#solicitud');
 
     expect(await screen.findByRole('button', { name: /solicitar acceso/i })).toBeInTheDocument();
-    expect(screen.getByText('La zona de inversores está en preparación.')).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: /solicita acceso al club/i })).toBeInTheDocument();
   });
 });

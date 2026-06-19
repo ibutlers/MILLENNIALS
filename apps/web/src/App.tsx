@@ -813,136 +813,80 @@ export function CoinvestSection() {
   }, [result]);
 
   return (
-    <section id="coinvierte" className="bg-ink py-10 sm:py-14">
-      <div className="mx-auto max-w-[1200px] px-4 sm:px-6 lg:px-8">
-        {/* Single integrated container */}
-        <div className="overflow-hidden rounded-lg bg-charcoal lg:grid lg:grid-cols-[52%_48%] lg:rounded-xl">
-          {/* ── Left column · editorial ── */}
-          <div className="flex items-center px-8 py-10 text-white lg:px-12 lg:py-12">
-            <div className="max-w-prose">
-              <p className="text-xs font-black uppercase tracking-[0.28em] text-white">Coinvierte con nosotros</p>
-              <h2 className="mt-5 font-serif text-4xl leading-tight tracking-[-0.03em] sm:text-[44px] sm:leading-[1.12] lg:text-[48px] lg:leading-[1.1]">
-                Accede a oportunidades seleccionadas con criterio.
-              </h2>
-              <p className="mt-5 leading-7 text-white/80">
-                El acceso al club no es automático. Revisamos cada solicitud para conocer el perfil, los intereses y la adecuación de cada potencial coinversor.
-              </p>
-              <p className="mt-3 leading-7 text-white/70">
-                Cuando exista encaje, compartiremos contigo los siguientes pasos y la información disponible sobre futuras oportunidades.
-              </p>
-
-              {/* Process steps */}
-              <div className="mt-8 flex flex-col gap-3 border-t border-white/15 pt-8">
-                <div className="flex items-start gap-4">
-                  <span className="mt-0.5 flex-shrink-0 text-sm font-black text-white">01</span>
-                  <div>
-                    <p className="text-sm font-bold text-white">Solicitud</p>
-                    <p className="mt-0.5 text-sm leading-6 text-white/60">Cuéntanos brevemente quién eres y qué tipo de oportunidades te interesan.</p>
-                  </div>
-                </div>
-                <div className="flex items-start gap-4">
-                  <span className="mt-0.5 flex-shrink-0 text-sm font-black text-white">02</span>
-                  <div>
-                    <p className="text-sm font-bold text-white">Validación</p>
-                    <p className="mt-0.5 text-sm leading-6 text-white/60">Revisamos el perfil y valoramos su adecuación al enfoque del club.</p>
-                  </div>
-                </div>
-                <div className="flex items-start gap-4">
-                  <span className="mt-0.5 flex-shrink-0 text-sm font-black text-white">03</span>
-                  <div>
-                    <p className="text-sm font-bold text-white">Acceso</p>
-                    <p className="mt-0.5 text-sm leading-6 text-white/60">Si existe encaje, contactaremos contigo para explicarte el funcionamiento y los siguientes pasos.</p>
-                  </div>
-                </div>
-              </div>
-
-              <p className="mt-8 text-xs leading-5 text-white/40">
-                Enviar una solicitud no implica ningún compromiso de inversión ni garantiza el acceso al club.
-              </p>
-            </div>
-          </div>
-
-          {/* ── Right column · form ── */}
-          <div className="bg-white p-6 sm:p-8 lg:p-10">
-            {Object.keys(errors).length ? (
-              <div role="alert" tabIndex={-1} className="mb-5 rounded-lg border border-warning/40 bg-warning/5 p-4">
-                <p className="font-bold text-charcoal/80">Revisa el formulario</p>
-                <ul className="mt-2 list-disc pl-5 text-sm text-charcoal/80">
-                  {Object.entries(errors).map(([k, v]) => <li key={k}>{v}</li>)}
-                </ul>
-              </div>
-            ) : null}
-            {result ? (
-              <div ref={successRef} role="status" tabIndex={-1} className="mb-5 rounded-lg border border-frost bg-white p-4">
-                <p className="font-bold text-ink">Solicitud recibida</p>
-                <p className="mt-1 text-sm leading-6 text-charcoal/80">{result.message}</p>
-              </div>
-            ) : null}
-            <form className="grid gap-[18px]" onSubmit={onSubmit} noValidate>
-              <div className="hidden" aria-hidden="true">
-                <label>Website <input name="website" tabIndex={-1} autoComplete="off" /></label>
-              </div>
-
-              {/* Row 1: Nombre + Email */}
-              <div className="grid gap-[18px] sm:grid-cols-2">
-                <label className="grid gap-1.5">
-                  <span className="text-sm font-bold text-ink">Nombre *</span>
-                  <input name="name" className="h-11 rounded-lg border border-frost bg-white px-3 text-ink placeholder:text-charcoal/40 focus:border-electric focus:outline-none focus:ring-2 focus:ring-electric/20 disabled:opacity-60" autoComplete="name" maxLength={100} disabled={submitting} required />
-                </label>
-                <label className="grid gap-1.5">
-                  <span className="text-sm font-bold text-ink">Email *</span>
-                  <input name="email" type="email" className="h-11 rounded-lg border border-frost bg-white px-3 text-ink placeholder:text-charcoal/40 focus:border-electric focus:outline-none focus:ring-2 focus:ring-electric/20 disabled:opacity-60" autoComplete="email" maxLength={254} disabled={submitting} required />
-                </label>
-              </div>
-
-              {/* Row 2: Teléfono + Perfil */}
-              <div className="grid gap-[18px] sm:grid-cols-2">
-                <label className="grid gap-1.5">
-                  <span className="text-sm font-bold text-ink">Teléfono (opcional)</span>
-                  <input name="phone" className="h-11 rounded-lg border border-frost bg-white px-3 text-ink placeholder:text-charcoal/40 focus:border-electric focus:outline-none focus:ring-2 focus:ring-electric/20 disabled:opacity-60" autoComplete="tel" maxLength={30} disabled={submitting} />
-                </label>
-                <label className="grid gap-1.5">
-                  <span className="text-sm font-bold text-ink">Perfil *</span>
-                  <select name="profile" className="h-11 rounded-lg border border-frost bg-white px-3 text-ink focus:border-electric focus:outline-none focus:ring-2 focus:ring-electric/20 disabled:opacity-60" disabled={submitting} required>
-                    <option value="">Selecciona una opción</option>
-                    {COINVEST_PROFILES.map((s) => <option key={s} value={s}>{s}</option>)}
-                  </select>
-                </label>
-              </div>
-
-              {/* Full width: Experiencia */}
-              <label className="grid gap-1.5">
-                <span className="text-sm font-bold text-ink">Experiencia en inversión inmobiliaria *</span>
-                <select name="experience" className="h-11 rounded-lg border border-frost bg-white px-3 text-ink focus:border-electric focus:outline-none focus:ring-2 focus:ring-electric/20 disabled:opacity-60" disabled={submitting} required>
-                  <option value="">Selecciona una opción</option>
-                  {COINVEST_EXPERIENCES.map((s) => <option key={s} value={s}>{s}</option>)}
-                </select>
-              </label>
-
-              {/* Full width: Intereses */}
-              <label className="grid gap-1.5">
-                <span className="text-sm font-bold text-ink">Intereses</span>
-                <textarea name="interests" rows={3} maxLength={1000} placeholder="Cuéntanos qué tipo de proyectos, ubicaciones u horizontes de inversión te interesan." className="min-h-[100px] rounded-lg border border-frost bg-white px-3 py-3 text-ink placeholder:text-charcoal/40 focus:border-electric focus:outline-none focus:ring-2 focus:ring-electric/20 disabled:opacity-60" disabled={submitting} />
-              </label>
-
-              {/* Consent + note */}
-              <div>
-                <label className="flex items-start gap-2.5 text-sm leading-6 text-charcoal/80">
-                  <input name="consent" type="checkbox" className="mt-[0.35em] h-4 w-4 flex-shrink-0 accent-electric" disabled={submitting} required />
-                  <span>Acepto que los datos facilitados se utilicen para evaluar mi solicitud de acceso y contactar conmigo en relación con el club.</span>
-                </label>
-                <p className="mt-1.5 pl-[26px] text-xs leading-5 text-charcoal/75">
-                  No utilizaremos estos datos para comunicaciones comerciales ajenas a esta solicitud sin consentimiento adicional.
-                </p>
-              </div>
-
-              {/* Button — full width inside form */}
-              <button type="submit" disabled={submitting} className="h-12 w-full rounded-lg bg-electric px-6 text-sm font-black uppercase tracking-[0.16em] text-white transition hover:bg-electric-hover disabled:cursor-not-allowed disabled:opacity-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-electric focus-visible:ring-offset-2">
-                {submitting ? 'Enviando…' : 'Solicitar acceso'}
-              </button>
-            </form>
-          </div>
+    <section id="coinvierte" className="bg-lavender px-4 py-10 sm:px-6 sm:py-14">
+      <div className="mx-auto max-w-[760px] rounded-xl border border-frost bg-white p-5 shadow-sm sm:p-8">
+        <div className="mb-6">
+          <p className="text-xs font-black uppercase tracking-[0.24em] text-electric">Acceso privado</p>
+          <h1 className="mt-3 font-serif text-4xl leading-tight tracking-[-0.03em] text-ink sm:text-5xl">
+            Solicita acceso al club.
+          </h1>
+          <p className="mt-3 max-w-2xl text-[15px] leading-7 text-charcoal/75">
+            Déjanos tus datos y revisaremos si hay encaje para invitarte a la zona privada.
+          </p>
         </div>
+
+        {Object.keys(errors).length ? (
+          <div role="alert" tabIndex={-1} className="mb-5 rounded-lg border border-warning/40 bg-warning/5 p-4">
+            <p className="font-bold text-charcoal/80">Revisa el formulario</p>
+            <ul className="mt-2 list-disc pl-5 text-sm text-charcoal/80">
+              {Object.entries(errors).map(([k, v]) => <li key={k}>{v}</li>)}
+            </ul>
+          </div>
+        ) : null}
+        {result ? (
+          <div ref={successRef} role="status" tabIndex={-1} className="mb-5 rounded-lg border border-frost bg-lavender p-4">
+            <p className="font-bold text-ink">Solicitud recibida</p>
+            <p className="mt-1 text-sm leading-6 text-charcoal/80">{result.message}</p>
+          </div>
+        ) : null}
+
+        <form className="grid gap-4" onSubmit={onSubmit} noValidate>
+          <div className="hidden" aria-hidden="true">
+            <label>Website <input name="website" tabIndex={-1} autoComplete="off" /></label>
+          </div>
+
+          <div className="grid gap-4 sm:grid-cols-2">
+            <label className="grid gap-1.5">
+              <span className="text-sm font-bold text-ink">Nombre *</span>
+              <input name="name" className="h-11 rounded-lg border border-frost bg-white px-3 text-ink placeholder:text-charcoal/40 focus:border-electric focus:outline-none focus:ring-2 focus:ring-electric/20 disabled:opacity-60" autoComplete="name" maxLength={100} disabled={submitting} required />
+            </label>
+            <label className="grid gap-1.5">
+              <span className="text-sm font-bold text-ink">Email *</span>
+              <input name="email" type="email" className="h-11 rounded-lg border border-frost bg-white px-3 text-ink placeholder:text-charcoal/40 focus:border-electric focus:outline-none focus:ring-2 focus:ring-electric/20 disabled:opacity-60" autoComplete="email" maxLength={254} disabled={submitting} required />
+            </label>
+          </div>
+
+          <div className="grid gap-4 sm:grid-cols-2">
+            <label className="grid gap-1.5">
+              <span className="text-sm font-bold text-ink">Perfil *</span>
+              <select name="profile" className="h-11 rounded-lg border border-frost bg-white px-3 text-ink focus:border-electric focus:outline-none focus:ring-2 focus:ring-electric/20 disabled:opacity-60" disabled={submitting} required>
+                <option value="">Selecciona una opción</option>
+                {COINVEST_PROFILES.map((s) => <option key={s} value={s}>{s}</option>)}
+              </select>
+            </label>
+            <label className="grid gap-1.5">
+              <span className="text-sm font-bold text-ink">Experiencia *</span>
+              <select name="experience" className="h-11 rounded-lg border border-frost bg-white px-3 text-ink focus:border-electric focus:outline-none focus:ring-2 focus:ring-electric/20 disabled:opacity-60" disabled={submitting} required>
+                <option value="">Selecciona una opción</option>
+                {COINVEST_EXPERIENCES.map((s) => <option key={s} value={s}>{s}</option>)}
+              </select>
+            </label>
+          </div>
+
+          <label className="grid gap-1.5">
+            <span className="text-sm font-bold text-ink">Intereses</span>
+            <textarea name="interests" rows={2} maxLength={1000} placeholder="Tipo de proyecto o zona de interés." className="min-h-[44px] rounded-lg border border-frost bg-white px-3 py-2.5 text-ink placeholder:text-charcoal/40 focus:border-electric focus:outline-none focus:ring-2 focus:ring-electric/20 disabled:opacity-60" disabled={submitting} />
+          </label>
+
+          <label className="flex items-start gap-2.5 rounded-lg bg-lavender p-4 text-sm leading-6 text-charcoal/80">
+            <input name="consent" type="checkbox" className="mt-[0.35em] h-4 w-4 flex-shrink-0 accent-electric" disabled={submitting} required />
+            <span>Acepto que mis datos se usen para evaluar la solicitud y contactarme.</span>
+          </label>
+
+          <button type="submit" disabled={submitting} className="h-12 rounded-lg bg-electric px-7 text-sm font-black uppercase tracking-[0.16em] text-white transition hover:bg-electric-hover disabled:cursor-not-allowed disabled:opacity-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-electric focus-visible:ring-offset-2">
+            {submitting ? 'Enviando…' : 'Solicitar acceso'}
+          </button>
+        </form>
       </div>
     </section>
   );
