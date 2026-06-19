@@ -453,10 +453,21 @@ export function registerAdminRoutes(app: FastifyInstance, options: { pool: Pool;
     if (f.status) { vals.push(f.status); conditions.push(`l.status=$${vals.length}`); }
     if (f.kind) { vals.push(f.kind); conditions.push(`l.kind=$${vals.length}`); }
     if (f.opportunityId) { vals.push(f.opportunityId); conditions.push(`l.opportunity_id=$${vals.length}`); }
-    if (f.search) { vals.push(`%${f.search}%`); conditions.push(`l.public_reference ILIKE $${vals.length}`); }
+    if (f.search) {
+      vals.push(`%${f.search}%`);
+      conditions.push(`(
+        l.public_reference ILIKE $${vals.length}
+        OR l.email ILIKE $${vals.length}
+        OR l.first_name ILIKE $${vals.length}
+        OR l.last_name ILIKE $${vals.length}
+        OR concat_ws(' ', l.first_name, l.last_name) ILIKE $${vals.length}
+      )`);
+    }
     const where = conditions.join(' AND ');
     const { rows } = await pool.query(
-      `SELECT l.id, l.public_reference, l.kind, l.status, l.opportunity_id, l.assigned_user_id, l.created_at
+      `SELECT l.id, l.public_reference, l.kind, l.status, l.opportunity_id, l.assigned_user_id,
+              l.email, l.first_name, l.last_name, l.phone, l.source_path, l.profile, l.experience, l.interests,
+              l.created_at
        FROM leads l WHERE ${where} ORDER BY l.created_at DESC LIMIT $${vals.length + 1} OFFSET $${vals.length + 2}`,
       [...vals, q.limit, q.offset]
     );
