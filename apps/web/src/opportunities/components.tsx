@@ -51,7 +51,7 @@ export function OpportunityCard({ opportunity, preserveSearch = true }: { opport
   const detailHref = `/proyectos/${opportunity.slug}${preserveSearch && typeof window !== 'undefined' ? window.location.search : ''}`;
   const showFinancials = (opportunity.targetAmount?.cents ?? 0) > 1;
   const progress = Math.max(0, Math.min(100, opportunity.fundingProgress));
-  const showProgress = progress === 100 || (progress > 0 && (opportunity.committedAmount?.cents ?? 0) > 0);
+  const showProgress = showFinancials;
   const isFunded = progress === 100 && showProgress;
 
   return (

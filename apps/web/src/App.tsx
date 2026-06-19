@@ -420,7 +420,7 @@ function OpportunityCard({ opportunity }: { opportunity: PublicOpportunity }) {
   const progress = Math.max(0, Math.min(100, opportunity.fundingProgress));
   const location = [opportunity.city, opportunity.district].filter(Boolean).join(' · ');
   const showFinancials = (opportunity.targetAmount?.cents ?? 0) > 1;
-  const showProgress = progress === 100 || (progress > 0 && (opportunity.committedAmount?.cents ?? 0) > 0);
+  const showProgress = showFinancials;
   const isFunded = progress === 100 && showProgress;
 
   return (

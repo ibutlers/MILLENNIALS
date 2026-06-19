@@ -56,6 +56,9 @@ describe('public opportunities catalog', () => {
     expect(within(card).getByText(/12,3% \+50%\*/i)).toBeInTheDocument();
     expect(within(card).getByText(/cierre/i)).toBeInTheDocument();
     expect(within(card).getByRole('link', { name: /ver proyecto/i })).toHaveAttribute('href', '/proyectos/eixample-rehabilitacion-luminosa');
+    const zeroProgressCard = cards[1];
+    const zeroProgressBar = within(zeroProgressCard).getByRole('progressbar', { name: /financiación/i });
+    expect(zeroProgressBar).toHaveAttribute('aria-valuenow', '0');
     expect(screen.getAllByText(/objetivos no están garantizados/i).length).toBeGreaterThan(0);
   });
 
