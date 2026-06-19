@@ -1,5 +1,5 @@
 import { FormEvent, useEffect, useRef, useState } from 'react';
-import { fetchPublicOpportunities, formatReturnValue, returnTypeLabel, riskLabel, statusLabel, type PublicOpportunity } from './opportunities/api';
+import { fetchPublicOpportunities, formatProgress, formatReturnValue, getInvestmentBreakdown, returnTypeLabel, statusLabel, type PublicOpportunity } from './opportunities/api';
 import { submitContact, submitCoinvest, type ContactCreated, type CoinvestCreated } from './leads/api';
 
 const navigation = [
@@ -422,9 +422,10 @@ function OpportunityCard({ opportunity }: { opportunity: PublicOpportunity }) {
   const showFinancials = (opportunity.targetAmount?.cents ?? 0) > 1;
   const showProgress = showFinancials;
   const isFunded = progress === 100 && showProgress;
+  const investment = getInvestmentBreakdown(opportunity);
 
   return (
-    <article className="group relative flex flex-col overflow-hidden rounded-lg border border-frost bg-white transition hover:border-electric/30 focus-within:border-electric/30">
+    <article className="group relative flex h-full flex-col overflow-hidden rounded-lg border border-frost bg-white transition hover:border-electric/30 focus-within:border-electric/30">
       <div className="relative aspect-[4/3] overflow-hidden bg-electric/5">
         {opportunity.primaryImage ? (
           <img src={opportunity.primaryImage.url} alt={opportunity.primaryImage.altText} width="900" height="675" loading="lazy" className="h-full w-full object-cover transition group-hover:scale-[1.03]" />
@@ -439,27 +440,27 @@ function OpportunityCard({ opportunity }: { opportunity: PublicOpportunity }) {
           {isFunded ? <span className="border border-electric/25 px-2 py-0.5 text-[0.62rem] font-black uppercase tracking-[0.16em] text-electric">Financiación cerrada</span> : null}
           {opportunity.strategy === 'Cambio de uso' ? <span className="border border-frost px-2 py-0.5 text-[0.62rem] font-semibold uppercase tracking-[0.14em] text-charcoal/50">Cambio de uso</span> : null}
         </div>
-        <h3 className="mt-4 font-serif text-2xl leading-tight tracking-[-0.02em] text-ink line-clamp-3">{opportunity.title}</h3>
+        <h3 className="mt-4 min-h-[5.25rem] font-serif text-2xl leading-tight tracking-[-0.02em] text-ink line-clamp-3">{opportunity.title}</h3>
         <p className="mt-1.5 text-sm font-semibold uppercase tracking-[0.16em] text-charcoal/50">{location}</p>
-        <p className="mt-3 leading-7 text-charcoal/70 line-clamp-4">{opportunity.shortDescription}</p>
+        {showProgress ? (
+          <div className="mt-4">
+            <div className="mb-2 flex justify-between gap-3 text-xs font-black uppercase tracking-[0.16em] text-charcoal/50"><span>Financiación</span><span>Capital cubierto · {formatProgress(progress)}</span></div>
+            <div className="h-1.5 rounded-full bg-frost" role="progressbar" aria-label="Financiación comprometida" aria-valuemin={0} aria-valuemax={100} aria-valuenow={progress}><div className="h-1.5 rounded-full bg-electric" style={{ width: `${progress}%` }} /></div>
+          </div>
+        ) : null}
         {showFinancials ? (
           <dl className="mt-5 grid grid-cols-2 gap-px overflow-hidden rounded-lg border border-frost bg-frost text-sm">
             <div className="bg-white p-3"><dt className="text-charcoal/60">{returnTypeLabel(opportunity.targetReturnType)}</dt><dd className="mt-1 font-serif text-2xl text-ink">{formatReturnValue(opportunity.targetReturn, opportunity.estimatedTermMonths)}</dd></div>
             <div className="bg-white p-3"><dt className="text-charcoal/60">Plazo estimado</dt><dd className="mt-1 font-semibold text-ink">{opportunity.estimatedTermMonths} meses</dd></div>
             <div className="bg-white p-3"><dt className="text-charcoal/60">Ticket mínimo</dt><dd className="mt-1 font-semibold text-ink">{opportunity.minimumInvestment?.formatted ?? '—'}</dd></div>
-            <div className="bg-white p-3"><dt className="text-charcoal/60">Capital objetivo</dt><dd className="mt-1 font-semibold text-ink">{opportunity.targetAmount?.formatted ?? '—'}</dd></div>
-            <div className="bg-white p-3"><dt className="text-charcoal/60">Capital comprometido</dt><dd className="mt-1 font-semibold text-ink">{opportunity.committedAmount?.formatted ?? '—'}</dd></div>
-            <div className="bg-white p-3"><dt className="text-charcoal/60">Nivel de riesgo</dt><dd className="mt-1 font-semibold text-ink">{riskLabel(opportunity.riskLevel)} · no regulatorio</dd></div>
+            <div className="bg-white p-3"><dt className="text-charcoal/60">Inversión total</dt><dd className="mt-1 font-semibold text-ink">{investment.total}</dd></div>
+            <div className="bg-white p-3"><dt className="text-charcoal/60">Fondos aportados</dt><dd className="mt-1 font-semibold text-ink">{investment.contributed}</dd></div>
+            <div className="bg-white p-3"><dt className="text-charcoal/60">Financiación bancaria</dt><dd className="mt-1 font-semibold text-ink">{investment.bankFinanced}</dd></div>
           </dl>
         ) : null}
-        {showProgress ? (
-          <div className="mt-5">
-            <div className="mb-2 flex justify-between text-xs font-black uppercase tracking-[0.16em] text-charcoal/50"><span>Financiación</span><span>Capital cubierto · {progress}%</span></div>
-            <div className="h-1.5 rounded-full bg-frost"><div className="h-1.5 rounded-full bg-electric" style={{ width: `${progress}%` }} /></div>
-          </div>
-        ) : null}
         <div className="mt-auto pt-5">
-          <a href={`/proyectos/${opportunity.slug}`} className="inline-flex items-center gap-1 text-xs font-black uppercase tracking-[0.14em] text-ink transition group-hover:text-electric focus:outline-none">
+          <p className="leading-7 text-charcoal/70 line-clamp-4">{opportunity.shortDescription}</p>
+          <a href={`/proyectos/${opportunity.slug}`} className="mt-5 inline-flex items-center gap-1 text-xs font-black uppercase tracking-[0.14em] text-ink transition group-hover:text-electric focus:outline-none">
             Ver proyecto <span aria-hidden="true">→</span>
           </a>
         </div>

@@ -146,6 +146,27 @@ export function returnTypeLabel(type: OpportunityReturnType) {
   }[type];
 }
 
+export function formatMoneyFromCents(cents: number, currency = 'EUR') {
+  return new Intl.NumberFormat('es-ES', {
+    style: 'currency',
+    currency,
+    maximumFractionDigits: 0
+  }).format(Math.max(0, cents) / 100);
+}
+
+export function getInvestmentBreakdown(opportunity: Pick<PublicOpportunity, 'targetAmount' | 'committedAmount' | 'currency'>) {
+  const currency = opportunity.targetAmount?.currency ?? opportunity.committedAmount?.currency ?? opportunity.currency ?? 'EUR';
+  const totalCents = opportunity.targetAmount?.cents ?? 0;
+  const contributedCents = opportunity.committedAmount?.cents ?? 0;
+  const bankFinancedCents = Math.max(0, totalCents - contributedCents);
+
+  return {
+    total: formatMoneyFromCents(totalCents, currency),
+    contributed: formatMoneyFromCents(contributedCents, currency),
+    bankFinanced: formatMoneyFromCents(bankFinancedCents, currency)
+  };
+}
+
 export function formatReturnValue(value: { basisPoints: number | null; formatted: string | null }, estimatedTermMonths: number) {
   if (value.basisPoints === null) return '—';
 

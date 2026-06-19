@@ -2,8 +2,8 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect } from 'react';
 import { Link, useParams, useSearchParams } from 'react-router';
 import { setPageMetadata } from '../metadata';
-import { fetchOpportunityDetail, formatDate, formatReturnValue, returnTypeLabel, riskLabel, statusLabel } from './api';
-import { FundingProgress, Metric, RiskBadge, StatusBadge } from './components';
+import { fetchOpportunityDetail, formatDate, formatReturnValue, getInvestmentBreakdown, returnTypeLabel, statusLabel } from './api';
+import { FundingProgress, Metric, StatusBadge } from './components';
 
 export function OpportunityDetailPage() {
   const { slug = '' } = useParams();
@@ -51,6 +51,7 @@ export function OpportunityDetailPage() {
   const location = [opportunity.city, opportunity.district, opportunity.countryCode].filter(Boolean).join(' · ');
   const showFinancials = (opportunity.targetAmount?.cents ?? 0) > 1;
   const showProgress = showFinancials;
+  const investment = getInvestmentBreakdown(opportunity);
 
   return (
     <div className="min-h-screen bg-lavender text-ink">
@@ -64,7 +65,7 @@ export function OpportunityDetailPage() {
             </nav>
             <div className="grid gap-8 py-8 lg:grid-cols-[0.9fr_1.1fr] lg:items-end">
               <div>
-                <div className="flex flex-wrap gap-2"><StatusBadge status={opportunity.status} />{showFinancials ? <RiskBadge risk={opportunity.riskLevel} /> : null}</div>
+                <div className="flex flex-wrap gap-2"><StatusBadge status={opportunity.status} /></div>
                 <h1 className="mt-5 font-serif text-5xl leading-tight tracking-[-0.045em] sm:text-7xl">{opportunity.title}</h1>
                 <p className="mt-4 text-sm font-black uppercase tracking-[0.18em] text-charcoal/60">{location}</p>
               </div>
@@ -114,12 +115,12 @@ export function OpportunityDetailPage() {
               <h2 className="font-serif text-3xl tracking-[-0.035em]">Métricas públicas</h2>
               {showFinancials ? (
                 <dl className="mt-5 grid gap-2">
-                  <Metric label="Capital objetivo" value={opportunity.targetAmount?.formatted ?? '—'} emphasis />
-                  <Metric label="Capital comprometido" value={opportunity.committedAmount?.formatted ?? '—'} />
+                  <Metric label="Inversión total" value={investment.total} emphasis />
+                  <Metric label="Fondos aportados" value={investment.contributed} />
+                  <Metric label="Financiación bancaria" value={investment.bankFinanced} />
                   <Metric label="Ticket mínimo" value={opportunity.minimumInvestment?.formatted ?? '—'} />
                   <Metric label="Plazo" value={`${opportunity.estimatedTermMonths} meses`} />
                   <Metric label={returnTypeLabel(opportunity.targetReturnType)} value={formatReturnValue(opportunity.targetReturn, opportunity.estimatedTermMonths)} emphasis />
-                  <Metric label="Riesgo" value={`Riesgo ${riskLabel(opportunity.riskLevel)} · no regulatorio`} />
                   <Metric label="Cierre" value={formatDate(opportunity.closingDate)} />
                   <Metric label="Estado" value={statusLabel(opportunity.status)} />
                 </dl>
