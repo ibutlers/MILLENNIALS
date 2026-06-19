@@ -144,6 +144,24 @@ describe('project access capital migration', () => {
 });
 
 
+describe('investment requests migration', () => {
+  const sql = readFileSync(resolve(__dirname, 'db/migrations/0016_add_investment_requests.sql'), 'utf8');
+
+  it('creates the operational request lifecycle table linked to app users and opportunities', () => {
+    expect(sql).toMatch(/CREATE\s+TABLE\s+investment_requests/i);
+    expect(sql).toMatch(/app_user_id\s+uuid\s+NOT\s+NULL\s+REFERENCES\s+app_users\s*\(\s*id\s*\)/i);
+    expect(sql).toMatch(/opportunity_id\s+uuid\s+NOT\s+NULL\s+REFERENCES\s+opportunities\s*\(\s*id\s*\)/i);
+    expect(sql).toMatch(/status\s+text\s+NOT\s+NULL\s+DEFAULT\s+'requested'[\s\S]*approved_pending_transfer[\s\S]*transfer_reported[\s\S]*confirmed/i);
+    expect(sql).toMatch(/CREATE\s+UNIQUE\s+INDEX\s+investment_requests_single_active_idx/i);
+  });
+
+  it('is runner-owned and does not hide drift with IF NOT EXISTS', () => {
+    expect(sql).not.toMatch(/IF\s+NOT\s+EXISTS/i);
+    expect(sql).not.toMatch(/\bschema_migrations\b/i);
+  });
+});
+
+
 describe('migration directory resolution', () => {
   const originalNodeEnv = process.env.NODE_ENV;
   const originalMigrationsDir = process.env.MIGRATIONS_DIR;

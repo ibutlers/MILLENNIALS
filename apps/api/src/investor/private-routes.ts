@@ -15,6 +15,8 @@ import {
   requireProjectAccess,
 } from '../auth/middleware.js';
 import type { ProviderSet } from '../providers/index.js';
+import { createInvestmentRequest, reportInvestmentTransfer } from './investment-requests.js';
+import { z } from 'zod';
 
 function errorId(): string {
   return `err_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
@@ -23,6 +25,17 @@ function errorId(): string {
 function publicError(code: string, message: string) {
   return { error: { id: errorId(), code, message } };
 }
+
+const investmentRequestSchema = z.object({
+  amountCents: z.number().int().positive(),
+  currency: z.string().length(3).default('EUR'),
+  message: z.string().max(2000).optional().nullable(),
+});
+
+const transferReportSchema = z.object({
+  transferReference: z.string().min(2).max(200),
+  transferNotes: z.string().max(2000).optional().nullable(),
+});
 
 export interface PrivateInvestorRoutesOptions {
   pool: Pool;
@@ -118,6 +131,68 @@ export function registerPrivateInvestorRoutes(
     }
 
     return { data: result.rows };
+  });
+
+  // ── GET /api/investor/investment-requests ──
+  app.get('/api/investor/investment-requests', {
+    preHandler: authChain,
+  }, async (request: FastifyRequest) => {
+    const appUser = (request as any).appUser;
+    const { rows } = await pool.query(
+      `SELECT ir.*, o.slug, o.title, o.city
+       FROM investment_requests ir
+       JOIN opportunities o ON o.id = ir.opportunity_id
+       WHERE ir.app_user_id = $1
+       ORDER BY ir.created_at DESC
+       LIMIT 100`,
+      [appUser.id],
+    );
+    return { data: rows };
+  });
+
+  // ── POST /api/investor/projects/:id/investment-requests ──
+  app.post('/api/investor/projects/:id/investment-requests', {
+    preHandler: authChain,
+  }, async (request: FastifyRequest, reply: FastifyReply) => {
+    const appUser = (request as any).appUser;
+    const { id } = request.params as { id: string };
+    const body = investmentRequestSchema.parse(request.body);
+    try {
+      const created = await createInvestmentRequest(pool, {
+        appUserId: appUser.id,
+        opportunityIdOrSlug: id,
+        amountCents: body.amountCents,
+        currency: body.currency,
+        message: body.message,
+      });
+      return reply.status(201).send({ data: created });
+    } catch (err) {
+      const statusCode = (err as any).statusCode || 500;
+      if (statusCode >= 500) request.log.error({ err, project: id }, 'investment request creation failed');
+      return reply.status(statusCode).send(publicError((err as any).code || 'investment_request_failed', (err as Error).message || 'No se ha podido crear la solicitud.'));
+    }
+  });
+
+  // ── POST /api/investor/investment-requests/:reference/transfer ──
+  app.post('/api/investor/investment-requests/:reference/transfer', {
+    preHandler: authChain,
+  }, async (request: FastifyRequest, reply: FastifyReply) => {
+    const appUser = (request as any).appUser;
+    const { reference } = request.params as { reference: string };
+    const body = transferReportSchema.parse(request.body);
+    try {
+      const updated = await reportInvestmentTransfer(pool, {
+        reference,
+        appUserId: appUser.id,
+        transferReference: body.transferReference,
+        transferNotes: body.transferNotes,
+      });
+      return { data: updated };
+    } catch (err) {
+      const statusCode = (err as any).statusCode || 500;
+      if (statusCode >= 500) request.log.error({ err, reference }, 'investment transfer report failed');
+      return reply.status(statusCode).send(publicError((err as any).code || 'transfer_report_failed', (err as Error).message || 'No se ha podido registrar la transferencia.'));
+    }
   });
 
   // ── GET /api/investor/projects/:id ──

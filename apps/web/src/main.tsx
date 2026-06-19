@@ -44,6 +44,7 @@ const AdminOpportunityList = lazy(() => import('./admin/AdminOpportunityList').t
 const AdminOpportunityEditor = lazy(() => import('./admin/AdminOpportunityEditor').then((module) => ({ default: module.default })));
 const AdminLeadList = lazy(() => import('./admin/AdminLeadList').then((module) => ({ default: module.default })));
 const AdminLeadDetail = lazy(() => import('./admin/AdminLeadDetail').then((module) => ({ default: module.default })));
+const AdminInvestmentRequests = lazy(() => import('./admin/AdminInvestmentRequests').then((module) => ({ default: module.default })));
 const AdminUserList = lazy(() => import('./admin/AdminUserList').then((module) => ({ default: module.default })));
 const AdminUserDetail = lazy(() => import('./admin/AdminUserDetail').then((module) => ({ default: module.default })));
 const AdminAuditLog = lazy(() => import('./admin/AdminAuditLog').then((module) => ({ default: module.default })));
@@ -161,6 +162,7 @@ const router = createBrowserRouter([
       { path: 'oportunidades/:id', element: lazyPage(<AdminOpportunityEditor />) },
       { path: 'leads', element: lazyPage(<AdminLeadList />) },
       { path: 'leads/:reference', element: lazyPage(<AdminLeadDetail />) },
+      { path: 'inversiones', element: lazyPage(<AdminInvestmentRequests />) },
       { path: 'usuarios', element: lazyPage(<AdminUserList />) },
       { path: 'usuarios/:reference', element: lazyPage(<AdminUserDetail />) },
       { path: 'auditoria', element: lazyPage(<AdminAuditLog />) },

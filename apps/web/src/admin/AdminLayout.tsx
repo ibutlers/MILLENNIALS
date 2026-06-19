@@ -6,6 +6,7 @@ const NAV_ITEMS: Array<{ path: string; label: string; exact?: boolean; roles?: s
   { path: '/admin', label: 'Dashboard', exact: true },
   { path: '/admin/oportunidades', label: 'Oportunidades' },
   { path: '/admin/leads', label: 'Leads' },
+  { path: '/admin/inversiones', label: 'Inversiones' },
   { path: '/admin/usuarios', label: 'Usuarios', roles: ['admin'] },
   { path: '/admin/auditoria', label: 'Auditoría', roles: ['admin'] },
 ];

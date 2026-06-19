@@ -6,6 +6,7 @@ import { requireRole } from './auth.js';
 import { buildPaginatedResponse } from './helpers.js';
 import { z } from 'zod';
 import { convertLeadToInvestor, upsertProjectCapitalAssignment } from './lead-workflow.js';
+import { approveInvestmentRequest, confirmInvestmentRequest, rejectInvestmentRequest } from '../investor/investment-requests.js';
 
 // ── Schemas ──
 
@@ -46,6 +47,13 @@ const projectAccessAssignmentSchema = z.object({
   currency: z.string().length(3).default('EUR'),
   status: z.enum(['active', 'revoked']).default('active'),
   notes: z.string().max(2000).optional().nullable(),
+});
+
+const investmentRequestActionSchema = z.object({
+  action: z.enum(['approve', 'reject', 'confirm']),
+  approvedAmountCents: z.number().int().positive().optional(),
+  adminNotes: z.string().max(2000).optional().nullable(),
+  confirmationNotes: z.string().max(2000).optional().nullable(),
 });
 
 const leadNoteSchema = z.object({
@@ -727,6 +735,59 @@ export function registerAdminRoutes(app: FastifyInstance, options: { pool: Pool;
       if (statusCode === 404) return reply.status(404).send({ error: { code: (err as any).code || 'not_found', message: 'Usuario o proyecto no encontrado.' } });
       req.log.error({ err, ref }, 'project capital assignment failed');
       return reply.status(statusCode).send({ error: { code: 'assignment_failed', message: 'No se ha podido asignar el capital.' } });
+    }
+  });
+
+  // ═══ Investment Requests ═══
+  app.get('/api/v1/admin/investment-requests', {
+    preHandler: [adminGate(config), requireRole(pool, 'admin', 'operator')]
+  }, async (req) => {
+    const query = req.query as Record<string, string | undefined>;
+    const status = query.status;
+    const vals: unknown[] = [];
+    const filters: string[] = [];
+    if (status) { vals.push(status); filters.push(`ir.status = $${vals.length}`); }
+    const where = filters.length ? `WHERE ${filters.join(' AND ')}` : '';
+    const { rows } = await pool.query(
+      `SELECT ir.*, au.email_normalized AS investor_email, au.display_name AS investor_name,
+              o.slug AS opportunity_slug, o.title AS opportunity_title
+       FROM investment_requests ir
+       JOIN app_users au ON au.id = ir.app_user_id
+       JOIN opportunities o ON o.id = ir.opportunity_id
+       ${where}
+       ORDER BY ir.created_at DESC
+       LIMIT 100`,
+      vals,
+    );
+    return { data: rows };
+  });
+
+  app.patch('/api/v1/admin/investment-requests/:reference', {
+    preHandler: [adminGate(config), requireRole(pool, 'admin')]
+  }, async (req, reply) => {
+    const { reference } = req.params as { reference: string };
+    const body = investmentRequestActionSchema.parse(req.body);
+    const actor = (req as any).appUser;
+    try {
+      if (body.action === 'approve') {
+        const updated = await approveInvestmentRequest(pool, {
+          reference,
+          actorId: actor.id,
+          approvedAmountCents: body.approvedAmountCents ?? 0,
+          adminNotes: body.adminNotes,
+        });
+        return { data: updated };
+      }
+      if (body.action === 'reject') {
+        const updated = await rejectInvestmentRequest(pool, { reference, actorId: actor.id, adminNotes: body.adminNotes });
+        return { data: updated };
+      }
+      const updated = await confirmInvestmentRequest(pool, { reference, actorId: actor.id, confirmationNotes: body.confirmationNotes ?? body.adminNotes });
+      return { data: updated };
+    } catch (err) {
+      const statusCode = (err as any).statusCode || 500;
+      if (statusCode >= 500) req.log.error({ err, reference }, 'investment request action failed');
+      return reply.status(statusCode).send({ error: { code: (err as any).code || 'investment_request_action_failed', message: (err as Error).message || 'No se ha podido actualizar la solicitud.' } });
     }
   });
 
