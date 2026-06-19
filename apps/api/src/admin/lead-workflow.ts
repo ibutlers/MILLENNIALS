@@ -205,8 +205,8 @@ export async function upsertProjectCapitalAssignment(
          app_user_id, opportunity_id, status, granted_by, granted_at,
          revoked_by, revoked_at, reason, committed_amount_cents, currency, notes
        ) VALUES (
-         $1, $2, $3::project_access_status, $4, now(),
-         CASE WHEN $3::text = 'revoked' THEN $4 ELSE NULL END,
+         $1, $2, $3::project_access_status, $4::uuid, now(),
+         CASE WHEN $3::text = 'revoked' THEN $4::uuid ELSE NULL END,
          CASE WHEN $3::text = 'revoked' THEN now() ELSE NULL END,
          $5, $6, $7, $8
        )
