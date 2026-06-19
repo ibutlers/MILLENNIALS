@@ -92,6 +92,8 @@ export function registerPrivateInvestorRoutes(
         `SELECT o.id, o.slug, o.title, o.short_description, o.city, o.status, o.risk_level,
                 o.target_return_type, o.target_return_bps, o.target_amount_cents,
                 o.committed_amount_cents, o.estimated_term_months,
+                0::bigint AS investor_committed_amount_cents,
+                o.currency AS investor_currency,
                 (SELECT url FROM opportunity_media WHERE opportunity_id = o.id AND type = 'image' ORDER BY position LIMIT 1) AS primary_image_url
          FROM opportunities o
          ORDER BY o.created_at DESC
@@ -102,6 +104,9 @@ export function registerPrivateInvestorRoutes(
         `SELECT o.id, o.slug, o.title, o.short_description, o.city, o.status, o.risk_level,
                 o.target_return_type, o.target_return_bps, o.target_amount_cents,
                 o.committed_amount_cents, o.estimated_term_months,
+                pua.committed_amount_cents AS investor_committed_amount_cents,
+                pua.currency AS investor_currency,
+                pua.notes AS investor_notes,
                 (SELECT url FROM opportunity_media WHERE opportunity_id = o.id AND type = 'image' ORDER BY position LIMIT 1) AS primary_image_url
          FROM opportunities o
          JOIN project_user_access pua ON pua.opportunity_id = o.id
@@ -121,13 +126,18 @@ export function registerPrivateInvestorRoutes(
   }, async (request: FastifyRequest, reply: FastifyReply) => {
     const { id } = request.params as { id: string };
 
+    const appUser = (request as any).appUser;
     const result = await pool.query(
       `SELECT o.id, o.slug, o.title, o.short_description, o.description, o.city, o.status, o.risk_level,
               o.target_return_type, o.target_return_bps, o.target_amount_cents,
-              o.committed_amount_cents, o.estimated_term_months, o.created_at, o.updated_at
+              o.committed_amount_cents, o.estimated_term_months, o.created_at, o.updated_at,
+              pua.committed_amount_cents AS investor_committed_amount_cents,
+              pua.currency AS investor_currency,
+              pua.notes AS investor_notes
        FROM opportunities o
+       LEFT JOIN project_user_access pua ON pua.opportunity_id = o.id AND pua.app_user_id = $2 AND pua.status = 'active'
        WHERE o.id::text = $1 OR o.slug = $1`,
-      [id],
+      [id, appUser.id],
     );
 
     if (result.rows.length === 0) {

@@ -5,6 +5,7 @@ import type { AppConfig } from '../config.js';
 import { requireRole } from './auth.js';
 import { buildPaginatedResponse } from './helpers.js';
 import { z } from 'zod';
+import { convertLeadToInvestor, upsertProjectCapitalAssignment } from './lead-workflow.js';
 
 // ── Schemas ──
 
@@ -37,6 +38,14 @@ const opportunityPatchSchema = z.object({
 const leadPatchSchema = z.object({
   status: z.enum(['new','in_review','contacted','qualified','disqualified','converted']).optional(),
   assignedUserId: z.string().uuid().optional().nullable(),
+});
+
+const projectAccessAssignmentSchema = z.object({
+  opportunityId: z.string().min(1).max(200),
+  committedAmountCents: z.number().int().min(0),
+  currency: z.string().length(3).default('EUR'),
+  status: z.enum(['active', 'revoked']).default('active'),
+  notes: z.string().max(2000).optional().nullable(),
 });
 
 const leadNoteSchema = z.object({
@@ -493,6 +502,20 @@ export function registerAdminRoutes(app: FastifyInstance, options: { pool: Pool;
   }, async (req, reply) => {
     const body = leadPatchSchema.parse(req.body);
     const reference = (req.params as any).reference;
+
+    if (body.status === 'converted') {
+      try {
+        const actor = (req as any).appUser;
+        const converted = await convertLeadToInvestor(pool, { reference, actorId: actor?.id ?? null });
+        return { data: converted.lead, meta: { conversion: { mode: converted.mode, appUserId: converted.appUserId } } };
+      } catch (err) {
+        const statusCode = (err as any).statusCode || 500;
+        if (statusCode === 404) return reply.status(404).send({ error: { code: 'not_found', message: 'Lead no encontrado.' } });
+        req.log.error({ err, reference }, 'lead conversion failed');
+        return reply.status(statusCode).send({ error: { code: 'conversion_failed', message: 'No se ha podido convertir la solicitud.' } });
+      }
+    }
+
     const sets: string[] = []; const vals: any[] = [reference];
     if (body.status) { vals.push(body.status); sets.push(`status=$${vals.length}`); }
     if (body.assignedUserId !== undefined) { vals.push(body.assignedUserId); sets.push(`assigned_user_id=$${vals.length}`); }
@@ -650,6 +673,61 @@ export function registerAdminRoutes(app: FastifyInstance, options: { pool: Pool;
     if (!u) return reply.status(404).send({ error: { code: 'not_found', message: 'Usuario no encontrado.' } });
     await pool.query('DELETE FROM auth.session WHERE user_id=$1', [u.better_auth_user_id]);
     return { data: { revoked: true } };
+  });
+
+  // ═══ User Project Access / Capital Assignment ═══
+  app.get('/api/v1/admin/users/:reference/project-access', {
+    preHandler: [adminGate(config), requireRole(pool, 'admin', 'operator')]
+  }, async (req, reply) => {
+    const ref = (req.params as any).reference;
+    const { rows: [u] } = await pool.query('SELECT id FROM app_users WHERE id::text=$1', [ref]);
+    if (!u) return reply.status(404).send({ error: { code: 'not_found', message: 'Usuario no encontrado.' } });
+
+    const { rows } = await pool.query(
+      `SELECT o.id AS opportunity_id,
+              o.slug,
+              o.title,
+              o.currency AS opportunity_currency,
+              o.target_amount_cents,
+              o.committed_amount_cents AS project_committed_amount_cents,
+              pua.id AS access_id,
+              pua.status AS access_status,
+              COALESCE(pua.committed_amount_cents, 0) AS committed_amount_cents,
+              COALESCE(pua.currency, o.currency) AS currency,
+              pua.notes,
+              pua.granted_at,
+              pua.revoked_at
+       FROM opportunities o
+       LEFT JOIN project_user_access pua ON pua.opportunity_id = o.id AND pua.app_user_id = $1
+       ORDER BY o.created_at DESC`,
+      [u.id]
+    );
+    return { data: rows };
+  });
+
+  app.put('/api/v1/admin/users/:reference/project-access', {
+    preHandler: [adminGate(config), requireRole(pool, 'admin')]
+  }, async (req, reply) => {
+    const ref = (req.params as any).reference;
+    const body = projectAccessAssignmentSchema.parse(req.body);
+    const actor = (req as any).appUser;
+    try {
+      const result = await upsertProjectCapitalAssignment(pool, {
+        appUserId: ref,
+        opportunityId: body.opportunityId,
+        committedAmountCents: body.committedAmountCents,
+        currency: body.currency,
+        status: body.status,
+        notes: body.notes,
+        actorId: actor?.id ?? null,
+      });
+      return { data: result.assignment, meta: { projectCommittedAmountCents: result.projectCommittedAmountCents } };
+    } catch (err) {
+      const statusCode = (err as any).statusCode || 500;
+      if (statusCode === 404) return reply.status(404).send({ error: { code: (err as any).code || 'not_found', message: 'Usuario o proyecto no encontrado.' } });
+      req.log.error({ err, ref }, 'project capital assignment failed');
+      return reply.status(statusCode).send({ error: { code: 'assignment_failed', message: 'No se ha podido asignar el capital.' } });
+    }
   });
 
   // ═══ Audit ═══

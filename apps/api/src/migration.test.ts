@@ -127,6 +127,23 @@ describe('restore lineage migration', () => {
 });
 
 
+describe('project access capital migration', () => {
+  const sql = readFileSync(resolve(__dirname, 'db/migrations/0015_add_project_access_capital.sql'), 'utf8');
+
+  it('adds explicit per-investor committed capital to project access grants', () => {
+    expect(sql).toMatch(/ALTER\s+TABLE\s+project_user_access[\s\S]*ADD\s+COLUMN\s+committed_amount_cents\s+bigint\s+NOT\s+NULL\s+DEFAULT\s+0/i);
+    expect(sql).toMatch(/CHECK\s*\(\s*committed_amount_cents\s+>=\s+0\s*\)/i);
+    expect(sql).toMatch(/ADD\s+COLUMN\s+currency\s+text\s+NOT\s+NULL\s+DEFAULT\s+'EUR'/i);
+    expect(sql).toMatch(/ADD\s+COLUMN\s+notes\s+text/i);
+  });
+
+  it('is deterministic and does not manipulate runner-owned migration state', () => {
+    expect(sql).not.toMatch(/CREATE\s+TABLE\s+IF\s+NOT\s+EXISTS/i);
+    expect(sql).not.toMatch(/\bschema_migrations\b/i);
+  });
+});
+
+
 describe('migration directory resolution', () => {
   const originalNodeEnv = process.env.NODE_ENV;
   const originalMigrationsDir = process.env.MIGRATIONS_DIR;

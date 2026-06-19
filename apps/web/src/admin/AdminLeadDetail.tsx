@@ -91,6 +91,7 @@ export default function AdminLeadDetail() {
   const queryClient = useQueryClient();
   const [noteText, setNoteText] = useState('');
   const [newStatus, setNewStatus] = useState('');
+  const [conversionNotice, setConversionNotice] = useState<string | null>(null);
 
   const { data, isLoading, error } = useQuery<{ data: LeadDetail }>({
     queryKey: ['admin', 'leads', reference],
@@ -104,8 +105,19 @@ export default function AdminLeadDetail() {
   });
 
   const statusMutation = useMutation({
-    mutationFn: (status: string) => apiFetch(`/api/v1/admin/leads/${reference}`, { method: 'PATCH', body: JSON.stringify({ status }) }),
-    onSuccess: () => { setNewStatus(''); queryClient.invalidateQueries({ queryKey: ['admin', 'leads', reference] }); },
+    mutationFn: (status: string) => apiFetch(`/api/v1/admin/leads/${reference}`, { method: 'PATCH', body: JSON.stringify({ status }) }) as Promise<{ meta?: { conversion?: { mode: string; appUserId: string | null } } }>,
+    onSuccess: (result) => {
+      setNewStatus('');
+      const mode = result?.meta?.conversion?.mode;
+      if (mode === 'activated_existing_user' || mode === 'created_from_better_auth_user') {
+        setConversionNotice('Solicitud convertida: usuario inversor activo y listo para asignar capital por proyecto.');
+      } else if (mode === 'invitation_required') {
+        setConversionNotice('Solicitud convertida: todavía no existe cuenta para este email. Hay que enviar invitación de acceso antes de que pueda aparecer como usuario activo.');
+      } else {
+        setConversionNotice(null);
+      }
+      queryClient.invalidateQueries({ queryKey: ['admin', 'leads', reference] });
+    },
   });
 
   if (isLoading) return <div className="animate-pulse text-[#9B7E5F]">Cargando solicitud…</div>;
@@ -186,6 +198,11 @@ export default function AdminLeadDetail() {
         <aside className="space-y-6">
           <section className="rounded border border-[#1A3E48] bg-[#08191C] p-5 space-y-3">
             <h3 className="font-serif text-lg text-[#7FA88C]">Gestión</h3>
+            {conversionNotice && (
+              <div className="rounded border border-[#7FA88C]/40 bg-[#0F2A30] p-3 text-sm text-[#FBF7F0]" role="status">
+                {conversionNotice}
+              </div>
+            )}
             <div className="flex gap-2 pt-2">
               <select value={newStatus} onChange={(e) => setNewStatus(e.target.value)} className="min-w-0 flex-1 rounded border border-[#1A3E48] bg-[#0F2A30] px-3 py-1.5 text-sm text-[#FBF7F0] focus:border-[#7FA88C] focus:outline-none">
                 <option value="">Cambiar estado</option>
