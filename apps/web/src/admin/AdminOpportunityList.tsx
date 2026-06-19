@@ -31,7 +31,7 @@ const STATUS_LABELS: Record<string, string> = {
   draft: 'Borrador', review: 'Revisión', published: 'Publicado',
   unlisted: 'No listado', private: 'Privado', archived: 'Archivado',
   coming_soon: 'Próximamente', open: 'Abierto', funding: 'Financiación',
-  funded: 'Financiado', in_execution: 'En ejecución', commercializing: 'Comercializando',
+  funded: 'Financiado', in_study: 'En estudio', in_execution: 'En ejecución', commercializing: 'Comercializando',
   closed: 'Cerrado', cancelled: 'Cancelado',
 };
 

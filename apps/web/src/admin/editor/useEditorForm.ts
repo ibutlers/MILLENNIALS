@@ -3,6 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useParams, useNavigate } from 'react-router';
 import { apiFetch } from '../../api/client';
 import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
+import { assetUrl, getAssetById } from '../assetCatalog';
 import {
   type HighlightItem,
   type RiskItem,
@@ -47,7 +48,7 @@ interface SubEntitiesResponse {
     highlights: Array<{ label: string; value: string; position: number }>;
     risks: Array<{ title: string; description: string; position: number }>;
     milestones: Array<{ title: string; description: string; planned_date: string | null; completed_at: string | null; position: number }>;
-    media: Array<{ asset_id: string; alt_text: string; primary: boolean; position: number }>;
+    media: Array<{ asset_id?: string; url?: string; alt_text: string | null; primary?: boolean; position: number }>;
   };
 }
 
@@ -158,25 +159,25 @@ export function formToApiPayload(form: FormState): Record<string, any> {
   return {
     title: form.title,
     slug: form.slug,
-    short_description: form.shortDescription,
+    shortDescription: form.shortDescription,
     description: form.description,
     city: form.city,
-    country_code: form.countryCode,
+    countryCode: form.countryCode,
     district: form.district || null,
-    asset_type: form.assetType,
+    assetType: form.assetType,
     strategy: form.strategy,
-    editorial_status: form.editorialStatus,
+    editorialStatus: form.editorialStatus,
     visibility: form.visibility,
     status: form.status,
     currency: form.currency,
-    target_amount_cents: form.targetAmountCents,
-    committed_amount_cents: form.committedAmountCents,
-    minimum_investment_cents: form.minimumInvestmentCents,
-    estimated_term_months: form.estimatedTermMonths,
-    target_return_type: form.targetReturnType || null,
-    target_return_bps: form.targetReturnBps || null,
-    risk_level: form.riskLevel,
-    closing_date: form.closingDate || null,
+    targetAmountCents: form.targetAmountCents,
+    committedAmountCents: form.committedAmountCents,
+    minimumInvestmentCents: form.minimumInvestmentCents,
+    estimatedTermMonths: form.estimatedTermMonths,
+    targetReturnType: form.targetReturnType || null,
+    targetReturnBps: form.targetReturnBps || null,
+    riskLevel: form.riskLevel,
+    closingDate: form.closingDate ? new Date(`${form.closingDate}T00:00:00.000Z`).toISOString() : null,
     disclaimer: form.disclaimer || null,
   };
 }
@@ -391,9 +392,9 @@ export function useEditorForm(): UseEditorFormReturn {
       }));
       const med: MediaItem[] = (subData.data.media || []).map((item, i) => ({
         _id: crypto.randomUUID(),
-        assetId: item.asset_id,
-        alt: item.alt_text,
-        primary: item.primary,
+        assetId: item.url || item.asset_id || '',
+        alt: item.alt_text || '',
+        primary: i === 0,
         position: item.position ?? i,
       }));
 
@@ -492,7 +493,7 @@ export function useEditorForm(): UseEditorFormReturn {
   });
 
   const subentityMutation = useMutation({
-    mutationFn: async () => {
+    mutationFn: async (baseVersion?: number) => {
       if (!id) throw new Error('No ID');
       const body = {
         highlights: highlights.map((h, i) => ({ label: h.label, value: h.value, position: i })),
@@ -504,13 +505,16 @@ export function useEditorForm(): UseEditorFormReturn {
           completed_at: m.completedAt || null,
           position: i,
         })),
-        media: media.map((m, i) => ({
-          asset_id: m.assetId,
-          alt_text: m.alt,
-          primary: m.primary,
-          position: i,
-        })),
-        version: form.version,
+        media: media.map((m, i) => {
+          const catalogAsset = getAssetById(m.assetId);
+          return {
+            type: 'image',
+            url: catalogAsset ? assetUrl(catalogAsset) : m.assetId,
+            alt_text: m.alt || null,
+            position: i,
+          };
+        }),
+        version: baseVersion ?? form.version,
       };
       return apiFetch(`/api/v1/admin/opportunities/${id}/subentities`, {
         method: 'PATCH',
@@ -599,8 +603,8 @@ export function useEditorForm(): UseEditorFormReturn {
     }
 
     try {
-      await saveMutation.mutateAsync();
-      await subentityMutation.mutateAsync();
+      const saveResp: any = await saveMutation.mutateAsync(undefined);
+      await subentityMutation.mutateAsync(saveResp?.data?.version ?? form.version);
     } catch {
       // Errors handled in onError callbacks
     }

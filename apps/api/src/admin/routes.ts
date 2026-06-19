@@ -18,7 +18,7 @@ const opportunityPatchSchema = z.object({
   district: z.string().max(100).optional().nullable(),
   assetType: z.string().max(50).optional(),
   strategy: z.string().max(50).optional(),
-  status: z.enum(['coming_soon','open','funding','funded','in_execution','commercializing','closed','cancelled']).optional(),
+  status: z.enum(['coming_soon','open','funding','funded','in_execution','commercializing','closed','cancelled','in_study']).optional(),
   visibility: z.enum(['public','private','unlisted','draft']).optional(),
   editorialStatus: z.enum(['draft','review','published','unlisted','private','archived']).optional(),
   currency: z.string().length(3).optional(),
@@ -709,11 +709,14 @@ export function registerAdminRoutes(app: FastifyInstance, options: { pool: Pool;
     removedMilestoneIds: z.array(z.string().uuid()).optional(),
     media: z.array(z.object({
       _id: z.string().optional(),
-      assetId: z.string().min(1).max(100),
+      assetId: z.string().min(1).max(500).optional(),
+      url: z.string().min(1).max(500).optional(),
       altText: z.string().max(500).optional().default(''),
+      alt_text: z.string().max(500).optional(),
       isPrimary: z.boolean().optional().default(false),
+      type: z.enum(VALID_MEDIA_TYPES).optional().default('image'),
       position: z.number().int().min(0),
-    })).optional(),
+    }).refine((item) => Boolean(item.assetId || item.url), { message: 'assetId o url es obligatorio' })).optional(),
     removedMediaIds: z.array(z.string().uuid()).optional(),
     version: z.number().int().min(1),
   });
@@ -826,13 +829,17 @@ export function registerAdminRoutes(app: FastifyInstance, options: { pool: Pool;
 
       // Media
       if (body.media !== undefined) {
-        const mediaRows = body.media.map((md: any) => ({
-          type: 'image',
-          url: `/assets/${md.assetId}`,
-          alt_text: md.altText || '',
-          position: md.position,
-          _id: md._id,
-        }));
+        const mediaRows = body.media.map((md: any) => {
+          const source = md.url || md.assetId;
+          const url = source.startsWith('/') || source.startsWith('http') ? source : `/assets/${source}`;
+          return {
+            type: md.type || 'image',
+            url,
+            alt_text: md.alt_text ?? md.altText ?? '',
+            position: md.position,
+            _id: md._id,
+          };
+        });
         await upsertSubEntities(
           'opportunity_media',
           ['type', 'url', 'alt_text', 'position'],

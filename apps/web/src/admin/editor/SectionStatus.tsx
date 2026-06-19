@@ -48,6 +48,7 @@ export default function SectionStatus({ values, onChange, errors, showValidation
             <option value="open">Abierto</option>
             <option value="funding">Financiación</option>
             <option value="funded">Financiado</option>
+            <option value="in_study">En estudio</option>
             <option value="in_execution">En ejecución</option>
             <option value="commercializing">Comercializando</option>
             <option value="closed">Cerrado</option>
