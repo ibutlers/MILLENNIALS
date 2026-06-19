@@ -130,7 +130,7 @@ export function AuthProvider({ children, baseURL }: { children: ReactNode; baseU
       throw mapLoginError(resp, responsePayload);
     }
 
-    const sessionData = await readSessionFromClient(client);
+    const sessionData = await readSessionFromClient(client).catch(() => null);
     if (sessionData?.user) {
       const userData = sessionData.user;
       setUser(toAuthUser(userData));
