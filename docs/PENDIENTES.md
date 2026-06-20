@@ -50,7 +50,7 @@ Víctor Pérez (fundador). Cualquier cambio en esta postura requiere su autoriza
 
 ### Condiciones para cerrar esta ventana
 
-La ventana temporal se considerará cerrada cuando se cumplan **todos** los requisitos de activación definitiva listados en este documento (dominio, HTTPS, SMTP definitivo, SPF/DKIM/DMARC, legal completo, dos admins reales, MFA obligatorio, E2E verdes). En ese momento `AUTH_ALLOW_INSECURE_IP_TEST` pasará a `false`.
+La ventana temporal se considerará cerrada cuando se cumplan **todos** los requisitos de activación definitiva listados en este documento (dominio, HTTPS, SMTP definitivo, SPF/DKIM/DMARC, legal completo, dos admins reales, E2E verdes). MFA permanece opcional por decisión de producto; activar MFA obligatorio requerirá decisión futura explícita. En ese momento `AUTH_ALLOW_INSECURE_IP_TEST` pasará a `false`.
 
 ## Pendientes externos antes de activación definitiva
 

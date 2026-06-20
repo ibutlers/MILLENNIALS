@@ -53,7 +53,7 @@ function sanitizeReturnTo(value: string | null): string {
 }
 
 /**
- * TwoFactorPage — separates first-time TOTP setup from the login MFA challenge.
+ * TwoFactorPage — configuración opcional de TOTP y challenge para cuentas que ya lo activaron.
  */
 export function TwoFactorPage() {
   const { isAuthAvailable, checkedAvailability, isAuthenticated, user, refreshSession } = useAuth();
@@ -93,14 +93,14 @@ export function TwoFactorPage() {
         <div className="w-full max-w-md rounded-xl border border-frost bg-white p-8 text-center shadow-sm">
           <h1 className="text-2xl font-semibold text-ink">Vuelve a iniciar sesión</h1>
           <p className="mt-4 text-charcoal">
-            Tu email ya está verificado, pero esta pestaña no tiene una sesión activa. Inicia sesión con la misma cuenta y volverás a la configuración 2FA.
+            Esta página permite configurar seguridad adicional opcional. Inicia sesión con la misma cuenta y volverás a la configuración.
           </p>
           <button
             type="button"
             onClick={() => navigate('/acceso/login?retorno=/acceso/2fa')}
             className="mt-6 w-full rounded-lg bg-electric px-4 py-3 font-semibold text-white hover:bg-electric-hover"
           >
-            Iniciar sesión para configurar 2FA
+            Iniciar sesión para configurar seguridad adicional
           </button>
         </div>
       </main>
@@ -259,7 +259,7 @@ export function TwoFactorPage() {
     return (
       <main className="flex min-h-screen items-center justify-center bg-lavender p-8" role="main">
         <div className="w-full max-w-md rounded-xl border border-frost bg-white p-8 text-center shadow-sm">
-          <h1 className="text-2xl font-semibold text-ink">¡Verificación completada!</h1>
+          <h1 className="text-2xl font-semibold text-ink">¡Seguridad adicional configurada!</h1>
           <p className="mt-4 text-charcoal">Redirigiendo a tu zona privada…</p>
         </div>
       </main>
@@ -302,10 +302,10 @@ export function TwoFactorPage() {
   return (
     <main className="flex min-h-screen items-center justify-center bg-lavender p-8" role="main">
       <div className="w-full max-w-md rounded-xl border border-frost bg-white p-8 shadow-sm">
-        <h1 className="text-2xl font-semibold text-ink">Configurar verificación en dos pasos</h1>
+        <h1 className="text-2xl font-semibold text-ink">Configurar seguridad adicional</h1>
         <p className="mt-2 text-sm text-charcoal">
           {step === 'password'
-            ? 'Este paso es para activar TOTP por primera vez. Si ya lo activaste, inicia sesión para ver el challenge de acceso.'
+            ? 'Este paso opcional activa TOTP por primera vez. Si ya lo activaste, inicia sesión para ver el challenge de acceso.'
             : 'Añade esta clave en tu aplicación de autenticación y escribe el código de 6 dígitos.'}
         </p>
 
@@ -334,7 +334,7 @@ export function TwoFactorPage() {
               disabled={submitting || password.length < 8}
               className="w-full rounded-lg bg-electric px-4 py-3 font-semibold text-white transition-colors hover:bg-electric-hover focus:outline-none focus-visible:ring-2 focus-visible:ring-electric focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
             >
-              {submitting ? 'Generando…' : 'Generar clave 2FA'}
+              {submitting ? 'Generando…' : 'Generar clave de seguridad'}
             </button>
           </form>
         ) : (
@@ -381,7 +381,7 @@ export function TwoFactorPage() {
               disabled={submitting || code.length !== 6}
               className="w-full rounded-lg bg-electric px-4 py-3 font-semibold text-white transition-colors hover:bg-electric-hover focus:outline-none focus-visible:ring-2 focus-visible:ring-electric focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
             >
-              {submitting ? 'Verificando…' : 'Verificar y activar acceso'}
+              {submitting ? 'Verificando…' : 'Verificar y activar seguridad adicional'}
             </button>
           </form>
         )}

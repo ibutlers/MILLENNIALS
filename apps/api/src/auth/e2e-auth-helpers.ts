@@ -131,6 +131,29 @@ export function registerE2EAuthHelpers(
     }
   });
 
+  // ── GET/POST /api/e2e/auth/mfa-policy ──
+  // Test-only switch used to cover optional and mandatory MFA modes without
+  // rebuilding the Docker environment. It mutates only this E2E process config.
+  app.get('/api/e2e/auth/mfa-policy', async (request: FastifyRequest, reply: FastifyReply) => {
+    if (!safeSecretMatches(request.headers['x-e2e-secret'], secret)) {
+      return reply.status(404).send(e2eNotFound());
+    }
+    return { data: { required: config.betterAuthRequire2FA } };
+  });
+
+  app.post('/api/e2e/auth/mfa-policy', async (request: FastifyRequest, reply: FastifyReply) => {
+    if (!safeSecretMatches(request.headers['x-e2e-secret'], secret)) {
+      return reply.status(404).send(e2eNotFound());
+    }
+    const body = request.body as { required?: unknown } | undefined;
+    if (typeof body?.required !== 'boolean') {
+      return reply.status(400).send({ error: { code: 'bad_request', message: 'required boolean is required' } });
+    }
+    config.betterAuthRequire2FA = body.required;
+    process.env.BETTER_AUTH_REQUIRE_2FA = body.required ? 'true' : 'false';
+    return { data: { required: config.betterAuthRequire2FA } };
+  });
+
   // ── POST /api/e2e/auth/invitation-token ──
   // Creates an invitation and returns the raw token for E2E testing.
   app.post('/api/e2e/auth/invitation-token', async (request: FastifyRequest, reply: FastifyReply) => {

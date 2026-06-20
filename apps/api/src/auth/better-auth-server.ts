@@ -3,7 +3,7 @@
  *
  * Creates a configured Better Auth server instance with:
  * - Email + password authentication
- * - TOTP two-factor authentication (mandatory)
+ * - TOTP two-factor authentication (optional by default, mandatory only when configured)
  * - Organization plugin (single org: MILLENNIALS CONSTRUYEN)
  * - PostgreSQL adapter with schema isolation (auth.*)
  * - Sign-up protection via X-Invitation-Token header (hooks.before/after)

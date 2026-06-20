@@ -104,7 +104,7 @@ export function getConfig(): AppConfig {
     betterAuthUrl: process.env.BETTER_AUTH_URL?.trim() || undefined,
     betterAuthTrustedOrigins: parseCommaSeparated(process.env.BETTER_AUTH_TRUSTED_ORIGINS),
     betterAuthCookiePrefix: process.env.BETTER_AUTH_COOKIE_PREFIX?.trim() || 'mc',
-    betterAuthRequire2FA: bool(process.env.BETTER_AUTH_REQUIRE_2FA, true),
+    betterAuthRequire2FA: bool(process.env.BETTER_AUTH_REQUIRE_2FA, false),
     authEmailMode: (process.env.AUTH_EMAIL_MODE?.trim() || 'disabled') as 'disabled' | 'capture' | 'smtp',
     authEmailFrom: process.env.AUTH_EMAIL_FROM?.trim() || '',
     authEmailReplyTo: process.env.AUTH_EMAIL_REPLY_TO?.trim() || '',

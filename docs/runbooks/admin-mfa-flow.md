@@ -4,7 +4,7 @@ Fecha: 2026-06-20
 
 ## Objetivo
 
-El panel administrativo debe requerir MFA real cuando `BETTER_AUTH_REQUIRE_2FA=true`, sin bypass, sin cambios manuales de SQL y sin marcar estados de Better Auth a mano.
+MFA/TOTP es opcional por defecto. El panel administrativo solo debe requerir MFA real cuando `BETTER_AUTH_REQUIRE_2FA=true`; con `BETTER_AUTH_REQUIRE_2FA=false` un admin `active`, con email verificado y rol `admin`, puede operar aunque `twoFactorEnabled=false` y `mfa_enabled_at IS NULL`.
 
 ## Estado legacy recuperable
 
@@ -23,8 +23,8 @@ Ese estado es recuperable. No requiere nueva invitación ni SQL manual.
 
 1. El admin inicia sesión en `/acceso/login`.
 2. Si Better Auth detecta MFA ya configurado, devuelve `twoFactorRedirect` y la UI abre `/acceso/2fa?modo=challenge&retorno=...`.
-3. Si el admin está autenticado pero no tiene MFA completado, el panel admin devuelve `mfa_required` y la UI muestra CTA hacia `/acceso/2fa?retorno=/admin`.
-4. `/acceso/2fa` permite configurar TOTP aunque MFA todavía no sea obligatorio globalmente.
+3. Si `BETTER_AUTH_REQUIRE_2FA=false`, el panel admin permite operar sin MFA y `/acceso/2fa` queda como “Configurar seguridad adicional”.
+4. Si `BETTER_AUTH_REQUIRE_2FA=true` y el admin no tiene MFA completado, el panel admin devuelve `mfa_required` y la UI muestra CTA hacia `/acceso/2fa?retorno=/admin`.
 5. El usuario introduce su contraseña real en `twoFactor.enable`.
 6. La UI muestra un QR TOTP local, clave manual y códigos de recuperación devueltos por Better Auth.
 7. El usuario verifica con `twoFactor.verifyTotp`.
@@ -38,7 +38,7 @@ Ese estado es recuperable. No requiere nueva invitación ni SQL manual.
 - No marcar `auth."twoFactor".verified` por SQL.
 - No insertar ni imprimir secrets TOTP, backup codes, cookies o tokens.
 - No crear una nueva invitación si la cuenta existente es recuperable.
-- No activar `BETTER_AUTH_REQUIRE_2FA=true` en producción si el único admin real no ha completado TOTP, salvo coordinación humana para escanear QR/introducir código.
+- No activar `BETTER_AUTH_REQUIRE_2FA=true` en producción sin autorización humana explícita y procedimiento de recuperación probado.
 
 ## Comprobaciones esperadas
 
@@ -47,7 +47,13 @@ Sin cookie:
 - `/api/auth/me` → `401`.
 - `/api/v1/admin/dashboard` → `401` o `403`.
 
-Con sesión admin activa pero sin MFA y `BETTER_AUTH_REQUIRE_2FA=true`:
+Con sesión admin activa, email verificado, rol `admin`, `status=active` y sin MFA, con `BETTER_AUTH_REQUIRE_2FA=false`:
+
+- `/api/v1/admin/dashboard` → `200`.
+- `/admin` renderiza el dashboard sin `mfa_required`.
+- `/acceso/2fa` sigue disponible como configuración opcional de seguridad adicional.
+
+Con la misma sesión y `BETTER_AUTH_REQUIRE_2FA=true`:
 
 - `/api/v1/admin/dashboard` → `403 mfa_required`.
 - `/admin` muestra “Verificación en dos pasos requerida”.

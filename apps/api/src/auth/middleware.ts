@@ -11,9 +11,17 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import type { FastifyRequest, FastifyReply } from 'fastify';
 import type { Pool } from 'pg';
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
 import type { AppConfig } from '../config.js';
 import { getBetterAuthServer } from './better-auth-plugin.js';
+
+type MfaRequirement = boolean | Pick<AppConfig, 'betterAuthRequire2FA'> | (() => boolean);
+
+function shouldRequireMfa(requirement?: MfaRequirement): boolean {
+  if (typeof requirement === 'boolean') return requirement;
+  if (typeof requirement === 'function') return requirement();
+  if (requirement) return requirement.betterAuthRequire2FA;
+  return process.env.BETTER_AUTH_REQUIRE_2FA === 'true';
+}
 
 // ---------------------------------------------------------------------------
 // Error helpers
@@ -147,9 +155,9 @@ export function requireVerifiedEmail() {
  * Requires TOTP to be enabled AND verified.
  * Checks both the local app_user AND Better Auth's twoFactor state.
  */
-export function requireMfa() {
+export function requireMfa(requirement?: MfaRequirement) {
   return async function preHandler(request: FastifyRequest, reply: FastifyReply) {
-    if (process.env.BETTER_AUTH_REQUIRE_2FA === 'false') return;
+    if (!shouldRequireMfa(requirement)) return;
 
     const user = (request as any).appUser;
     const session = (request as any).betterAuthSession;

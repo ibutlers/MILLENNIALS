@@ -31,7 +31,7 @@ services:
       BETTER_AUTH_TRUSTED_ORIGINS: http://127.0.0.1:8090,http://localhost:8090
       BETTER_AUTH_ALLOWED_HOSTS: 127.0.0.1,localhost
       BETTER_AUTH_COOKIE_PREFIX: mc
-      BETTER_AUTH_REQUIRE_2FA: "true"
+      BETTER_AUTH_REQUIRE_2FA: "false"
       AUTH_EMAIL_FROM: e2e@realstate.test
       AUTH_EMAIL_REPLY_TO: e2e@realstate.test
       ADMIN_ENABLED: "true"

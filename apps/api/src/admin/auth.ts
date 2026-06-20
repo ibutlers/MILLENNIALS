@@ -1,5 +1,6 @@
 import type { FastifyRequest, FastifyReply } from 'fastify';
 import type { Pool } from 'pg';
+import type { AppConfig } from '../config.js';
 import { hashToken } from '../auth/sessions.js';
 import { AuthRepository } from '../auth/repository.js';
 import { getBetterAuthServer } from '../auth/better-auth-plugin.js';
@@ -9,6 +10,14 @@ const SESSION_COOKIE = 'realstate_sid';
 type AdminAuthUser = { userId: string; roles: string[] };
 type AdminAuthFailure = { status: number; code: string; message: string };
 type AdminAuthResult = { user: AdminAuthUser; failure?: never } | { user?: never; failure: AdminAuthFailure } | { user?: undefined; failure?: undefined };
+type MfaRequirement = boolean | Pick<AppConfig, 'betterAuthRequire2FA'> | (() => boolean);
+
+function shouldRequireMfa(requirement?: MfaRequirement): boolean {
+  if (typeof requirement === 'boolean') return requirement;
+  if (typeof requirement === 'function') return requirement();
+  if (requirement) return requirement.betterAuthRequire2FA;
+  return process.env.BETTER_AUTH_REQUIRE_2FA === 'true';
+}
 
 function adminAuthFailure(status: number, code: string, message: string): AdminAuthFailure {
   return { status, code, message };
@@ -35,7 +44,11 @@ function buildHeaders(request: FastifyRequest): Headers {
   return headers;
 }
 
-async function getBetterAuthUserFromRequest(request: FastifyRequest, pool: Pool): Promise<AdminAuthUser | AdminAuthFailure | null> {
+async function getBetterAuthUserFromRequest(
+  request: FastifyRequest,
+  pool: Pool,
+  mfaRequirement?: MfaRequirement,
+): Promise<AdminAuthUser | AdminAuthFailure | null> {
   const auth = getBetterAuthServer();
   if (!auth) return null;
 
@@ -58,7 +71,7 @@ async function getBetterAuthUserFromRequest(request: FastifyRequest, pool: Pool)
   const appUser = result.rows[0];
   if (!appUser) return null;
 
-  const require2FA = process.env.BETTER_AUTH_REQUIRE_2FA !== 'false';
+  const require2FA = shouldRequireMfa(mfaRequirement);
   if (appUser.status === 'suspended') return adminAuthFailure(403, 'account_suspended', 'La cuenta está suspendida.');
   if (appUser.status === 'revoked') return adminAuthFailure(403, 'account_revoked', 'La cuenta ha sido revocada.');
   if (!appUser.email_verified_at) return adminAuthFailure(403, 'email_not_verified', 'Debes verificar tu correo antes de continuar.');
@@ -89,8 +102,9 @@ async function getLegacyUserFromRequest(request: FastifyRequest, pool: Pool): Pr
 async function getAuthResultFromRequest(
   request: FastifyRequest,
   pool: Pool,
+  mfaRequirement?: MfaRequirement,
 ): Promise<AdminAuthResult> {
-  const betterAuthUser = await getBetterAuthUserFromRequest(request, pool);
+  const betterAuthUser = await getBetterAuthUserFromRequest(request, pool, mfaRequirement);
   if (isAdminAuthFailure(betterAuthUser)) return { failure: betterAuthUser };
   if (betterAuthUser && 'roles' in betterAuthUser) return { user: betterAuthUser };
   const legacyUser = await getLegacyUserFromRequest(request, pool);
@@ -105,9 +119,16 @@ export async function getUserFromRequest(
   return result.user || null;
 }
 
-export function requireRole(pool: Pool, ...roles: string[]) {
+export function requireRole(
+  pool: Pool,
+  configOrRole: MfaRequirement | string,
+  ...roles: string[]
+) {
+  const mfaRequirement = typeof configOrRole === 'string' ? undefined : configOrRole;
+  const requiredRoles = typeof configOrRole === 'string' ? [configOrRole, ...roles] : roles;
+
   return async function preHandler(request: FastifyRequest, reply: FastifyReply): Promise<void> {
-    const authResult = await getAuthResultFromRequest(request, pool);
+    const authResult = await getAuthResultFromRequest(request, pool, mfaRequirement);
     if (authResult.failure) {
       sendAdminAuthFailure(reply, authResult.failure);
       return;
@@ -117,7 +138,7 @@ export function requireRole(pool: Pool, ...roles: string[]) {
       void reply.status(401).send({ error: { code: 'unauthorized', message: 'Autenticación requerida.' } });
       return;
     }
-    const hasRole = roles.some((role) => user.roles.includes(role));
+    const hasRole = requiredRoles.some((role) => user.roles.includes(role));
     if (!hasRole) {
       void reply.status(403).send({ error: { code: 'forbidden', message: 'No tienes permisos para esta acción.' } });
       return;
@@ -126,5 +147,12 @@ export function requireRole(pool: Pool, ...roles: string[]) {
   };
 }
 
-export function requireAdmin(pool: Pool) { return requireRole(pool, 'admin'); }
-export function requireOperator(pool: Pool) { return requireRole(pool, 'admin', 'operator', 'staff'); }
+export function requireAdmin(pool: Pool, config?: MfaRequirement) {
+  return config === undefined ? requireRole(pool, 'admin') : requireRole(pool, config, 'admin');
+}
+
+export function requireOperator(pool: Pool, config?: MfaRequirement) {
+  return config === undefined
+    ? requireRole(pool, 'admin', 'operator', 'staff')
+    : requireRole(pool, config, 'admin', 'operator', 'staff');
+}

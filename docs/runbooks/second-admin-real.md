@@ -6,16 +6,16 @@ Fecha: 2026-06-20
 
 Pendiente `ADMIN_EMAIL_2`: no hay segundo administrador real confirmado.
 
-No crear administradores ficticios. No reutilizar emails de prueba. No revocar ni degradar el admin inicial hasta tener al menos dos admins reales activos con MFA real completado.
+No crear administradores ficticios. No reutilizar emails de prueba. No revocar ni degradar el admin inicial hasta tener al menos dos admins reales activos y con procedimiento de recuperación documentado. MFA real es recomendable, pero no bloquea la operativa mientras `BETTER_AUTH_REQUIRE_2FA=false`.
 
 ## Por qué es obligatorio
 
-Antes de exigir MFA globalmente o hacer cambios operativos sensibles, producción debe tener:
+Antes de exigir MFA globalmente (`BETTER_AUTH_REQUIRE_2FA=true`) o hacer cambios operativos sensibles, producción debe tener:
 
 - admin inicial activo;
 - segundo admin real activo;
 - ambos con email verificado;
-- ambos con MFA real completado;
+- ambos con MFA real completado si se decide activar MFA obligatorio;
 - procedimiento de recuperación probado/documentado.
 
 Esto evita bloqueo total del panel si un admin pierde contraseña, TOTP o backup codes.
@@ -38,15 +38,14 @@ Procedimiento técnico:
    - activación;
    - contraseña local;
    - verificación email;
-   - MFA real en `/acceso/2fa?retorno=/admin`;
-   - guardado de backup codes.
+   - opcional: MFA real en `/acceso/2fa?retorno=/admin`;
+   - si activa MFA: guardado de backup codes.
 7. Verificar sin secretos:
    - `role=admin`;
    - `status=active`;
    - email verified true;
-   - `auth.user."twoFactorEnabled"=true`;
-   - `auth."twoFactor".verified=true`;
-   - `app_users.mfa_enabled_at` no nulo;
+   - si no activa MFA: `auth.user."twoFactorEnabled"=false` y `app_users.mfa_enabled_at` puede ser `NULL`;
+   - si activa MFA: `auth.user."twoFactorEnabled"=true`, `auth."twoFactor".verified=true` y `app_users.mfa_enabled_at` no nulo;
    - al menos una sesión activa reciente.
 8. Ejecutar smoke admin sin imprimir cookies.
 

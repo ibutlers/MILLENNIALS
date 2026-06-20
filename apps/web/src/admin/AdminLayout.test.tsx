@@ -158,6 +158,22 @@ describe('AdminLayout', () => {
     expect(setupLink).toHaveAttribute('href', `/acceso/2fa?retorno=${encodeURIComponent('/admin')}`);
   });
 
+  it('renders the admin shell for an active admin without MFA when the server preflight allows access', () => {
+    resetAuth();
+    resetQuery();
+    setAuth({ id: 'u6', email: 'admin-no-mfa@mc.test', name: 'Admin sin MFA', roles: ['admin'], twoFactorEnabled: false });
+
+    render(
+      <MemoryRouter initialEntries={['/admin']}>
+        <AdminLayout />
+      </MemoryRouter>,
+    );
+
+    expect(screen.getByText('Panel administrativo')).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Dashboard' })).toBeInTheDocument();
+    expect(screen.queryByText(/verificación en dos pasos requerida/i)).not.toBeInTheDocument();
+  });
+
   it('fail-closed on unknown preflight errors', () => {
     resetAuth();
     resetQuery();

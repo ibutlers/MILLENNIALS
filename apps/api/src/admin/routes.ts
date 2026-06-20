@@ -266,7 +266,7 @@ export function registerAdminRoutes(app: FastifyInstance, options: { pool: Pool;
 
   // ═══ Dashboard ═══
   app.get('/api/v1/admin/dashboard', {
-    preHandler: [adminGate(config), requireRole(pool, 'admin', 'operator')]
+    preHandler: [adminGate(config), requireRole(pool, config, 'admin', 'operator')]
   }, async (_req, _reply) => {
     const [rOppsTotal, rOppsPublished, rOppsDraft,
            rLeadsNew, rLeadsUnassigned, rUsersActive,
@@ -317,7 +317,7 @@ export function registerAdminRoutes(app: FastifyInstance, options: { pool: Pool;
 
   // ═══ Opportunities List ═══
   app.get('/api/v1/admin/opportunities', {
-    preHandler: [adminGate(config), requireRole(pool, 'admin', 'operator')]
+    preHandler: [adminGate(config), requireRole(pool, config, 'admin', 'operator')]
   }, async (req, reply) => {
     const q = paginationSchema.parse(req.query);
     const sortCol = VALID_SORT_COLS.has(q.sort) ? q.sort : 'created_at';
@@ -343,7 +343,7 @@ export function registerAdminRoutes(app: FastifyInstance, options: { pool: Pool;
 
   // ═══ Opportunities Detail ═══
   app.get('/api/v1/admin/opportunities/:id', {
-    preHandler: [adminGate(config), requireRole(pool, 'admin', 'operator')]
+    preHandler: [adminGate(config), requireRole(pool, config, 'admin', 'operator')]
   }, async (req, reply) => {
     const { rows } = await pool.query('SELECT * FROM opportunities WHERE id = $1', [(req.params as any).id]);
     if (!rows[0]) return reply.status(404).send({ error: { code: 'not_found', message: 'Oportunidad no encontrada.' } });
@@ -352,7 +352,7 @@ export function registerAdminRoutes(app: FastifyInstance, options: { pool: Pool;
 
   // ═══ Opportunities Create ═══
   app.post('/api/v1/admin/opportunities', {
-    preHandler: [adminGate(config), requireRole(pool, 'admin', 'operator')]
+    preHandler: [adminGate(config), requireRole(pool, config, 'admin', 'operator')]
   }, async (req, reply) => {
     const b = req.body as Record<string, any> || {};
     const slug = b.slug || `opp-${Date.now().toString(36)}`;
@@ -367,7 +367,7 @@ export function registerAdminRoutes(app: FastifyInstance, options: { pool: Pool;
 
   // ═══ Opportunities Update (PATCH) ═══
   app.patch('/api/v1/admin/opportunities/:id', {
-    preHandler: [adminGate(config), requireRole(pool, 'admin', 'operator')]
+    preHandler: [adminGate(config), requireRole(pool, config, 'admin', 'operator')]
   }, async (req, reply) => {
     const oppId = (req.params as any).id;
     const patch = opportunityPatchSchema.parse(req.body);
@@ -433,7 +433,7 @@ export function registerAdminRoutes(app: FastifyInstance, options: { pool: Pool;
 
   // ═══ Publish ═══
   app.post('/api/v1/admin/opportunities/:id/publish', {
-    preHandler: [adminGate(config), requireRole(pool, 'admin')]
+    preHandler: [adminGate(config), requireRole(pool, config, 'admin')]
   }, async (req, reply) => {
     const oppId = (req.params as any).id;
     const { rows } = await pool.query(
@@ -448,7 +448,7 @@ export function registerAdminRoutes(app: FastifyInstance, options: { pool: Pool;
 
   // ═══ Unpublish ═══
   app.post('/api/v1/admin/opportunities/:id/unpublish', {
-    preHandler: [adminGate(config), requireRole(pool, 'admin')]
+    preHandler: [adminGate(config), requireRole(pool, config, 'admin')]
   }, async (req, reply) => {
     const oppId = (req.params as any).id;
     const { rows: [opp] } = await pool.query(
@@ -462,7 +462,7 @@ export function registerAdminRoutes(app: FastifyInstance, options: { pool: Pool;
 
   // ═══ Archive ═══
   app.post('/api/v1/admin/opportunities/:id/archive', {
-    preHandler: [adminGate(config), requireRole(pool, 'admin')]
+    preHandler: [adminGate(config), requireRole(pool, config, 'admin')]
   }, async (req, reply) => {
     const oppId = (req.params as any).id;
     const { rows: [opp] } = await pool.query(
@@ -476,7 +476,7 @@ export function registerAdminRoutes(app: FastifyInstance, options: { pool: Pool;
 
   // ═══ Leads List ═══
   app.get('/api/v1/admin/leads', {
-    preHandler: [adminGate(config), requireRole(pool, 'admin', 'operator')]
+    preHandler: [adminGate(config), requireRole(pool, config, 'admin', 'operator')]
   }, async (req, reply) => {
     const q = paginationSchema.parse(req.query);
     const conditions: string[] = ['1=1']; const vals: any[] = [];
@@ -508,7 +508,7 @@ export function registerAdminRoutes(app: FastifyInstance, options: { pool: Pool;
 
   // ═══ Lead Detail ═══
   app.get('/api/v1/admin/leads/:reference', {
-    preHandler: [adminGate(config), requireRole(pool, 'admin', 'operator')]
+    preHandler: [adminGate(config), requireRole(pool, config, 'admin', 'operator')]
   }, async (req, reply) => {
     const { rows } = await pool.query(
       'SELECT l.*, COALESCE(json_agg(ln.* ORDER BY ln.created_at) FILTER (WHERE ln.id IS NOT NULL), $2) as notes FROM leads l LEFT JOIN lead_notes ln ON ln.lead_id = l.id WHERE l.public_reference = $1 GROUP BY l.id',
@@ -520,7 +520,7 @@ export function registerAdminRoutes(app: FastifyInstance, options: { pool: Pool;
 
   // ═══ Lead Update ═══
   app.patch('/api/v1/admin/leads/:reference', {
-    preHandler: [adminGate(config), requireRole(pool, 'admin', 'operator')]
+    preHandler: [adminGate(config), requireRole(pool, config, 'admin', 'operator')]
   }, async (req, reply) => {
     const body = leadPatchSchema.parse(req.body);
     const reference = (req.params as any).reference;
@@ -549,7 +549,7 @@ export function registerAdminRoutes(app: FastifyInstance, options: { pool: Pool;
 
   // ═══ Lead Notes ═══
   app.post('/api/v1/admin/leads/:reference/notes', {
-    preHandler: [adminGate(config), requireRole(pool, 'admin', 'operator')]
+    preHandler: [adminGate(config), requireRole(pool, config, 'admin', 'operator')]
   }, async (req, reply) => {
     const body = leadNoteSchema.parse(req.body);
     const { rows: [lead] } = await pool.query('SELECT id FROM leads WHERE public_reference=$1', [(req.params as any).reference]);
@@ -561,7 +561,7 @@ export function registerAdminRoutes(app: FastifyInstance, options: { pool: Pool;
 
   // ═══ Users List ═══
   app.get('/api/v1/admin/users', {
-    preHandler: [adminGate(config), requireRole(pool, 'admin')]
+    preHandler: [adminGate(config), requireRole(pool, config, 'admin')]
   }, async (req, reply) => {
     const q = paginationSchema.parse(req.query);
     const { rows } = await pool.query(
@@ -583,7 +583,7 @@ export function registerAdminRoutes(app: FastifyInstance, options: { pool: Pool;
 
   // ═══ User Detail ═══
   app.get('/api/v1/admin/users/:reference', {
-    preHandler: [adminGate(config), requireRole(pool, 'admin')]
+    preHandler: [adminGate(config), requireRole(pool, config, 'admin')]
   }, async (req, reply) => {
     const { rows } = await pool.query(
       `SELECT au.id,
@@ -616,7 +616,7 @@ export function registerAdminRoutes(app: FastifyInstance, options: { pool: Pool;
 
   // ═══ User Status ═══
   app.patch('/api/v1/admin/users/:reference/status', {
-    preHandler: [adminGate(config), requireRole(pool, 'admin')]
+    preHandler: [adminGate(config), requireRole(pool, config, 'admin')]
   }, async (req, reply) => {
     const body = userStatusSchema.parse(req.body);
     const ref = (req.params as any).reference;
@@ -647,7 +647,7 @@ export function registerAdminRoutes(app: FastifyInstance, options: { pool: Pool;
 
   // ═══ User Roles ═══
   app.post('/api/v1/admin/users/:reference/roles', {
-    preHandler: [adminGate(config), requireRole(pool, 'admin')]
+    preHandler: [adminGate(config), requireRole(pool, config, 'admin')]
   }, async (req, reply) => {
     const body = userRoleSchema.parse(req.body);
     const ref = (req.params as any).reference;
@@ -669,7 +669,7 @@ export function registerAdminRoutes(app: FastifyInstance, options: { pool: Pool;
   });
 
   app.delete('/api/v1/admin/users/:reference/roles/:role', {
-    preHandler: [adminGate(config), requireRole(pool, 'admin')]
+    preHandler: [adminGate(config), requireRole(pool, config, 'admin')]
   }, async (req, reply) => {
     const ref = (req.params as any).reference;
     const role = (req.params as any).role;
@@ -689,7 +689,7 @@ export function registerAdminRoutes(app: FastifyInstance, options: { pool: Pool;
 
   // ═══ Revoke Sessions ═══
   app.delete('/api/v1/admin/users/:reference/sessions', {
-    preHandler: [adminGate(config), requireRole(pool, 'admin')]
+    preHandler: [adminGate(config), requireRole(pool, config, 'admin')]
   }, async (req, reply) => {
     const { rows: [u] } = await pool.query('SELECT better_auth_user_id FROM app_users WHERE id::text=$1', [(req.params as any).reference]);
     if (!u) return reply.status(404).send({ error: { code: 'not_found', message: 'Usuario no encontrado.' } });
@@ -699,7 +699,7 @@ export function registerAdminRoutes(app: FastifyInstance, options: { pool: Pool;
 
   // ═══ User Project Access / Capital Assignment ═══
   app.get('/api/v1/admin/users/:reference/project-access', {
-    preHandler: [adminGate(config), requireRole(pool, 'admin', 'operator')]
+    preHandler: [adminGate(config), requireRole(pool, config, 'admin', 'operator')]
   }, async (req, reply) => {
     const ref = (req.params as any).reference;
     const { rows: [u] } = await pool.query('SELECT id FROM app_users WHERE id::text=$1', [ref]);
@@ -728,7 +728,7 @@ export function registerAdminRoutes(app: FastifyInstance, options: { pool: Pool;
   });
 
   app.put('/api/v1/admin/users/:reference/project-access', {
-    preHandler: [adminGate(config), requireRole(pool, 'admin')]
+    preHandler: [adminGate(config), requireRole(pool, config, 'admin')]
   }, async (req, reply) => {
     const ref = (req.params as any).reference;
     const body = projectAccessAssignmentSchema.parse(req.body);
@@ -754,7 +754,7 @@ export function registerAdminRoutes(app: FastifyInstance, options: { pool: Pool;
 
   // ═══ Investment Requests ═══
   app.get('/api/v1/admin/investment-requests', {
-    preHandler: [adminGate(config), requireRole(pool, 'admin', 'operator')]
+    preHandler: [adminGate(config), requireRole(pool, config, 'admin', 'operator')]
   }, async (req) => {
     const query = req.query as Record<string, string | undefined>;
     const status = query.status;
@@ -777,7 +777,7 @@ export function registerAdminRoutes(app: FastifyInstance, options: { pool: Pool;
   });
 
   app.patch('/api/v1/admin/investment-requests/:reference', {
-    preHandler: [adminGate(config), requireRole(pool, 'admin')]
+    preHandler: [adminGate(config), requireRole(pool, config, 'admin')]
   }, async (req, reply) => {
     const { reference } = req.params as { reference: string };
     const body = investmentRequestActionSchema.parse(req.body);
@@ -807,7 +807,7 @@ export function registerAdminRoutes(app: FastifyInstance, options: { pool: Pool;
 
   // ═══ Audit ═══
   app.get('/api/v1/admin/audit', {
-    preHandler: [adminGate(config), requireRole(pool, 'admin')]
+    preHandler: [adminGate(config), requireRole(pool, config, 'admin')]
   }, async (req, reply) => {
     const q = paginationSchema.parse(req.query);
     const { rows } = await pool.query(
@@ -886,7 +886,7 @@ export function registerAdminRoutes(app: FastifyInstance, options: { pool: Pool;
   });
 
   app.patch('/api/v1/admin/opportunities/:id/subentities', {
-    preHandler: [adminGate(config), requireRole(pool, 'admin', 'operator')]
+    preHandler: [adminGate(config), requireRole(pool, config, 'admin', 'operator')]
   }, async (req, reply) => {
     const oppId = (req.params as any).id;
     const body = subEntitiesSchema.parse(req.body);
@@ -1044,7 +1044,7 @@ export function registerAdminRoutes(app: FastifyInstance, options: { pool: Pool;
 
   // GET sub-entities for an opportunity
   app.get('/api/v1/admin/opportunities/:id/subentities', {
-    preHandler: [adminGate(config), requireRole(pool, 'admin', 'operator')]
+    preHandler: [adminGate(config), requireRole(pool, config, 'admin', 'operator')]
   }, async (req, reply) => {
     const oppId = (req.params as any).id;
     const { rows: [opp] } = await pool.query('SELECT id FROM opportunities WHERE id = $1', [oppId]);
@@ -1064,7 +1064,7 @@ export function registerAdminRoutes(app: FastifyInstance, options: { pool: Pool;
   // Version restore
   // ══════════════════════════════════════
   app.post('/api/v1/admin/opportunities/:id/versions/:version/restore', {
-    preHandler: [adminGate(config), requireRole(pool, 'admin')]
+    preHandler: [adminGate(config), requireRole(pool, config, 'admin')]
   }, async (req, reply) => {
     const oppId = (req.params as any).id;
     const restoreVersion = parseInt((req.params as any).version, 10);
@@ -1162,7 +1162,7 @@ export function registerAdminRoutes(app: FastifyInstance, options: { pool: Pool;
   // Preview
   // ══════════════════════════════════════
   app.get('/api/v1/admin/opportunities/:id/preview', {
-    preHandler: [adminGate(config), requireRole(pool, 'admin', 'operator')]
+    preHandler: [adminGate(config), requireRole(pool, config, 'admin', 'operator')]
   }, async (req, reply) => {
     const oppId = (req.params as any).id;
     const { rows: [opp] } = await pool.query('SELECT * FROM opportunities WHERE id = $1', [oppId]);
@@ -1191,7 +1191,7 @@ export function registerAdminRoutes(app: FastifyInstance, options: { pool: Pool;
   });
 
   app.get('/api/v1/admin/opportunities/:id/versions', {
-    preHandler: [adminGate(config), requireRole(pool, 'admin', 'operator')]
+    preHandler: [adminGate(config), requireRole(pool, config, 'admin', 'operator')]
   }, async (req, reply) => {
     const oppId = (req.params as any).id;
     const q = versionQuerySchema.parse(req.query);
@@ -1255,7 +1255,7 @@ export function registerAdminRoutes(app: FastifyInstance, options: { pool: Pool;
   });
 
   app.post('/api/v1/admin/opportunities/:id/transition', {
-    preHandler: [adminGate(config), requireRole(pool, 'admin', 'operator')]
+    preHandler: [adminGate(config), requireRole(pool, config, 'admin', 'operator')]
   }, async (req, reply) => {
     const oppId = (req.params as any).id;
     const { to } = transitionSchema.parse(req.body);

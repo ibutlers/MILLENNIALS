@@ -14,9 +14,11 @@
 ║ pending_email    ║  Cuenta Better Auth creada. Email sin verificar.
 ╚══════╤═══════════╝
        │ Verifica email
+       ├───────────────► active  (`BETTER_AUTH_REQUIRE_2FA=false`)
+       │
        ▼
 ╔══════════════════╗
-║ pending_mfa      ║  Email verificado. TOTP pendiente.
+║ pending_mfa      ║  Solo si MFA obligatorio: TOTP pendiente.
 ╚══════╤═══════════╝
        │ Configura y verifica TOTP
        ▼
@@ -41,8 +43,10 @@
 | Desde | Hasta | Quién | Condiciones |
 |---|---|---|---|
 | (nada) | pending_email | Sistema | Invitación válida + sign-up exitoso |
-| pending_email | pending_mfa | Usuario | Verifica email |
-| pending_mfa | active | Usuario | Configura TOTP |
+| pending_email | active | Usuario | Verifica email con `BETTER_AUTH_REQUIRE_2FA=false` |
+| pending_email | pending_mfa | Usuario | Verifica email con `BETTER_AUTH_REQUIRE_2FA=true` |
+| pending_mfa | active | Usuario | Configura TOTP cuando MFA es obligatorio |
+| active | active | Usuario | Configura TOTP opcional; se rellena `mfa_enabled_at` tras verificación real |
 | active | suspended | Staff/Admin | Manual |
 | suspended | active | Staff/Admin | Manual |
 | active | revoked | Admin | Manual (irreversible) |
@@ -101,7 +105,8 @@ La revocación es IRREVERSIBLE:
 
 ## MFA (TOTP)
 
-- Obligatorio para todos los usuarios
+- Opcional por defecto (`BETTER_AUTH_REQUIRE_2FA=false`)
+- Obligatorio solo si `BETTER_AUTH_REQUIRE_2FA=true`
 - `skipVerificationOnEnable = false` (debe verificar antes de activar)
 - Códigos de recuperación: 10 códigos, se muestran UNA SOLA VEZ
 - El endpoint de deshabilitar 2FA está bloqueado para inversores

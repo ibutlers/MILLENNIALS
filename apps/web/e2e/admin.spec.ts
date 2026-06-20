@@ -130,6 +130,24 @@ async function getUserStatus(request: RequestLike, email: string): Promise<{ sta
   return (res.body.data as { status: string; role: string; emailVerified: boolean; mfaEnabled: boolean });
 }
 
+async function getMfaPolicy(request: RequestLike): Promise<boolean> {
+  const res = await apiFetch(request, '/api/e2e/auth/mfa-policy', {
+    headers: { 'x-e2e-secret': INTERNAL_KEY },
+  });
+  expect(res.status).toBe(200);
+  return Boolean((res.body.data as { required?: boolean } | undefined)?.required);
+}
+
+async function setMfaPolicy(request: RequestLike, required: boolean): Promise<void> {
+  const res = await apiFetch(request, '/api/e2e/auth/mfa-policy', {
+    method: 'POST',
+    body: { required },
+    headers: { 'x-e2e-secret': INTERNAL_KEY },
+  });
+  expect(res.status).toBe(200);
+  expect((res.body.data as { required?: boolean } | undefined)?.required).toBe(required);
+}
+
 async function markActiveWithoutMfa(request: RequestLike, email: string): Promise<void> {
   const res = await apiFetch(request, '/api/e2e/auth/mark-active-without-mfa', {
     method: 'POST',
@@ -214,7 +232,8 @@ async function createActiveUserWithMfa(browser: Browser, user: TestUser): Promis
   expect(signup.status).toBe(200);
   await verifyEmailViaLink(context, user.email);
   let status = await getUserStatus(sharedRequest, user.email);
-  expect(status?.status).toBe('pending_mfa');
+  const mfaRequired = await getMfaPolicy(sharedRequest);
+  expect(status?.status).toBe(mfaRequired ? 'pending_mfa' : 'active');
   const uri = await enableAndVerifyTotp(context, user);
   status = await getUserStatus(sharedRequest, user.email);
   expect(status?.status).toBe('active');
@@ -252,6 +271,7 @@ async function refreshOpportunity(): Promise<Opportunity> {
 
 test.beforeAll(async ({ playwright, browser }) => {
   sharedRequest = await playwright.request.newContext();
+  await setMfaPolicy(sharedRequest, false);
   admin = await createActiveUserWithMfa(browser, adminUser);
   await new Promise((resolve) => setTimeout(resolve, 1200));
   operator = await createActiveUserWithMfa(browser, operatorUser);
@@ -376,8 +396,9 @@ test.describe('Registration & Identity', () => {
     await page.goto(verificationUrlForNewUser, { waitUntil: 'domcontentloaded' });
     await page.waitForLoadState('networkidle').catch(() => undefined);
     const status = await getUserStatus(sharedRequest, newUser.email);
+    const mfaRequired = await getMfaPolicy(sharedRequest);
     expect(status?.emailVerified).toBe(true);
-    expect(status?.status).toBe('pending_mfa');
+    expect(status?.status).toBe(mfaRequired ? 'pending_mfa' : 'active');
     await ctx.close();
   });
 
@@ -472,37 +493,79 @@ test.describe('Registration & Identity', () => {
     expect([200, 401]).toContain(me.status());
     await context.close();
   });
-  test('23. Active admin without MFA is guided to setup and cannot access dashboard', async ({ browser }) => {
-    const legacyAdmin: TestUser = {
-      email: `legacy-admin-no-mfa-${unique}@e2e.realstate.test`,
-      password: 'LegacyAdminE2E-Pass12345!',
-      name: 'Legacy Admin Without MFA',
+  test('23. Active admin without MFA can access dashboard when MFA is optional', async ({ browser }) => {
+    await setMfaPolicy(sharedRequest, false);
+    const optionalAdmin: TestUser = {
+      email: `optional-admin-no-mfa-${unique}@e2e.realstate.test`,
+      password: 'OptionalAdminE2E-Pass12345!',
+      name: 'Optional Admin Without MFA',
       role: 'admin',
     };
     const ctx = await browser.newContext();
-    const token = await createInvitation(sharedRequest, legacyAdmin);
-    const signup = await signUpWithInvitation(ctx.request, legacyAdmin, token);
-    expect(signup.status).toBe(200);
-    await verifyEmailViaLink(ctx, legacyAdmin.email);
-    await markActiveWithoutMfa(sharedRequest, legacyAdmin.email);
+    try {
+      const token = await createInvitation(sharedRequest, optionalAdmin);
+      const signup = await signUpWithInvitation(ctx.request, optionalAdmin, token);
+      expect(signup.status).toBe(200);
+      await verifyEmailViaLink(ctx, optionalAdmin.email);
+      await markActiveWithoutMfa(sharedRequest, optionalAdmin.email);
 
-    const login = await ctx.request.post('/api/auth/sign-in/email', authMutationOptions({ email: legacyAdmin.email, password: legacyAdmin.password }));
-    expect(login.status()).toBe(200);
+      const login = await ctx.request.post('/api/auth/sign-in/email', authMutationOptions({ email: optionalAdmin.email, password: optionalAdmin.password }));
+      expect(login.status()).toBe(200);
 
-    const dashboard = await apiFetch(ctx.request, '/api/v1/admin/dashboard');
-    expect(dashboard.status).toBe(403);
-    expect((dashboard.body.error as { code?: string } | undefined)?.code).toBe('mfa_required');
+      const dashboard = await apiFetch(ctx.request, '/api/v1/admin/dashboard');
+      expectOk(dashboard);
+      const invitations = await apiFetch(ctx.request, '/api/v1/invitations');
+      expectOk(invitations);
 
-    const page = await ctx.newPage();
-    await page.goto('/admin', { waitUntil: 'domcontentloaded' });
-    await expect(page.getByText(/verificación en dos pasos/i)).toBeVisible();
-    const setupLink = page.getByRole('link', { name: /configurar.*2fa|configurar.*verificación/i });
-    await expect(setupLink).toBeVisible();
-    await expect(setupLink).toHaveAttribute('href', /\/acceso\/2fa/);
-    await ctx.close();
+      const page = await ctx.newPage();
+      await page.goto('/admin', { waitUntil: 'domcontentloaded' });
+      await expect(page.getByRole('link', { name: 'Dashboard' })).toBeVisible();
+      await expect(page.getByText(/verificación en dos pasos requerida/i)).toHaveCount(0);
+      expect(page.url()).not.toContain('/acceso/2fa');
+    } finally {
+      await ctx.close();
+    }
   });
 
-  test('24. Active admin without MFA can complete real TOTP and reconcile app state', async ({ browser }) => {
+  test('24. Active admin without MFA is guided to setup only when MFA is mandatory', async ({ browser }) => {
+    await setMfaPolicy(sharedRequest, true);
+    const strictAdmin: TestUser = {
+      email: `strict-admin-no-mfa-${unique}@e2e.realstate.test`,
+      password: 'StrictAdminE2E-Pass12345!',
+      name: 'Strict Admin Without MFA',
+      role: 'admin',
+    };
+    const ctx = await browser.newContext();
+    try {
+      const token = await createInvitation(sharedRequest, strictAdmin);
+      const signup = await signUpWithInvitation(ctx.request, strictAdmin, token);
+      expect(signup.status).toBe(200);
+      await verifyEmailViaLink(ctx, strictAdmin.email);
+      await markActiveWithoutMfa(sharedRequest, strictAdmin.email);
+
+      const login = await ctx.request.post('/api/auth/sign-in/email', authMutationOptions({ email: strictAdmin.email, password: strictAdmin.password }));
+      expect(login.status()).toBe(200);
+
+      const dashboard = await apiFetch(ctx.request, '/api/v1/admin/dashboard');
+      expect(dashboard.status).toBe(403);
+      expect((dashboard.body.error as { code?: string } | undefined)?.code).toBe('mfa_required');
+      const invitations = await apiFetch(ctx.request, '/api/v1/invitations');
+      expect(invitations.status).toBe(403);
+      expect((invitations.body.error as { code?: string } | undefined)?.code).toBe('mfa_required');
+
+      const page = await ctx.newPage();
+      await page.goto('/admin', { waitUntil: 'domcontentloaded' });
+      await expect(page.getByText(/verificación en dos pasos requerida/i)).toBeVisible();
+      const setupLink = page.getByRole('link', { name: /configurar.*2fa|configurar.*verificación/i });
+      await expect(setupLink).toBeVisible();
+      await expect(setupLink).toHaveAttribute('href', /\/acceso\/2fa/);
+    } finally {
+      await setMfaPolicy(sharedRequest, false);
+      await ctx.close();
+    }
+  });
+
+  test('25. Active admin without MFA can complete real TOTP and reconcile app state', async ({ browser }) => {
     const legacyAdmin: TestUser = {
       email: `legacy-admin-reconcile-${unique}@e2e.realstate.test`,
       password: 'LegacyAdminE2E-Pass12345!',

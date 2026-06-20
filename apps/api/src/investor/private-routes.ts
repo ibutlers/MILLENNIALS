@@ -7,6 +7,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import type { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import type { Pool } from 'pg';
+import type { AppConfig } from '../config.js';
 import {
   requireBetterAuthSession,
   requireActiveAppUser,
@@ -39,6 +40,7 @@ const transferReportSchema = z.object({
 
 export interface PrivateInvestorRoutesOptions {
   pool: Pool;
+  config?: Pick<AppConfig, 'betterAuthRequire2FA'>;
   providers?: ProviderSet;
 }
 
@@ -54,7 +56,7 @@ export function registerPrivateInvestorRoutes(
     requireBetterAuthSession(),
     requireActiveAppUser(pool),
     requireVerifiedEmail(),
-    requireMfa(),
+    requireMfa(options.config),
   ];
 
   // ── GET /api/investor/dashboard ──

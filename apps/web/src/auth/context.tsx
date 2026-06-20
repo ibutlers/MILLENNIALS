@@ -161,7 +161,7 @@ export function AuthProvider({ children, baseURL }: { children: ReactNode; baseU
       emailVerified: true,
       twoFactorEnabled: false,
       roles: ['investor'],
-      status: 'pending_mfa',
+      status: 'active',
     });
     setIsAuthenticated(true);
     setSession(null);

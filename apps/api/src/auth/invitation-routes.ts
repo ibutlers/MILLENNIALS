@@ -7,8 +7,9 @@
 
 import type { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import type { Pool } from 'pg';
+import type { AppConfig } from '../config.js';
 import { InvitationRepository } from './invitations.js';
-import { requireBetterAuthSession, requireActiveAppUser, requireRole } from './middleware.js';
+import { requireBetterAuthSession, requireActiveAppUser, requireMfa, requireRole } from './middleware.js';
 import type { AuthEmailProvider } from './email-provider.js';
 import { isAcceptedAppUserRole, toDatabaseAppUserRole } from './roles.js';
 
@@ -28,6 +29,7 @@ function publicError(code: string, message: string) {
 
 export interface InvitationRoutesOptions {
   pool: Pool;
+  config?: Pick<AppConfig, 'betterAuthRequire2FA'>;
   emailProvider: AuthEmailProvider;
 }
 
@@ -35,7 +37,7 @@ export function registerInvitationRoutes(
   app: FastifyInstance,
   options: InvitationRoutesOptions,
 ): void {
-  const { pool, emailProvider } = options;
+  const { pool, emailProvider, config } = options;
   const repo = new InvitationRepository(pool);
 
   // ---------- POST /api/v1/invitations ----------
@@ -43,6 +45,7 @@ export function registerInvitationRoutes(
     preHandler: [
       requireBetterAuthSession(),
       requireActiveAppUser(pool),
+      requireMfa(config),
       requireRole('operator', 'admin'),
     ],
   }, async (request: FastifyRequest, reply: FastifyReply) => {
@@ -119,6 +122,7 @@ export function registerInvitationRoutes(
     preHandler: [
       requireBetterAuthSession(),
       requireActiveAppUser(pool),
+      requireMfa(config),
       requireRole('operator', 'admin'),
     ],
   }, async (request: FastifyRequest, _reply: FastifyReply) => {
@@ -176,6 +180,7 @@ export function registerInvitationRoutes(
     preHandler: [
       requireBetterAuthSession(),
       requireActiveAppUser(pool),
+      requireMfa(config),
       requireRole('operator', 'admin'),
     ],
   }, async (request: FastifyRequest, reply: FastifyReply) => {

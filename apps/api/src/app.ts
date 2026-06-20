@@ -612,6 +612,7 @@ export function buildApp(dependencies: AppDependencies = {}): FastifyInstance {
   if (isBetterAuthEnabled(config)) {
     registerInvitationRoutes(app, {
       pool: pool as Pool,
+      config,
       emailProvider: authEmailProvider,
     });
   }
@@ -634,6 +635,7 @@ export function buildApp(dependencies: AppDependencies = {}): FastifyInstance {
   if (isBetterAuthEnabled(config)) {
     registerPrivateInvestorRoutes(app, {
       pool: pool as Pool,
+      config,
       providers,
     });
   }
