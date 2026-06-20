@@ -8,7 +8,7 @@
  *
  * Run: pnpm test:e2e:auth (via scripts/run-e2e-auth.sh)
  *
- * Covers 46 scenarios: health → invitation → activation → verification → MFA →
+ * Covers 47 scenarios: health → invitation → activation → verification → MFA →
  * login → authorization → IDOR → suspension → revocation → password reset → session management → cleanup.
  *
  * No mocks: real Better Auth, real PostgreSQL, real Playwright browser.
@@ -782,6 +782,52 @@ test.describe('Session & Account Security', () => {
       headers: { Origin: API_BASE },
     });
     expect(resetReqRes.status).toBe(200);
+  });
+
+  test('33b. UI recovery uses Better Auth reset links and revokes active sessions', async ({ browser }) => {
+    const recoveryUser = {
+      name: 'Recovery UI Investor',
+      email: `recovery-ui-${Date.now()}@e2e.realstate.test`,
+      password: 'RecoveryUiOld12345!',
+    };
+    const newPassword = 'RecoveryUiNew12345!';
+    await ensureActiveInvestor(sharedApiRequest, browser, recoveryUser);
+    const activeContext = await loginInvestorWithMfa(browser, recoveryUser);
+    const beforeReset = await activeContext.request.get('/api/investor/dashboard');
+    expect(beforeReset.status()).toBe(200);
+
+    await clearCapturedEmails(sharedApiRequest);
+    const context = await browser.newContext();
+    const page = await context.newPage();
+    await page.goto('/acceso/recuperar');
+    await page.getByLabel(/email/i).fill(recoveryUser.email);
+    await page.getByRole('button', { name: /enviar instrucciones/i }).click();
+    await expect(page.getByText(/si la cuenta existe/i)).toBeVisible();
+
+    let resetUrl: string | null = null;
+    for (let attempt = 0; attempt < 8 && !resetUrl; attempt++) {
+      if (attempt > 0) await page.waitForTimeout(1000);
+      const emails = await getCapturedEmails(sharedApiRequest);
+      resetUrl = extractPasswordResetUrl(emails, recoveryUser.email);
+    }
+    expect(resetUrl).toBeTruthy();
+    const token = extractPasswordResetToken(resetUrl!);
+
+    await page.goto(`/acceso/restablecer?token=${encodeURIComponent(token)}`);
+    await page.getByLabel(/^nueva contraseña/i).fill(newPassword);
+    await page.getByLabel(/confirmar contraseña/i).fill(newPassword);
+    await page.getByRole('button', { name: /restablecer contraseña/i }).click();
+    await expect(page.getByText(/contraseña restablecida/i)).toBeVisible();
+
+    const oldLogin = await loginViaApi(sharedApiRequest, recoveryUser.email, recoveryUser.password);
+    expect(oldLogin.status).toBeGreaterThanOrEqual(400);
+    const newLogin = await loginViaApi(sharedApiRequest, recoveryUser.email, newPassword);
+    expect(newLogin.status).toBe(200);
+    const revokedSession = await activeContext.request.get('/api/investor/dashboard');
+    expect(revokedSession.status()).toBe(401);
+
+    await context.close();
+    await activeContext.close();
   });
 
   test('34. Logout-all revokes all sessions', async ({ browser }) => {

@@ -121,12 +121,37 @@ export async function resendVerification(email: string): Promise<{ data: { messa
   return apiFetch('/resend-verification', { method: 'POST', body: JSON.stringify({ email }) });
 }
 
+async function betterAuthFetch(path: string, options: RequestInit = {}) {
+  const response = await fetch(`/api/auth${path}`, {
+    credentials: 'include',
+    headers: { 'Content-Type': 'application/json', ...options.headers as Record<string, string> },
+    ...options,
+  });
+
+  if (!response.ok) {
+    if (response.status === 503) throw new AuthDisabledError(response);
+    if (response.status === 401) throw new InvalidCredentialsError(response);
+    if (response.status === 429) throw new RateLimitedError(response);
+    if (response.status === 403) throw new AccountDisabledError(response);
+    throw new AuthResponseError('Request failed', response);
+  }
+  return response.json().catch(() => ({ status: true }));
+}
+
 export async function forgotPassword(email: string): Promise<{ data: { message: string } }> {
-  return apiFetch('/forgot-password', { method: 'POST', body: JSON.stringify({ email }) });
+  await betterAuthFetch('/request-password-reset', {
+    method: 'POST',
+    body: JSON.stringify({ email, redirectTo: '/acceso/restablecer' }),
+  });
+  return { data: { message: 'Si la cuenta existe, recibirás instrucciones para restablecer la contraseña.' } };
 }
 
 export async function resetPassword(token: string, password: string): Promise<{ data: { message: string } }> {
-  return apiFetch('/reset-password', { method: 'POST', body: JSON.stringify({ token, password }) });
+  await betterAuthFetch(`/reset-password?token=${encodeURIComponent(token)}`, {
+    method: 'POST',
+    body: JSON.stringify({ newPassword: password }),
+  });
+  return { data: { message: 'Contraseña restablecida.' } };
 }
 
 export async function fetchSessions(): Promise<{ data: SessionData[] }> {

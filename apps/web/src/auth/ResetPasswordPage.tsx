@@ -103,7 +103,7 @@ export function ResetPasswordPage() {
             </p>
           </div>
           <Link
-            to="/recuperar-acceso"
+            to="/acceso/recuperar"
             className="mt-6 inline-flex bg-mineral px-5 py-3 text-sm font-black uppercase tracking-[0.16em] text-textDark transition hover:bg-mineralHover focus:outline-none focus-visible:ring-2 focus-visible:ring-mineralHover"
           >
             Solicitar nuevo enlace
@@ -125,7 +125,7 @@ export function ResetPasswordPage() {
             </p>
           </div>
           <Link
-            to="/acceso"
+            to="/acceso/login"
             className="mt-6 inline-flex bg-mineral px-5 py-3 text-sm font-black uppercase tracking-[0.16em] text-textDark transition hover:bg-mineralHover focus:outline-none focus-visible:ring-2 focus-visible:ring-mineralHover"
           >
             Iniciar sesión

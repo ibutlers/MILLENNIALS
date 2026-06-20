@@ -52,7 +52,7 @@ describe('Private investor routes — project documents', () => {
   it('lists active private documents from the canonical documents table using id or slug', async () => {
     const pool = {
       query: vi.fn(async () => ({
-        rows: [{ id: 'doc_1', title: 'Contrato', file_type: 'legal_document', file_size: 12345, mime_type: 'application/pdf' }],
+        rows: [{ id: 'doc_1', title: 'Contrato', type: 'legal_document', status: 'active', byte_size: 12345, mime_type: 'application/pdf', project_slug: 'plaza-america' }],
       })),
     };
     const app = buildApp(pool);
@@ -61,7 +61,7 @@ describe('Private investor routes — project documents', () => {
 
     expect(res.statusCode).toBe(200);
     expect(res.json()).toEqual({
-      data: [{ id: 'doc_1', title: 'Contrato', file_type: 'legal_document', file_size: 12345, mime_type: 'application/pdf' }],
+      data: [{ id: 'doc_1', title: 'Contrato', type: 'legal_document', status: 'active', byte_size: 12345, mime_type: 'application/pdf', project_slug: 'plaza-america' }],
     });
     expect(pool.query).toHaveBeenCalledTimes(1);
     const firstCall = pool.query.mock.calls[0] as unknown as [string, unknown[]];
@@ -74,6 +74,45 @@ describe('Private investor routes — project documents', () => {
     expect(sql).toContain('(o.id::text = $1 OR o.slug = $1)');
     expect(sql).not.toContain('private_documents');
     expect(params).toEqual(['plaza-america']);
+
+    await app.close();
+  });
+
+  it('lists all authorized private documents without querying private_documents', async () => {
+    const pool = {
+      query: vi.fn(async () => ({
+        rows: [{ id: 'doc_all', title: 'Informe', type: 'quarterly_report', status: 'active', byte_size: 2048, mime_type: 'application/pdf', project_slug: 'plaza-america' }],
+      })),
+    };
+    const app = buildApp(pool);
+
+    const res = await app.inject({ method: 'GET', url: '/api/investor/documents' });
+
+    expect(res.statusCode).toBe(200);
+    const firstCall = pool.query.mock.calls[0] as unknown as [string, unknown[]];
+    const [sql, params] = firstCall;
+    expect(sql).toContain('FROM documents d');
+    expect(sql).toContain('JOIN project_user_access pua ON pua.opportunity_id = o.id');
+    expect(sql).not.toContain('private_documents');
+    expect(params).toEqual(['app_user_1']);
+
+    await app.close();
+  });
+
+  it('returns provider_not_configured instead of a fake URL when storage is disabled', async () => {
+    const pool = {
+      query: vi.fn(async () => ({
+        rows: [{ id: '00000000-0000-0000-0000-000000000001', title: 'Contrato', storage_ref: 'docs/contract.pdf' }],
+      })),
+    };
+    const app = buildApp(pool);
+
+    const res = await app.inject({ method: 'GET', url: '/api/investor/projects/plaza-america/documents/00000000-0000-0000-0000-000000000001/download' });
+
+    expect(res.statusCode).toBe(503);
+    expect(res.json().error.code).toBe('provider_not_configured');
+    const firstCall = pool.query.mock.calls[0] as unknown as [string, unknown[]];
+    expect(firstCall[0]).not.toContain('private_documents');
 
     await app.close();
   });

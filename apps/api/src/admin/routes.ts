@@ -277,9 +277,23 @@ export function registerAdminRoutes(app: FastifyInstance, options: { pool: Pool;
       pool.query<{ oppsDraft: number }>('SELECT count(*)::int AS "oppsDraft" FROM opportunities WHERE editorial_status IN ($1,$2)', ['draft', 'review']),
       pool.query<{ leadsNew: number }>('SELECT count(*)::int AS "leadsNew" FROM leads WHERE status = $1', ['new']),
       pool.query<{ leadsUnassigned: number }>('SELECT count(*)::int AS "leadsUnassigned" FROM leads WHERE assigned_user_id IS NULL'),
-      pool.query<{ usersActive: number }>('SELECT count(*)::int AS "usersActive" FROM users WHERE status = $1', ['active']),
-      pool.query<{ sessionsActive: number }>('SELECT count(*)::int AS "sessionsActive" FROM sessions WHERE revoked_at IS NULL AND expires_at > now()'),
-      pool.query('SELECT event_type, entity_type, entity_reference, summary, created_at FROM audit_events ORDER BY created_at DESC LIMIT 10'),
+      pool.query<{ usersActive: number }>("SELECT count(*)::int AS \"usersActive\" FROM app_users WHERE status = 'active'"),
+      pool.query<{ sessionsActive: number }>('SELECT count(*)::int AS "sessionsActive" FROM auth.session WHERE expires_at > now()'),
+      pool.query(`SELECT event_type, entity_type, entity_reference, summary, created_at FROM (
+         SELECT event_type::text,
+                entity_type,
+                entity_reference,
+                summary,
+                created_at
+         FROM audit_events
+         UNION ALL
+         SELECT action::text AS event_type,
+                resource_type AS entity_type,
+                resource_id::text AS entity_reference,
+                result AS summary,
+                created_at
+         FROM auth_audit_events
+       ) events ORDER BY created_at DESC LIMIT 10`),
     ]);
     const oppsTotal = rOppsTotal.rows[0]?.oppsTotal ?? 0;
     const oppsPublished = rOppsPublished.rows[0]?.oppsPublished ?? 0;

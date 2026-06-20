@@ -47,6 +47,7 @@ export function registerPrivateInvestorRoutes(
   options: PrivateInvestorRoutesOptions,
 ): void {
   const { pool } = options;
+  const storageProvider = options.providers?.storage;
 
   // ── Auth chain shared by all private routes ──
   const authChain = [
@@ -92,6 +93,45 @@ export function registerPrivateInvestorRoutes(
     }
   });
 
+  // ── GET /api/investor/documents ──
+  app.get('/api/investor/documents', {
+    preHandler: authChain,
+  }, async (request: FastifyRequest) => {
+    const appUser = (request as any).appUser;
+
+    const selectDocuments = `SELECT d.id,
+              d.title,
+              d.type,
+              d.status,
+              d.byte_size,
+              d.mime_type,
+              d.created_at,
+              o.id::text AS project_id,
+              o.slug AS project_slug,
+              o.title AS project_title
+       FROM documents d
+       JOIN opportunities o ON o.id = d.owner_id`;
+
+    const where = `WHERE d.owner_type = 'opportunity'
+         AND d.status = 'active'
+         AND d.visibility = 'private'`;
+
+    const result = appUser.role === 'staff' || appUser.role === 'operator' || appUser.role === 'admin'
+      ? await pool.query(`${selectDocuments}
+       ${where}
+       ORDER BY d.created_at DESC
+       LIMIT 100`)
+      : await pool.query(`${selectDocuments}
+       JOIN project_user_access pua ON pua.opportunity_id = o.id
+       ${where}
+         AND pua.app_user_id = $1
+         AND pua.status = 'active'
+       ORDER BY d.created_at DESC
+       LIMIT 100`, [appUser.id]);
+
+    return { data: result.rows };
+  });
+
   // ── GET /api/investor/projects ──
   app.get('/api/investor/projects', {
     preHandler: authChain,
@@ -100,7 +140,7 @@ export function registerPrivateInvestorRoutes(
 
     // Staff/admin see all projects; investors see only granted ones
     let result;
-    if (appUser.role === 'staff' || appUser.role === 'admin') {
+    if (appUser.role === 'staff' || appUser.role === 'operator' || appUser.role === 'admin') {
       result = await pool.query(
         `SELECT o.id, o.slug, o.title, o.short_description, o.city, o.status, o.risk_level,
                 o.target_return_type, o.target_return_bps, o.target_amount_cents,
@@ -231,10 +271,14 @@ export function registerPrivateInvestorRoutes(
     const result = await pool.query(
       `SELECT d.id,
               d.title,
-              d.type AS file_type,
-              d.byte_size AS file_size,
+              d.type,
+              d.status,
+              d.byte_size,
               d.mime_type,
-              d.created_at
+              d.created_at,
+              o.id::text AS project_id,
+              o.slug AS project_slug,
+              o.title AS project_title
        FROM documents d
        JOIN opportunities o ON o.id = d.owner_id
        WHERE d.owner_type = 'opportunity'
@@ -247,6 +291,51 @@ export function registerPrivateInvestorRoutes(
     );
 
     return { data: result.rows };
+  });
+
+  // ── GET /api/investor/projects/:id/documents/:documentId/download ──
+  app.get('/api/investor/projects/:id/documents/:documentId/download', {
+    preHandler: [...authChain, requireProjectAccess(pool)],
+  }, async (request: FastifyRequest, reply: FastifyReply) => {
+    const { id, documentId } = request.params as { id: string; documentId: string };
+
+    const { rows: [document] } = await pool.query<{
+      id: string;
+      storage_ref: string | null;
+      title: string;
+    }>(
+      `SELECT d.id::text AS id,
+              d.storage_ref,
+              d.title
+       FROM documents d
+       JOIN opportunities o ON o.id = d.owner_id
+       WHERE d.owner_type = 'opportunity'
+         AND d.status = 'active'
+         AND d.visibility = 'private'
+         AND d.id::text = $2
+         AND (o.id::text = $1 OR o.slug = $1)
+       LIMIT 1`,
+      [id, documentId],
+    );
+
+    if (!document) {
+      return reply.status(404).send(publicError('document_not_found', 'Documento no encontrado.'));
+    }
+    if (!document.storage_ref) {
+      return reply.status(404).send(publicError('document_unavailable', 'El documento todavía no tiene fichero descargable.'));
+    }
+    if (!storageProvider) {
+      return reply.status(503).send(publicError('provider_not_configured', 'El almacenamiento documental no está configurado.'));
+    }
+
+    try {
+      const url = await storageProvider.getSecureUrl(document.storage_ref, 300);
+      return reply.redirect(url);
+    } catch (err) {
+      const statusCode = (err as { statusCode?: number }).statusCode || 503;
+      const code = (err as { code?: string }).code || 'provider_not_configured';
+      return reply.status(statusCode).send(publicError(code, 'El almacenamiento documental no está configurado.'));
+    }
   });
 
   // ── GET /api/investor/profile ──

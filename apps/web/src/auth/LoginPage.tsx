@@ -173,7 +173,7 @@ export function LoginPage() {
             />
           </label>
           <div className="flex justify-end">
-            <Link to="/recuperar-acceso" className="text-sm text-muted underline hover:text-mineral">
+            <Link to="/acceso/recuperar" className="text-sm text-muted underline hover:text-mineral">
               ¿Olvidaste la contraseña?
             </Link>
           </div>

@@ -96,10 +96,10 @@ export function RecoverAccessPage() {
             </p>
           </div>
           <Link
-            to="/acceso"
+            to="/acceso/login"
             className="mt-6 inline-flex bg-mineral px-5 py-3 text-sm font-black uppercase tracking-[0.16em] text-textDark transition hover:bg-mineralHover focus:outline-none focus-visible:ring-2 focus-visible:ring-mineralHover"
           >
-            Volver al acceso
+            Volver al login
           </Link>
         </div>
       </main>
@@ -148,8 +148,8 @@ export function RecoverAccessPage() {
         </form>
 
         <p className="mt-6 text-center text-sm text-muted">
-          <Link to="/acceso" className="text-mineral underline hover:text-mineralHover">
-            Volver al acceso
+          <Link to="/acceso/login" className="text-mineral underline hover:text-mineralHover">
+            Volver al login
           </Link>
         </p>
       </div>

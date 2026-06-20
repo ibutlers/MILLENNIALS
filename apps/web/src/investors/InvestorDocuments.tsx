@@ -1,12 +1,49 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { setPageMetadata } from "../metadata";
+import {
+  fetchInvestorJson,
+  formatBytes,
+  type InvestorDocument,
+  type InvestorApiError,
+  investorErrorTitle,
+} from "./api";
+
+type DocumentsState =
+  | { status: "loading" }
+  | { status: "empty" }
+  | { status: "error"; error: InvestorApiError }
+  | { status: "success"; documents: InvestorDocument[] };
+
+function documentLabel(document: InvestorDocument): string {
+  return [document.project_title, document.type, document.mime_type]
+    .filter(Boolean)
+    .join(" · ");
+}
 
 export function InvestorDocuments() {
+  const [state, setState] = useState<DocumentsState>({ status: "loading" });
+
   useEffect(() => {
     setPageMetadata(
       "Documentos | MILLENNIALS CONSTRUYEN",
       "Documentos de inversor en MILLENNIALS CONSTRUYEN."
     );
+  }, []);
+
+  useEffect(() => {
+    const controller = new AbortController();
+    setState({ status: "loading" });
+
+    fetchInvestorJson<InvestorDocument[]>("/api/investor/documents", controller.signal)
+      .then((documents) => {
+        setState(documents.length > 0 ? { status: "success", documents } : { status: "empty" });
+      })
+      .catch((error: InvestorApiError) => {
+        if (error instanceof DOMException && error.name === "AbortError") return;
+        setState({ status: "error", error });
+      });
+
+    return () => controller.abort();
   }, []);
 
   return (
@@ -18,24 +55,64 @@ export function InvestorDocuments() {
         Tus documentos
       </h1>
 
-      {/* Honest empty state */}
-      <section className="mt-8 border border-border bg-petroleum p-8 text-center sm:p-12">
-        <div
-          className="mx-auto mb-6 flex h-16 w-16 items-center justify-center rounded-full border-2 border-border text-2xl text-muted"
-          aria-hidden="true"
-        >
-          ∅
-        </div>
-        <h2 className="font-serif text-2xl text-textLight">
-          No hay documentos disponibles.
-        </h2>
-        <p className="mt-4 max-w-md mx-auto leading-7 text-muted">
-          Cuando realices tu primera inversión, aquí encontrarás los contratos,
-          certificados y documentación legal de cada proyecto.
-        </p>
-      </section>
+      {state.status === "loading" ? (
+        <section className="mt-8 border border-border bg-petroleum p-8 text-center sm:p-12" aria-live="polite">
+          <h2 className="font-serif text-2xl text-textLight">Cargando documentos…</h2>
+          <p className="mt-4 leading-7 text-muted">Estamos consultando tu acceso documental privado.</p>
+        </section>
+      ) : null}
 
-      {/* Explicit: no fake documents */}
+      {state.status === "error" ? (
+        <section className="mt-8 border border-border bg-petroleum p-8 text-center sm:p-12" role="alert">
+          <h2 className="font-serif text-2xl text-textLight">{investorErrorTitle(state.error)}</h2>
+          <p className="mt-4 leading-7 text-muted">{state.error.message}</p>
+        </section>
+      ) : null}
+
+      {state.status === "empty" ? (
+        <section className="mt-8 border border-border bg-petroleum p-8 text-center sm:p-12">
+          <div
+            className="mx-auto mb-6 flex h-16 w-16 items-center justify-center rounded-full border-2 border-border text-2xl text-muted"
+            aria-hidden="true"
+          >
+            ∅
+          </div>
+          <h2 className="font-serif text-2xl text-textLight">
+            No hay documentos disponibles.
+          </h2>
+          <p className="mt-4 max-w-md mx-auto leading-7 text-muted">
+            Cuando realices tu primera inversión, aquí encontrarás los contratos,
+            certificados y documentación legal de cada proyecto.
+          </p>
+        </section>
+      ) : null}
+
+      {state.status === "success" ? (
+        <section className="mt-8 grid gap-3">
+          {state.documents.map((document) => (
+            <article key={document.id} className="border border-border bg-petroleum p-5">
+              <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+                <div>
+                  <h2 className="font-serif text-2xl text-textLight">{document.title}</h2>
+                  <p className="mt-2 text-sm leading-6 text-muted">{documentLabel(document)}</p>
+                  <p className="mt-1 text-xs uppercase tracking-[0.18em] text-muted">
+                    {formatBytes(document.byte_size)}
+                  </p>
+                </div>
+                {document.project_slug ? (
+                  <a
+                    href={`/api/investor/projects/${encodeURIComponent(document.project_slug)}/documents/${encodeURIComponent(document.id)}/download`}
+                    className="inline-flex shrink-0 items-center justify-center border border-border px-4 py-3 text-xs font-black uppercase tracking-[0.14em] text-textLight transition hover:border-mineral hover:text-mineral focus:outline-none focus-visible:ring-2 focus-visible:ring-mineral"
+                  >
+                    Descargar
+                  </a>
+                ) : null}
+              </div>
+            </article>
+          ))}
+        </section>
+      ) : null}
+
       <section className="mt-6 border border-border bg-carbon p-6 sm:p-8">
         <h2 className="font-serif text-xl text-textLight">
           Tipos de documentos que aparecerán aquí

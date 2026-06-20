@@ -199,8 +199,8 @@ export function requireProjectAccess(pool: Pool) {
       return reply.status(401).send(publicError('unauthorized', 'Usuario no encontrado.'));
     }
 
-    // Staff and admin can access any project
-    if (user.role === 'staff' || user.role === 'admin') {
+    // Operator/staff/admin can access any project
+    if (user.role === 'staff' || user.role === 'operator' || user.role === 'admin') {
       return;
     }
 

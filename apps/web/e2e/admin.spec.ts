@@ -607,10 +607,13 @@ test.describe('Admin Full Workflow', () => {
     expect(session.status()).toBe(200);
   });
 
-  test('32. Dashboard renders', async () => {
+  test('32. Dashboard renders with Better Auth user and session counts', async () => {
     const res = await adminApi('/api/v1/admin/dashboard');
     expectOk(res);
-    expect(res.body.data).toBeTruthy();
+    const payload = res.body.data as { users?: { active?: number }; sessions?: { active?: number } };
+    expect(payload).toBeTruthy();
+    expect(Number(payload.users?.active ?? 0)).toBeGreaterThanOrEqual(2);
+    expect(Number(payload.sessions?.active ?? 0)).toBeGreaterThanOrEqual(2);
   });
 
   test('33. Create opportunity', async () => {

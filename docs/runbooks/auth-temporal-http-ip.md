@@ -2,6 +2,10 @@
 
 Fecha de decisión operativa: 2026-06-20.
 
+## Advertencia visible
+
+**VENTANA TEMPORAL DE RIESGO:** producción está activa sobre HTTP/IP solo para la fase controlada de activación. No convertir este estado en permanente. No ampliar el alcance, no añadir nuevos dominios/IPs y no activar 2FA obligatorio global hasta tener al menos dos admins reales con MFA completado y recuperación documentada.
+
 ## Decisión vigente
 
 Se mantiene temporalmente la activación de Better Auth/Admin sobre la URL HTTP/IP de producción mientras se completa el dominio + HTTPS.
@@ -58,6 +62,18 @@ El criterio de retirada es:
 4. Cookies seguras activadas.
 5. `AUTH_ALLOW_INSECURE_IP_TEST` eliminado o establecido a `false`.
 6. Smoke auth/admin pasa sobre la URL HTTPS.
+
+## Plan dominio/HTTPS
+
+No tocar DNS/proxy sin autorización. Plan objetivo:
+
+1. Confirmar dominio definitivo.
+2. Configurar DNS al proxy autorizado.
+3. Emitir/renovar HTTPS válido.
+4. Cambiar `APP_BASE_URL`/Better Auth URL a `https://` con backup previo de `.env`.
+5. Retirar `AUTH_ALLOW_INSECURE_IP_TEST`.
+6. Mantener `AUTH_MODE=better-auth`, `AUTH_EMAIL_MODE=smtp` y `ADMIN_ENABLED=true` solo si los smokes pasan.
+7. Ejecutar `./scripts/deploy.sh` y smoke auth/admin completo.
 
 ## Rollback seguro
 
