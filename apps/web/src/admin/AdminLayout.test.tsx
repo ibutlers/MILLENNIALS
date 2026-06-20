@@ -9,6 +9,7 @@ const authMock = {
     email: string;
     name: string;
     roles: string[];
+    twoFactorEnabled?: boolean;
   } | null,
   isAuthenticated: false,
   isLoading: false,
@@ -138,6 +139,23 @@ describe('AdminLayout', () => {
 
     expect(screen.getByText('Acceso restringido')).toBeInTheDocument();
     expect(screen.getByRole('link', { name: /iniciar sesión con otra cuenta/i })).toBeInTheDocument();
+  });
+
+  it('guides authenticated admins to MFA setup when the preflight requires it', () => {
+    resetAuth();
+    resetQuery();
+    setAuth({ id: 'u5', email: 'admin@mc.test', name: 'Admin', roles: ['admin'], twoFactorEnabled: false });
+    setQueryError(403, 'mfa_required');
+
+    render(
+      <MemoryRouter initialEntries={['/admin']}>
+        <AdminLayout />
+      </MemoryRouter>,
+    );
+
+    expect(screen.getByText(/verificación en dos pasos/i)).toBeInTheDocument();
+    const setupLink = screen.getByRole('link', { name: /configurar.*2fa|configurar.*verificación/i });
+    expect(setupLink).toHaveAttribute('href', `/acceso/2fa?retorno=${encodeURIComponent('/admin')}`);
   });
 
   it('fail-closed on unknown preflight errors', () => {

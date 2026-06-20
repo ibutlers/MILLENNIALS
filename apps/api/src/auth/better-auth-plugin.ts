@@ -175,6 +175,24 @@ export async function betterAuthPlugin(
           return reply.status(403).send({ error: { id: `err_${Date.now().toString(36)}`, code: 'account_revoked', message: 'La cuenta ha sido revocada.' } });
         }
         if (appUser.status === 'active') {
+          if (!appUser.mfa_enabled_at) {
+            await client.query(
+              `UPDATE app_users
+               SET email_verified_at = COALESCE(email_verified_at, now()),
+                   mfa_enabled_at = now(),
+                   activated_at = COALESCE(activated_at, now()),
+                   updated_at = now()
+               WHERE id = $1`,
+              [appUser.id],
+            );
+            await client.query(
+              `INSERT INTO auth_audit_events (actor_id, action, subject_id, resource_type, resource_id, result)
+               VALUES ($1, 'mfa_enabled', $2, 'app_user', $3, 'success')`,
+              [appUser.id, appUser.id, appUser.id],
+            );
+            await client.query('COMMIT');
+            return { data: { status: 'active', reconciled: true } };
+          }
           await client.query('COMMIT');
           return { data: { status: 'active', reconciled: false } };
         }

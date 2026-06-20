@@ -74,20 +74,6 @@ export function TwoFactorPage() {
     refreshSession().catch(() => {});
   }, [refreshSession]);
 
-  useEffect(() => {
-    if (isChallenge) return undefined;
-    let cancelled = false;
-    fetch('/api/config/public')
-      .then((response) => response.json())
-      .then((config) => {
-        if (!cancelled && config?.betterAuthRequire2FA === false) {
-          navigate(returnTo, { replace: true });
-        }
-      })
-      .catch(() => {});
-    return () => { cancelled = true; };
-  }, [isChallenge, navigate, returnTo]);
-
   if (checkedAvailability && !isAuthAvailable) {
     return (
       <main className="flex min-h-screen items-center justify-center bg-lavender p-8" role="main">

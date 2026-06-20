@@ -7,6 +7,20 @@ import { getBetterAuthServer } from '../auth/better-auth-plugin.js';
 const SESSION_COOKIE = 'realstate_sid';
 
 type AdminAuthUser = { userId: string; roles: string[] };
+type AdminAuthFailure = { status: number; code: string; message: string };
+type AdminAuthResult = { user: AdminAuthUser; failure?: never } | { user?: never; failure: AdminAuthFailure } | { user?: undefined; failure?: undefined };
+
+function adminAuthFailure(status: number, code: string, message: string): AdminAuthFailure {
+  return { status, code, message };
+}
+
+function sendAdminAuthFailure(reply: FastifyReply, failure: AdminAuthFailure): void {
+  void reply.status(failure.status).send({ error: { code: failure.code, message: failure.message } });
+}
+
+function isAdminAuthFailure(value: AdminAuthUser | AdminAuthFailure | null): value is AdminAuthFailure {
+  return Boolean(value && 'code' in value && 'message' in value && 'status' in value);
+}
 
 function buildHeaders(request: FastifyRequest): Headers {
   const headers = new Headers();
@@ -21,7 +35,7 @@ function buildHeaders(request: FastifyRequest): Headers {
   return headers;
 }
 
-async function getBetterAuthUserFromRequest(request: FastifyRequest, pool: Pool): Promise<AdminAuthUser | null> {
+async function getBetterAuthUserFromRequest(request: FastifyRequest, pool: Pool): Promise<AdminAuthUser | AdminAuthFailure | null> {
   const auth = getBetterAuthServer();
   if (!auth) return null;
 
@@ -45,9 +59,13 @@ async function getBetterAuthUserFromRequest(request: FastifyRequest, pool: Pool)
   if (!appUser) return null;
 
   const require2FA = process.env.BETTER_AUTH_REQUIRE_2FA !== 'false';
+  if (appUser.status === 'suspended') return adminAuthFailure(403, 'account_suspended', 'La cuenta está suspendida.');
+  if (appUser.status === 'revoked') return adminAuthFailure(403, 'account_revoked', 'La cuenta ha sido revocada.');
+  if (!appUser.email_verified_at) return adminAuthFailure(403, 'email_not_verified', 'Debes verificar tu correo antes de continuar.');
+  if (require2FA && (appUser.status === 'pending_mfa' || !appUser.mfa_enabled_at || !session.user.twoFactorEnabled)) {
+    return adminAuthFailure(403, 'mfa_required', 'Debes completar la verificación en dos pasos (2FA).');
+  }
   if (appUser.status !== 'active' && !(appUser.status === 'pending_mfa' && !require2FA)) return null;
-  if (!appUser.email_verified_at) return null;
-  if (require2FA && (!appUser.mfa_enabled_at || !session.user.twoFactorEnabled)) return null;
 
   const roles = [appUser.role];
   if (appUser.role === 'staff') roles.push('operator');
@@ -68,18 +86,33 @@ async function getLegacyUserFromRequest(request: FastifyRequest, pool: Pool): Pr
   return { userId: session.userId, roles };
 }
 
+async function getAuthResultFromRequest(
+  request: FastifyRequest,
+  pool: Pool,
+): Promise<AdminAuthResult> {
+  const betterAuthUser = await getBetterAuthUserFromRequest(request, pool);
+  if (isAdminAuthFailure(betterAuthUser)) return { failure: betterAuthUser };
+  if (betterAuthUser && 'roles' in betterAuthUser) return { user: betterAuthUser };
+  const legacyUser = await getLegacyUserFromRequest(request, pool);
+  return legacyUser ? { user: legacyUser } : {};
+}
+
 export async function getUserFromRequest(
   request: FastifyRequest,
   pool: Pool,
 ): Promise<AdminAuthUser | null> {
-  const betterAuthUser = await getBetterAuthUserFromRequest(request, pool);
-  if (betterAuthUser) return betterAuthUser;
-  return getLegacyUserFromRequest(request, pool);
+  const result = await getAuthResultFromRequest(request, pool);
+  return result.user || null;
 }
 
 export function requireRole(pool: Pool, ...roles: string[]) {
   return async function preHandler(request: FastifyRequest, reply: FastifyReply): Promise<void> {
-    const user = await getUserFromRequest(request, pool);
+    const authResult = await getAuthResultFromRequest(request, pool);
+    if (authResult.failure) {
+      sendAdminAuthFailure(reply, authResult.failure);
+      return;
+    }
+    const user = authResult.user;
     if (!user) {
       void reply.status(401).send({ error: { code: 'unauthorized', message: 'Autenticación requerida.' } });
       return;

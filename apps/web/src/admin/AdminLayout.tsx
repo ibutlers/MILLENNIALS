@@ -103,6 +103,23 @@ export default function AdminLayout() {
         </AdminAccessMessage>
       );
     }
+    if (error.status === 403 && error.code === 'mfa_required') {
+      const setupHref = `/acceso/2fa?retorno=${encodeURIComponent(location.pathname + location.search)}`;
+      return (
+        <AdminAccessMessage
+          title="Verificación en dos pasos requerida"
+          message="Tu cuenta admin está activa, pero debe completar MFA antes de abrir el panel administrativo."
+          detail="Usa la API oficial de Better Auth: genera la clave TOTP, verifica el código y reconcilia el acceso."
+        >
+          <Link
+            to={setupHref}
+            className="mt-8 inline-flex rounded bg-[#7FA88C] px-5 py-3 font-medium text-[#08191C] transition-colors hover:bg-[#5C8D7A] focus:outline-2 focus:outline-offset-2 focus:outline-[#7FA88C]"
+          >
+            Configurar verificación 2FA
+          </Link>
+        </AdminAccessMessage>
+      );
+    }
     if (error.status === 403) {
       return (
         <AdminAccessMessage

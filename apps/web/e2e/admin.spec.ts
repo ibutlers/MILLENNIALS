@@ -130,6 +130,18 @@ async function getUserStatus(request: RequestLike, email: string): Promise<{ sta
   return (res.body.data as { status: string; role: string; emailVerified: boolean; mfaEnabled: boolean });
 }
 
+async function markActiveWithoutMfa(request: RequestLike, email: string): Promise<void> {
+  const res = await apiFetch(request, '/api/e2e/auth/mark-active-without-mfa', {
+    method: 'POST',
+    body: { email },
+    headers: { 'x-e2e-secret': INTERNAL_KEY },
+  });
+  expect(res.status).toBe(200);
+  const data = res.body.data as { status?: string; mfaEnabled?: boolean } | undefined;
+  expect(data?.status).toBe('active');
+  expect(data?.mfaEnabled).toBe(false);
+}
+
 async function getTotpUri(request: RequestLike, email: string): Promise<string> {
   const res = await apiFetch(request, `/api/e2e/auth/totp-uri?email=${encodeURIComponent(email)}`, {
     headers: { 'x-e2e-secret': INTERNAL_KEY },
@@ -459,6 +471,63 @@ test.describe('Registration & Identity', () => {
     const me = await context.request.get('/api/auth/get-session');
     expect([200, 401]).toContain(me.status());
     await context.close();
+  });
+  test('23. Active admin without MFA is guided to setup and cannot access dashboard', async ({ browser }) => {
+    const legacyAdmin: TestUser = {
+      email: `legacy-admin-no-mfa-${unique}@e2e.realstate.test`,
+      password: 'LegacyAdminE2E-Pass12345!',
+      name: 'Legacy Admin Without MFA',
+      role: 'admin',
+    };
+    const ctx = await browser.newContext();
+    const token = await createInvitation(sharedRequest, legacyAdmin);
+    const signup = await signUpWithInvitation(ctx.request, legacyAdmin, token);
+    expect(signup.status).toBe(200);
+    await verifyEmailViaLink(ctx, legacyAdmin.email);
+    await markActiveWithoutMfa(sharedRequest, legacyAdmin.email);
+
+    const login = await ctx.request.post('/api/auth/sign-in/email', authMutationOptions({ email: legacyAdmin.email, password: legacyAdmin.password }));
+    expect(login.status()).toBe(200);
+
+    const dashboard = await apiFetch(ctx.request, '/api/v1/admin/dashboard');
+    expect(dashboard.status).toBe(403);
+    expect((dashboard.body.error as { code?: string } | undefined)?.code).toBe('mfa_required');
+
+    const page = await ctx.newPage();
+    await page.goto('/admin', { waitUntil: 'domcontentloaded' });
+    await expect(page.getByText(/verificación en dos pasos/i)).toBeVisible();
+    const setupLink = page.getByRole('link', { name: /configurar.*2fa|configurar.*verificación/i });
+    await expect(setupLink).toBeVisible();
+    await expect(setupLink).toHaveAttribute('href', /\/acceso\/2fa/);
+    await ctx.close();
+  });
+
+  test('24. Active admin without MFA can complete real TOTP and reconcile app state', async ({ browser }) => {
+    const legacyAdmin: TestUser = {
+      email: `legacy-admin-reconcile-${unique}@e2e.realstate.test`,
+      password: 'LegacyAdminE2E-Pass12345!',
+      name: 'Legacy Admin Reconcile',
+      role: 'admin',
+    };
+    const ctx = await browser.newContext();
+    const token = await createInvitation(sharedRequest, legacyAdmin);
+    const signup = await signUpWithInvitation(ctx.request, legacyAdmin, token);
+    expect(signup.status).toBe(200);
+    await verifyEmailViaLink(ctx, legacyAdmin.email);
+    await markActiveWithoutMfa(sharedRequest, legacyAdmin.email);
+
+    const login = await ctx.request.post('/api/auth/sign-in/email', authMutationOptions({ email: legacyAdmin.email, password: legacyAdmin.password }));
+    expect(login.status()).toBe(200);
+    const uri = await enableAndVerifyTotp(ctx, legacyAdmin);
+    expect(uri).toContain('otpauth://totp/');
+
+    const status = await getUserStatus(sharedRequest, legacyAdmin.email);
+    expect(status?.status).toBe('active');
+    expect(status?.mfaEnabled).toBe(true);
+
+    const dashboard = await apiFetch(ctx.request, '/api/v1/admin/dashboard');
+    expectOk(dashboard);
+    await ctx.close();
   });
 });
 

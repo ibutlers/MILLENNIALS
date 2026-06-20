@@ -158,8 +158,8 @@ export function requireMfa() {
       return reply.status(401).send(publicError('unauthorized', 'Usuario no encontrado.'));
     }
 
-    // Check Better Auth session for twoFactorEnabled
-    if (!session?.user?.twoFactorEnabled) {
+    // Check Better Auth session and local app reconciliation state.
+    if (!session?.user?.twoFactorEnabled || !user.mfaEnabledAt) {
       return reply.status(403).send(publicError('mfa_required', 'Debes activar la verificación en dos pasos (2FA).'));
     }
   };

@@ -402,6 +402,58 @@ export function registerE2EAuthHelpers(
     }
   });
 
+  // ── POST /api/e2e/auth/mark-active-without-mfa ──
+  // Simulates legacy production users that became active while 2FA was optional.
+  app.post('/api/e2e/auth/mark-active-without-mfa', async (request: FastifyRequest, reply: FastifyReply) => {
+    if (!safeSecretMatches(request.headers['x-e2e-secret'], secret)) {
+      return reply.status(404).send(e2eNotFound());
+    }
+    try {
+      const { email } = request.body as { email?: string };
+      if (!email) return reply.status(400).send({ error: { code: 'bad_request', message: 'email required' } });
+      const normalized = email.toLowerCase().trim();
+      const userResult = await pool.query<{ id: string }>(
+        `SELECT id FROM auth."user" WHERE lower(email) = $1`,
+        [normalized],
+      );
+      if (userResult.rows.length === 0) {
+        return reply.status(404).send({ error: { code: 'not_found', message: 'User not found' } });
+      }
+      const betterAuthUserId = userResult.rows[0].id;
+      const client = await pool.connect();
+      try {
+        await client.query('BEGIN');
+        const appResult = await client.query<{ id: string; status: string }>(
+          `UPDATE app_users
+           SET status = 'active',
+               email_verified_at = COALESCE(email_verified_at, now()),
+               activated_at = COALESCE(activated_at, now()),
+               mfa_enabled_at = NULL,
+               updated_at = now()
+           WHERE email_normalized = $1 AND better_auth_user_id = $2
+           RETURNING id, status`,
+          [normalized, betterAuthUserId],
+        );
+        if (appResult.rows.length === 0) {
+          await client.query('ROLLBACK');
+          return reply.status(404).send({ error: { code: 'not_found', message: 'App user not found' } });
+        }
+        await client.query(`UPDATE auth."user" SET "twoFactorEnabled" = false, updated_at = now() WHERE id = $1`, [betterAuthUserId]);
+        await client.query(`DELETE FROM auth."twoFactor" WHERE "userId" = $1`, [betterAuthUserId]);
+        await client.query('COMMIT');
+        return { data: { email: normalized, status: appResult.rows[0].status, mfaEnabled: false } };
+      } catch (error) {
+        await client.query('ROLLBACK').catch(() => undefined);
+        throw error;
+      } finally {
+        client.release();
+      }
+    } catch (error) {
+      request.log.error({ err: error }, 'e2e mark-active-without-mfa error');
+      return reply.status(500).send({ error: { code: 'internal_error', message: 'Internal error' } });
+    }
+  });
+
   // ── GET /api/e2e/auth/user-status?email=... ──
   app.get('/api/e2e/auth/user-status', async (request: FastifyRequest, reply: FastifyReply) => {
     if (!safeSecretMatches(request.headers['x-e2e-secret'], secret)) {
