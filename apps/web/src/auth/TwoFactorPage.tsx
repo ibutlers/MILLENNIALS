@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState, type FormEvent } from 'react';
+import QRCode from 'qrcode';
 import { useNavigate, useSearchParams } from 'react-router';
 import { useAuth } from './context';
 
@@ -64,6 +65,7 @@ export function TwoFactorPage() {
   const [password, setPassword] = useState('');
   const [code, setCode] = useState('');
   const [totpUri, setTotpUri] = useState('');
+  const [qrDataUrl, setQrDataUrl] = useState('');
   const [backupCodes, setBackupCodes] = useState<string[]>([]);
   const [codesSaved, setCodesSaved] = useState(false);
   const [error, setError] = useState('');
@@ -158,6 +160,7 @@ export function TwoFactorPage() {
       const uri = unwrapTotpUri(payload);
       if (!uri) throw new Error('No hemos podido generar la clave TOTP. Inténtalo de nuevo.');
       setTotpUri(uri);
+      setQrDataUrl(await QRCode.toDataURL(uri, { errorCorrectionLevel: 'M', margin: 2, width: 240 }));
       setBackupCodes(unwrapBackupCodes(payload));
       setStep('verify');
     } catch (err) {
@@ -336,6 +339,16 @@ export function TwoFactorPage() {
           </form>
         ) : (
           <form onSubmit={handleVerify} className="mt-6 space-y-4">
+            {qrDataUrl ? (
+              <div className="rounded-lg border border-frost bg-white p-4 text-center">
+                <p className="text-xs font-semibold uppercase tracking-wide text-charcoal">Código QR</p>
+                <img
+                  src={qrDataUrl}
+                  alt="Código QR para configurar la verificación en dos pasos"
+                  className="mx-auto mt-3 h-60 w-60"
+                />
+              </div>
+            ) : null}
             <div className="rounded-lg bg-gray-50 p-4">
               <p className="text-xs font-semibold uppercase tracking-wide text-charcoal">Clave manual</p>
               <p className="mt-2 break-all font-mono text-sm text-ink">{manualSecret || totpUri}</p>

@@ -26,7 +26,7 @@ Ese estado es recuperable. No requiere nueva invitación ni SQL manual.
 3. Si el admin está autenticado pero no tiene MFA completado, el panel admin devuelve `mfa_required` y la UI muestra CTA hacia `/acceso/2fa?retorno=/admin`.
 4. `/acceso/2fa` permite configurar TOTP aunque MFA todavía no sea obligatorio globalmente.
 5. El usuario introduce su contraseña real en `twoFactor.enable`.
-6. La UI muestra la clave manual TOTP y códigos de recuperación devueltos por Better Auth.
+6. La UI muestra un QR TOTP local, clave manual y códigos de recuperación devueltos por Better Auth.
 7. El usuario verifica con `twoFactor.verifyTotp`.
 8. La UI llama a `/api/auth/reconcile-mfa`.
 9. `reconcile-mfa` solo actualiza `app_users.mfa_enabled_at` cuando Better Auth ya reporta `auth.user."twoFactorEnabled"=true`.
