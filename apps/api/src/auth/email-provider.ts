@@ -112,8 +112,11 @@ export class CaptureEmailProvider implements AuthEmailProvider {
     this.capture('password-reset', to, url);
   }
 
-  async sendInvitation(to: string, _displayName: string): Promise<void> {
-    this.capture('invitation', to);
+  async sendInvitation(to: string, activationPathOrReference: string): Promise<void> {
+    const url = activationPathOrReference.startsWith('http') || activationPathOrReference.startsWith('/')
+      ? activationPathOrReference
+      : undefined;
+    this.capture('invitation', to, url);
   }
 
   async sendPasswordChanged(to: string): Promise<void> {

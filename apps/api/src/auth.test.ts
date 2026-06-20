@@ -6,7 +6,7 @@ import { hashPassword, verifyPassword } from './auth/password.js';
 import { createSessionToken, hashToken } from './auth/sessions.js';
 import { rejectInsecureAuth } from './auth/config.js';
 import { TestEmailTransport } from './auth/email.js';
-import { SmtpAuthEmailProvider, createAuthEmailProvider } from './auth/email-provider.js';
+import { SmtpAuthEmailProvider, createAuthEmailProvider, CaptureEmailProvider } from './auth/email-provider.js';
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -241,6 +241,19 @@ describe('config validation', () => {
     });
 
     expect(provider).toBeInstanceOf(SmtpAuthEmailProvider);
+  });
+
+  it('capture email provider stores invitation activation URLs with token fragments', async () => {
+    const provider = new CaptureEmailProvider();
+
+    await provider.sendInvitation('invited@example.test', '/acceso/activar#token=opaque-token');
+
+    expect(provider.sent).toHaveLength(1);
+    expect(provider.sent[0]).toMatchObject({
+      to: 'invited@example.test',
+      type: 'invitation',
+      url: '/acceso/activar#token=opaque-token',
+    });
   });
 
   it('rejects SMTP auth email provider without required SMTP config', () => {
