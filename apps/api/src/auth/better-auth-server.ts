@@ -136,7 +136,7 @@ export function createBetterAuthServer(
 
     // ── Rate limiting ──
     rateLimit: {
-      enabled: true,
+      enabled: process.env.E2E_TEST_MODE !== 'true',
       window: Math.max(1, Math.ceil(config.authRateLimitWindowMs / 1000)),
       max: config.authRateLimitMax,
       storage: 'memory',

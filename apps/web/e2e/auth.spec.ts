@@ -160,6 +160,22 @@ function extractPasswordResetUrl(emails: Array<Record<string, unknown>>, targetE
   return null;
 }
 
+function extractPasswordResetToken(resetUrl: string): string {
+  const parsed = new URL(resetUrl);
+  const queryToken = parsed.searchParams.get('token');
+  if (queryToken) return queryToken;
+
+  const hashToken = parsed.hash.match(/[?#&]token=([^&\s"<>]+)/)?.[1];
+  if (hashToken) return decodeURIComponent(hashToken);
+
+  const segments = parsed.pathname.split('/').filter(Boolean);
+  const resetIndex = segments.findIndex((segment) => segment === 'reset-password' || segment === 'restablecer');
+  const pathToken = resetIndex >= 0 ? segments[resetIndex + 1] : segments.at(-1);
+  if (pathToken && pathToken.length >= 16) return decodeURIComponent(pathToken);
+
+  throw new Error('Password reset URL does not contain a token in a supported location.');
+}
+
 // ─────────────────────────────────────────────────────────────────────────
 // Auth flow helpers (API-based)
 // ─────────────────────────────────────────────────────────────────────────
@@ -796,7 +812,7 @@ test.describe('Session & Account Security', () => {
       resetUrl = extractPasswordResetUrl(emails, INVESTOR_B.email);
     }
     expect(resetUrl).toBeTruthy();
-    const token1 = decodeURIComponent(resetUrl!.match(/[?&]token=([^&\\s"<>]+)/)![1]);
+    const token1 = extractPasswordResetToken(resetUrl!);
 
     const resetRes1 = await apiFetch(sharedApiRequest, `/api/auth/reset-password?token=${encodeURIComponent(token1)}`, {
       method: 'POST',
@@ -829,7 +845,7 @@ test.describe('Session & Account Security', () => {
       restoreUrl = extractPasswordResetUrl(emails, INVESTOR_B.email);
     }
     expect(restoreUrl).toBeTruthy();
-    const token2 = decodeURIComponent(restoreUrl!.match(/[?&]token=([^&\\s"<>]+)/)![1]);
+    const token2 = extractPasswordResetToken(restoreUrl!);
 
     const restoreRes = await apiFetch(sharedApiRequest, `/api/auth/reset-password?token=${encodeURIComponent(token2)}`, {
       method: 'POST',
@@ -844,7 +860,7 @@ test.describe('Session & Account Security', () => {
   });
 
   test('36. List sessions returns active sessions after login', async ({ browser }) => {
-    const context = await loginInvestorWithMfa(browser, INVESTOR_B);
+    const context = await loginInvestorWithMfa(browser, INVESTOR_A);
     const listRes = await context.request.get('/api/auth/list-sessions');
     expect(listRes.status()).toBe(200);
     const sessions = await listRes.json() as unknown[];
@@ -854,8 +870,8 @@ test.describe('Session & Account Security', () => {
   });
 
   test('37. Revoke a specific session invalidates it', async ({ browser }) => {
-    const contextA = await loginInvestorWithMfa(browser, INVESTOR_B);
-    const contextB = await loginInvestorWithMfa(browser, INVESTOR_B);
+    const contextA = await loginInvestorWithMfa(browser, INVESTOR_A);
+    const contextB = await loginInvestorWithMfa(browser, INVESTOR_A);
 
     // Get sessions from context A
     const listRes = await contextA.request.get('/api/auth/list-sessions');
