@@ -121,6 +121,24 @@ export async function resendVerification(email: string): Promise<{ data: { messa
   return apiFetch('/resend-verification', { method: 'POST', body: JSON.stringify({ email }) });
 }
 
+function betterAuthErrorMessage(body: unknown): string | null {
+  if (!body || typeof body !== 'object') return null;
+  const payload = body as Record<string, unknown>;
+  const nested = payload.error && typeof payload.error === 'object'
+    ? payload.error as Record<string, unknown>
+    : null;
+  const code = String(payload.code ?? nested?.code ?? '').toUpperCase();
+  const message = String(payload.message ?? nested?.message ?? '');
+
+  if (code.includes('INVALID_TOKEN') || /invalid[_ -]?token/i.test(message)) {
+    return 'El enlace de restablecimiento no es válido o ha caducado.';
+  }
+  if (code.includes('PASSWORD_TOO_SHORT')) {
+    return 'La contraseña debe tener al menos 8 caracteres.';
+  }
+  return null;
+}
+
 async function betterAuthFetch(path: string, options: RequestInit = {}) {
   const response = await fetch(`/api/auth${path}`, {
     credentials: 'include',
@@ -129,11 +147,13 @@ async function betterAuthFetch(path: string, options: RequestInit = {}) {
   });
 
   if (!response.ok) {
+    const body = await response.json().catch(() => null);
+    const controlledMessage = betterAuthErrorMessage(body);
     if (response.status === 503) throw new AuthDisabledError(response);
     if (response.status === 401) throw new InvalidCredentialsError(response);
     if (response.status === 429) throw new RateLimitedError(response);
     if (response.status === 403) throw new AccountDisabledError(response);
-    throw new AuthResponseError('Request failed', response);
+    throw new AuthResponseError(controlledMessage ?? 'No se ha podido completar la solicitud.', response);
   }
   return response.json().catch(() => ({ status: true }));
 }

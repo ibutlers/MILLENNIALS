@@ -8,7 +8,7 @@
  *
  * Run: pnpm test:e2e:auth (via scripts/run-e2e-auth.sh)
  *
- * Covers 47 scenarios: health → invitation → activation → verification → MFA →
+ * Covers 49 scenarios: health → invitation → activation → verification → MFA →
  * login → authorization → IDOR → suspension → revocation → password reset → session management → cleanup.
  *
  * No mocks: real Better Auth, real PostgreSQL, real Playwright browser.
@@ -20,7 +20,7 @@
  *   Suite 4: Invitation & Registration (serial, 5 tests)
  *   Suite 5: Activation & MFA Flow (serial, 7 tests)
  *   Suite 6: Authorization & IDOR (7 tests)
- *   Suite 7: Session & Account Security (8 tests)
+ *   Suite 7: Session & Account Security (10 tests)
  *   Suite 8: Edge Cases & Cleanup (9 tests)
  */
 import { test, expect, type APIRequestContext, type Browser, type BrowserContext, type Page } from '@playwright/test';
@@ -174,6 +174,44 @@ function extractPasswordResetToken(resetUrl: string): string {
   if (pathToken && pathToken.length >= 16) return decodeURIComponent(pathToken);
 
   throw new Error('Password reset URL does not contain a token in a supported location.');
+}
+
+function summarizeResetRedirect(location: string | undefined): { path: string; hasToken: boolean; error: string | null } {
+  const parsed = new URL(location || '/', API_BASE);
+  return {
+    path: parsed.pathname,
+    hasToken: Boolean(parsed.searchParams.get('token')),
+    error: parsed.searchParams.get('error'),
+  };
+}
+
+function sanitizedResetResponseSignature(value: unknown): unknown {
+  if (value === null || value === undefined) return value;
+  if (typeof value === 'string') return '<string>';
+  if (typeof value === 'number' || typeof value === 'boolean') return value;
+  if (Array.isArray(value)) return value.map((entry) => sanitizedResetResponseSignature(entry));
+  if (typeof value === 'object') {
+    return Object.fromEntries(
+      Object.entries(value as Record<string, unknown>)
+        .sort(([a], [b]) => a.localeCompare(b))
+        .map(([key, entry]) => [key, sanitizedResetResponseSignature(entry)]),
+    );
+  }
+  return typeof value;
+}
+
+function expectNoSensitiveResetMaterial(body: Record<string, unknown>, targetEmail?: string): void {
+  const serialized = JSON.stringify(body).toLowerCase().replace(/\\\//g, '/');
+  const containsResetIdentifier = /reset-password:[a-z0-9_-]+/i.test(serialized);
+  const containsTokenLink = /[?&]token=/i.test(serialized);
+  const containsPathResetToken = /\/reset-password\/[a-z0-9_-]{16,}/i.test(serialized);
+  const containsTargetEmail = targetEmail ? serialized.includes(targetEmail.toLowerCase()) : false;
+  expect({ containsResetIdentifier, containsTokenLink, containsPathResetToken, containsTargetEmail }).toEqual({
+    containsResetIdentifier: false,
+    containsTokenLink: false,
+    containsPathResetToken: false,
+    containsTargetEmail: false,
+  });
 }
 
 // ─────────────────────────────────────────────────────────────────────────
@@ -774,17 +812,123 @@ test.describe('Session & Account Security', () => {
     await context.close();
   });
 
-  test('33. Password reset request returns generic success', async () => {
+  test('33. Password reset request is anti-enumeration-safe and emits only capture email for existing accounts', async () => {
     await clearCapturedEmails(sharedApiRequest);
-    const resetReqRes = await apiFetch(sharedApiRequest, '/api/auth/request-password-reset', {
+    const existingReset = await apiFetch(sharedApiRequest, '/api/auth/request-password-reset', {
       method: 'POST',
       body: { email: INVESTOR_B.email, redirectTo: '/acceso/restablecer' },
       headers: { Origin: API_BASE },
     });
-    expect(resetReqRes.status).toBe(200);
+    const missingEmail = `missing-reset-${Date.now()}@e2e.realstate.test`;
+    const missingReset = await apiFetch(sharedApiRequest, '/api/auth/request-password-reset', {
+      method: 'POST',
+      body: { email: missingEmail, redirectTo: '/acceso/restablecer' },
+      headers: { Origin: API_BASE },
+    });
+
+    expectNoSensitiveResetMaterial(existingReset.body, INVESTOR_B.email);
+    expectNoSensitiveResetMaterial(missingReset.body, missingEmail);
+    const existingSignature = sanitizedResetResponseSignature(existingReset.body);
+    const missingSignature = sanitizedResetResponseSignature(missingReset.body);
+    expect({
+      existingStatus: existingReset.status,
+      missingStatus: missingReset.status,
+      existingSignature,
+      missingSignature,
+    }).toEqual({
+      existingStatus: 200,
+      missingStatus: 200,
+      existingSignature: { message: '<string>', status: true },
+      missingSignature: { message: '<string>', status: true },
+    });
+
+    const emails = await getCapturedEmails(sharedApiRequest);
+    const existingEmailCount = emails.filter((email) => email.to === INVESTOR_B.email && email.type === 'password-reset').length;
+    const missingEmailCount = emails.filter((email) => email.to === missingEmail && email.type === 'password-reset').length;
+    expect({ existingEmailCount, missingEmailCount }).toEqual({
+      existingEmailCount: 1,
+      missingEmailCount: 0,
+    });
+
+    const resetUrl = extractPasswordResetUrl(emails, INVESTOR_B.email);
+    expect(resetUrl).toBeTruthy();
+    const parsedResetUrl = new URL(resetUrl!);
+    const pathSegments = parsedResetUrl.pathname.split('/').filter(Boolean);
+    const tokenSegment = pathSegments.at(-1) || '';
+    const safeResetPath = pathSegments.slice(0, -1).join('/');
+    expect({
+      safeResetPath,
+      hasTokenSegment: tokenSegment.length >= 16,
+      callbackURL: parsedResetUrl.searchParams.get('callbackURL'),
+    }).toEqual({
+      safeResetPath: 'api/auth/reset-password',
+      hasTokenSegment: true,
+      callbackURL: '/acceso/restablecer',
+    });
+
+    const callbackRes = await sharedApiRequest.get(resetUrl!, {
+      maxRedirects: 0,
+      headers: { Origin: API_BASE },
+    });
+    expect([302, 303]).toContain(callbackRes.status());
+    expect(summarizeResetRedirect(callbackRes.headers().location)).toEqual({
+      path: '/acceso/restablecer',
+      hasToken: true,
+      error: null,
+    });
   });
 
-  test('33b. UI recovery uses Better Auth reset links and revokes active sessions', async ({ browser }) => {
+  test('33a. Password reset rejects invalid tokens with a safe UI error', async ({ page }) => {
+    const invalidReset = await apiFetch(sharedApiRequest, '/api/auth/reset-password?token=invalid-reset-token', {
+      method: 'POST',
+      body: { newPassword: 'InvalidTokenNew12345!' },
+      headers: { Origin: API_BASE },
+    });
+    expect(invalidReset.status).toBe(400);
+    expectNoSensitiveResetMaterial(invalidReset.body);
+
+    await page.goto('/acceso/restablecer?token=invalid-reset-token');
+    await page.getByLabel(/^nueva contraseña/i).fill('InvalidTokenNew12345!');
+    await page.getByLabel(/confirmar contraseña/i).fill('InvalidTokenNew12345!');
+    await page.getByRole('button', { name: /restablecer contraseña/i }).click();
+    await expect(page.getByRole('alert')).toContainText(/enlace de restablecimiento no es válido|caducado/i);
+  });
+
+  test('33b. Password reset rejects expired tokens', async () => {
+    await clearCapturedEmails(sharedApiRequest);
+    const resetReq = await apiFetch(sharedApiRequest, '/api/auth/request-password-reset', {
+      method: 'POST',
+      body: { email: INVESTOR_B.email, redirectTo: '/acceso/restablecer' },
+      headers: { Origin: API_BASE },
+    });
+    expect(resetReq.status).toBe(200);
+
+    let resetUrl: string | null = null;
+    for (let attempt = 0; attempt < 8 && !resetUrl; attempt++) {
+      if (attempt > 0) await new Promise(r => setTimeout(r, 1000));
+      resetUrl = extractPasswordResetUrl(await getCapturedEmails(sharedApiRequest), INVESTOR_B.email);
+    }
+    expect(resetUrl).toBeTruthy();
+    const token = extractPasswordResetToken(resetUrl!);
+
+    const expireRes = await apiFetch(sharedApiRequest, '/api/e2e/auth/expire-password-reset-token', {
+      method: 'POST',
+      body: { token },
+      headers: { 'x-e2e-secret': E2E_SECRET },
+    });
+    expect(expireRes.status).toBe(200);
+    expect(expireRes.body).toEqual({ data: { expired: true } });
+
+    const expiredReset = await apiFetch(sharedApiRequest, `/api/auth/reset-password?token=${encodeURIComponent(token)}`, {
+      method: 'POST',
+      body: { newPassword: 'ExpiredTokenNew12345!' },
+      headers: { Origin: API_BASE },
+    });
+    expect(expiredReset.status).toBe(400);
+    expectNoSensitiveResetMaterial(expiredReset.body);
+  });
+
+  test('33c. UI recovery uses Better Auth reset links and revokes active sessions', async ({ browser }) => {
     const recoveryUser = {
       name: 'Recovery UI Investor',
       email: `recovery-ui-${Date.now()}@e2e.realstate.test`,

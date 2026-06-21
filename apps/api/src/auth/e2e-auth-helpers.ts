@@ -154,6 +154,28 @@ export function registerE2EAuthHelpers(
     return { data: { required: config.betterAuthRequire2FA } };
   });
 
+  // ── POST /api/e2e/auth/expire-password-reset-token ──
+  // Test-only helper: marks a captured Better Auth reset token as expired.
+  // The raw token is never returned by this endpoint.
+  app.post('/api/e2e/auth/expire-password-reset-token', async (request: FastifyRequest, reply: FastifyReply) => {
+    if (!safeSecretMatches(request.headers['x-e2e-secret'], secret)) {
+      return reply.status(404).send(e2eNotFound());
+    }
+    const body = request.body as { token?: unknown } | undefined;
+    if (typeof body?.token !== 'string' || body.token.length < 16) {
+      return reply.status(400).send({ error: { code: 'bad_request', message: 'token is required' } });
+    }
+
+    const result = await pool.query(
+      `UPDATE auth.verification
+       SET "expiresAt" = now() - interval '1 second', "updatedAt" = now()
+       WHERE identifier = $1`,
+      [`reset-password:${body.token}`],
+    );
+
+    return { data: { expired: result.rowCount === 1 } };
+  });
+
   // ── POST /api/e2e/auth/invitation-token ──
   // Creates an invitation and returns the raw token for E2E testing.
   app.post('/api/e2e/auth/invitation-token', async (request: FastifyRequest, reply: FastifyReply) => {

@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { AuthDisabledError, InvalidCredentialsError, fetchMe } from './client';
+import { AuthDisabledError, InvalidCredentialsError, fetchMe, resetPassword } from './client';
 
 const user = {
   id: '00000000-0000-0000-0000-000000000001',
@@ -55,5 +55,27 @@ describe('auth client fetchMe', () => {
     mockFetch(200, { data: user });
 
     await expect(fetchMe()).resolves.toEqual({ data: user });
+  });
+});
+
+describe('auth client password reset', () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it('maps Better Auth invalid reset tokens to a safe recovery message', async () => {
+    mockFetch(400, { code: 'INVALID_TOKEN', message: 'Invalid token' });
+
+    await expect(resetPassword('invalid-reset-token', 'NewPassword123!')).rejects.toThrow(
+      'El enlace de restablecimiento no es válido o ha caducado.',
+    );
+
+    expect(globalThis.fetch).toHaveBeenCalledWith(
+      '/api/auth/reset-password?token=invalid-reset-token',
+      expect.objectContaining({
+        method: 'POST',
+        body: JSON.stringify({ newPassword: 'NewPassword123!' }),
+      }),
+    );
   });
 });
