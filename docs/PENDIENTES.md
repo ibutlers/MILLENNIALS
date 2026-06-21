@@ -101,4 +101,5 @@ La ventana temporal se considerará cerrada cuando se cumplan **todos** los requ
 - `docs/runbooks/auth-incident.md` — respuesta a incidencias.
 - `docs/runbooks/auth-secret-rotation.md` — rotación de secretos.
 - `docs/runbooks/auth-email-setup.md` — configuración de correo.
+- `docs/runbooks/second-admin-setup.md` — flujo seguro para invitar y activar un segundo admin real.
 - `docs/runbooks/observabilidad-minima.md` — health/logs/backups y alerta cron read-only.

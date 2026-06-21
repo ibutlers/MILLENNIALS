@@ -22,6 +22,8 @@ Esto evita bloqueo total del panel si un admin pierde contraseña, TOTP o backup
 
 ## Procedimiento cuando Víctor proporcione email real
 
+El procedimiento operativo actualizado está en `docs/runbooks/second-admin-setup.md`.
+
 Entrada humana requerida:
 
 - email real del segundo admin (`ADMIN_EMAIL_2`);

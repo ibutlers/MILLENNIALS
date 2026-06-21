@@ -7,10 +7,11 @@
  * Commands:
  *   invite-investor     --lead-ref RS-... [--role investor] [--send]
  *   invite-email        --email user@example.com [--role investor|staff|admin] [--send]
+ *   invite-admin        --email admin@dominio-real.com [--dry-run] [--yes]
  *   resend-invitation    <ref>
  *   list-invitations     [--status pending] [--email ...]
  *   revoke-invitation    <ref> [--reason ...]
- *   list-users           [--status active] [--role investor]
+ *   list-users           [--status active] [--role investor] [--email ...]
  *   suspend-user         <email>
  *   reactivate-user      <email>
  *   revoke-user          <email>
@@ -34,6 +35,7 @@ import { getPool } from '../db/pool.js';
 import { InvitationRepository } from './invitations.js';
 import { getConfig } from '../config.js';
 import { createAuthEmailProvider } from './email-provider.js';
+import { AdminInvitationError, createSecondAdminInvitation, formatAdminInvitationResult } from './admin-invite.js';
 
 const pool = getPool();
 
@@ -44,10 +46,11 @@ Uso: npx tsx apps/api/src/auth/cli.ts <comando> [opciones]
 Comandos:
   invite-investor         --lead-ref RS-... [--role investor] [--send]
   invite-email            --email user@example.com [--role investor|staff|admin] [--send]
+  invite-admin            --email admin@dominio-real.com [--dry-run] [--yes]
   resend-invitation        <ref>
   list-invitations         [--status pending] [--email ...]
   revoke-invitation        <ref> [--reason ...]
-  list-users               [--status active] [--role investor]
+  list-users               [--status active] [--role investor] [--email ...]
   suspend-user             <email>
   reactivate-user          <email>
   revoke-user              <email>
@@ -73,6 +76,23 @@ function maskEmail(email: string): string {
   if (!domain) return email;
   const visible = Math.min(2, local.length);
   return local.slice(0, visible) + '***@' + domain;
+}
+
+function redactAuditMetadata(value: unknown, showPii: boolean): unknown {
+  if (showPii) return value;
+  if (Array.isArray(value)) return value.map(item => redactAuditMetadata(item, showPii));
+  if (!value || typeof value !== 'object') return value;
+  const redacted: Record<string, unknown> = {};
+  for (const [key, entry] of Object.entries(value as Record<string, unknown>)) {
+    if (/email/i.test(key) && typeof entry === 'string') {
+      redacted[key] = maskEmail(entry);
+    } else if (/token|secret|password|cookie|link|url/i.test(key) && typeof entry === 'string') {
+      redacted[key] = '[redacted]';
+    } else {
+      redacted[key] = redactAuditMetadata(entry, showPii);
+    }
+  }
+  return redacted;
 }
 
 function parseArgs(): { command: string; args: Record<string, string>; flags: Set<string>; posArgs: string[] } {
@@ -145,7 +165,10 @@ async function main(): Promise<void> {
       console.log(`  Expira: ${invitation.expiresAt}`);
       console.log(`  Rol: ${invitation.intendedRole}`);
       if (args['send']) {
-        console.log(`[Enlace: /acceso/activar#token=${token}]`);
+        const config = getConfig();
+        const emailProvider = createAuthEmailProvider(config.authEmailMode, config);
+        await emailProvider.sendInvitation(emailNormalized, `/acceso/activar#token=${token}`);
+        console.log('✓ Correo de invitación enviado');
       }
       break;
     }
@@ -175,6 +198,32 @@ async function main(): Promise<void> {
         console.log('✓ Correo de invitación enviado');
       } else {
         console.log('NOTA: correo no enviado; usa --send para enviar por SMTP configurado.');
+      }
+      break;
+    }
+
+    case 'invite-admin': {
+      const email = args['email'];
+      if (!email) { console.error('ERROR: --email válido requerido'); process.exit(1); }
+      const dryRun = args['dry-run'] === 'true';
+      if (!dryRun && !autoYes) { console.error('Use --yes para confirmar en modo no interactivo'); process.exit(1); }
+
+      const config = getConfig();
+      const emailProvider = createAuthEmailProvider(config.authEmailMode, config);
+      try {
+        const result = await createSecondAdminInvitation({
+          email,
+          dryRun,
+          nodeEnv: process.env.NODE_ENV || 'production',
+          authEmailMode: config.authEmailMode,
+        }, { pool, invitations, emailProvider });
+        console.log(formatAdminInvitationResult(result, { showPii }));
+      } catch (err) {
+        if (err instanceof AdminInvitationError) {
+          console.error(`ERROR[${err.code}]: ${err.message}`);
+          process.exit(1);
+        }
+        throw err;
       }
       break;
     }
@@ -217,11 +266,12 @@ async function main(): Promise<void> {
     }
 
     case 'list-users': {
-      const status = args['status']; const role = args['role'];
+      const status = args['status']; const role = args['role']; const email = args['email'];
       const limit = args['limit'] ? parseInt(args['limit'], 10) : 50;
       let where = 'WHERE 1=1'; const params: unknown[] = []; let p = 0;
       if (status) { p++; where += ` AND status = $${p}`; params.push(status); }
       if (role) { p++; where += ` AND role = $${p}`; params.push(role); }
+      if (email) { p++; where += ` AND email_normalized = $${p}`; params.push(email.toLowerCase().trim()); }
       p++; params.push(limit);
       const result = await pool.query(
         `SELECT email_normalized, display_name, role, status, activated_at, last_login_at, created_at FROM app_users ${where} ORDER BY created_at DESC LIMIT $${p}`, params);
@@ -387,10 +437,14 @@ async function main(): Promise<void> {
       const limit = Math.min(args['limit'] ? parseInt(args['limit'], 10) : 50, 200);
       const action = args['action'];
       const actorEmail = args['actor'];
+      const subjectEmail = args['subject'];
       let where = 'WHERE 1=1'; const params: unknown[] = []; let p = 0;
       if (action) { p++; where += ` AND action = $${p}`; params.push(action); }
       if (actorEmail) {
         p++; where += ` AND actor_id IN (SELECT id FROM app_users WHERE email_normalized = $${p})`; params.push(actorEmail.toLowerCase().trim());
+      }
+      if (subjectEmail) {
+        p++; where += ` AND (subject_id IN (SELECT id FROM app_users WHERE email_normalized = $${p}) OR metadata->>'email' = $${p})`; params.push(subjectEmail.toLowerCase().trim());
       }
       p++; params.push(limit);
       const result = await pool.query(
@@ -399,7 +453,8 @@ async function main(): Promise<void> {
       console.log('-'.repeat(80));
       for (const ev of result.rows) {
         const meta = typeof ev.metadata === 'string' ? JSON.parse(ev.metadata) : ev.metadata || {};
-        console.log(`${new Date(ev.created_at).toISOString().slice(0, 19)} | ${ev.action} | ${ev.result} | ${JSON.stringify(meta).slice(0, 80)}`);
+        const safeMeta = redactAuditMetadata(meta, showPii);
+        console.log(`${new Date(ev.created_at).toISOString().slice(0, 19)} | ${ev.action} | ${ev.result} | ${JSON.stringify(safeMeta).slice(0, 120)}`);
       }
       break;
     }
