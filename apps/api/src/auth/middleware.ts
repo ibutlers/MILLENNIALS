@@ -15,6 +15,7 @@ import type { AppConfig } from '../config.js';
 import { getBetterAuthServer } from './better-auth-plugin.js';
 
 type MfaRequirement = boolean | Pick<AppConfig, 'betterAuthRequire2FA'> | (() => boolean);
+const safeProjectReferencePattern = /^[a-z0-9-]{1,200}$/;
 
 function shouldRequireMfa(requirement?: MfaRequirement): boolean {
   if (typeof requirement === 'boolean') return requirement;
@@ -217,6 +218,9 @@ export function requireProjectAccess(pool: Pool) {
 
     if (!projectRef) {
       return reply.status(400).send(publicError('invalid_request', 'ID de proyecto no especificado.'));
+    }
+    if (!safeProjectReferencePattern.test(projectRef)) {
+      return reply.status(400).send(publicError('invalid_project_reference', 'Referencia de proyecto no válida.'));
     }
 
     const result = await pool.query(

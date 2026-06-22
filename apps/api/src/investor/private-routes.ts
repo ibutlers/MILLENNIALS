@@ -38,6 +38,49 @@ const transferReportSchema = z.object({
   transferNotes: z.string().max(2000).optional().nullable(),
 });
 
+const projectReferenceSchema = z.string().regex(/^[a-z0-9-]{1,200}$/);
+const documentIdSchema = z.string().uuid();
+
+type DocumentRow = {
+  id: string;
+  title: string;
+  type: string;
+  status: string;
+  byte_size: number | string | null;
+  mime_type: string | null;
+  created_at?: string;
+  project_id?: string;
+  project_slug?: string;
+  project_title?: string;
+  has_storage_ref?: boolean | null;
+};
+
+async function isStorageConfigured(storageProvider: ProviderSet['storage'] | undefined): Promise<boolean> {
+  if (!storageProvider) return false;
+  try {
+    const health = await storageProvider.health();
+    return health.configured === true;
+  } catch {
+    return false;
+  }
+}
+
+function serializeDocument(row: DocumentRow, storageConfigured: boolean) {
+  return {
+    id: row.id,
+    title: row.title,
+    type: row.type,
+    status: row.status,
+    byte_size: row.byte_size,
+    mime_type: row.mime_type,
+    ...(row.created_at ? { created_at: row.created_at } : {}),
+    ...(row.project_id ? { project_id: row.project_id } : {}),
+    ...(row.project_slug ? { project_slug: row.project_slug } : {}),
+    ...(row.project_title ? { project_title: row.project_title } : {}),
+    download_available: Boolean(row.has_storage_ref) && storageConfigured,
+  };
+}
+
 export interface PrivateInvestorRoutesOptions {
   pool: Pool;
   config?: Pick<AppConfig, 'betterAuthRequire2FA'>;
@@ -108,6 +151,7 @@ export function registerPrivateInvestorRoutes(
               d.byte_size,
               d.mime_type,
               d.created_at,
+              NULLIF(d.storage_ref, '') IS NOT NULL AS has_storage_ref,
               o.id::text AS project_id,
               o.slug AS project_slug,
               o.title AS project_title
@@ -131,7 +175,8 @@ export function registerPrivateInvestorRoutes(
        ORDER BY d.created_at DESC
        LIMIT 100`, [appUser.id]);
 
-    return { data: result.rows };
+    const storageConfigured = await isStorageConfigured(storageProvider);
+    return { data: (result.rows as DocumentRow[]).map((row) => serializeDocument(row, storageConfigured)) };
   });
 
   // ── GET /api/investor/projects ──
@@ -242,6 +287,10 @@ export function registerPrivateInvestorRoutes(
     preHandler: [...authChain, requireProjectAccess(pool)],
   }, async (request: FastifyRequest, reply: FastifyReply) => {
     const { id } = request.params as { id: string };
+    const projectRef = projectReferenceSchema.safeParse(id);
+    if (!projectRef.success) {
+      return reply.status(400).send(publicError('invalid_project_reference', 'Referencia de proyecto no válida.'));
+    }
 
     const appUser = (request as any).appUser;
     const result = await pool.query(
@@ -267,8 +316,12 @@ export function registerPrivateInvestorRoutes(
   // ── GET /api/investor/projects/:id/documents ──
   app.get('/api/investor/projects/:id/documents', {
     preHandler: [...authChain, requireProjectAccess(pool)],
-  }, async (request: FastifyRequest, _reply: FastifyReply) => {
+  }, async (request: FastifyRequest, reply: FastifyReply) => {
     const { id } = request.params as { id: string };
+    const projectRef = projectReferenceSchema.safeParse(id);
+    if (!projectRef.success) {
+      return reply.status(400).send(publicError('invalid_project_reference', 'Referencia de proyecto no válida.'));
+    }
 
     const result = await pool.query(
       `SELECT d.id,
@@ -278,6 +331,7 @@ export function registerPrivateInvestorRoutes(
               d.byte_size,
               d.mime_type,
               d.created_at,
+              NULLIF(d.storage_ref, '') IS NOT NULL AS has_storage_ref,
               o.id::text AS project_id,
               o.slug AS project_slug,
               o.title AS project_title
@@ -292,7 +346,8 @@ export function registerPrivateInvestorRoutes(
       [id],
     );
 
-    return { data: result.rows };
+    const storageConfigured = await isStorageConfigured(storageProvider);
+    return { data: (result.rows as DocumentRow[]).map((row) => serializeDocument(row, storageConfigured)) };
   });
 
   // ── GET /api/investor/projects/:id/documents/:documentId/download ──
@@ -300,6 +355,14 @@ export function registerPrivateInvestorRoutes(
     preHandler: [...authChain, requireProjectAccess(pool)],
   }, async (request: FastifyRequest, reply: FastifyReply) => {
     const { id, documentId } = request.params as { id: string; documentId: string };
+    const projectRef = projectReferenceSchema.safeParse(id);
+    if (!projectRef.success) {
+      return reply.status(400).send(publicError('invalid_project_reference', 'Referencia de proyecto no válida.'));
+    }
+    const parsedDocumentId = documentIdSchema.safeParse(documentId);
+    if (!parsedDocumentId.success) {
+      return reply.status(400).send(publicError('invalid_document_id', 'ID de documento no válido.'));
+    }
 
     const { rows: [document] } = await pool.query<{
       id: string;
@@ -317,7 +380,7 @@ export function registerPrivateInvestorRoutes(
          AND d.id::text = $2
          AND (o.id::text = $1 OR o.slug = $1)
        LIMIT 1`,
-      [id, documentId],
+      [id, parsedDocumentId.data],
     );
 
     if (!document) {
@@ -326,7 +389,8 @@ export function registerPrivateInvestorRoutes(
     if (!document.storage_ref) {
       return reply.status(404).send(publicError('document_unavailable', 'El documento todavía no tiene fichero descargable.'));
     }
-    if (!storageProvider) {
+    const storageConfigured = await isStorageConfigured(storageProvider);
+    if (!storageConfigured || !storageProvider) {
       return reply.status(503).send(publicError('provider_not_configured', 'El almacenamiento documental no está configurado.'));
     }
 

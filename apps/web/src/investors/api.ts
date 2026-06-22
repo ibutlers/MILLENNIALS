@@ -28,6 +28,7 @@ export interface InvestorDocument {
   project_id?: string;
   project_slug?: string;
   project_title?: string;
+  download_available?: boolean;
 }
 
 export interface InvestmentRequest {

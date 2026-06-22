@@ -12,6 +12,8 @@ Rutas:
 - `GET /api/investor/projects/:id/documents` — lista documentos privados de un proyecto autorizado.
 - `GET /api/investor/projects/:id/documents/:documentId/download` — genera descarga solo si existe `storage_ref` y el provider de storage está configurado.
 
+La API de listado no expone `storage_ref`. En su lugar devuelve `download_available`, calculado como `NULLIF(storage_ref, '') IS NOT NULL` + provider de storage configurado.
+
 ## Reglas de seguridad
 
 - No usar `private_documents`; esa tabla no es parte del runtime.
@@ -20,6 +22,7 @@ Rutas:
 - Si el documento no tiene fichero, responder `document_unavailable`.
 - Si storage está deshabilitado/no configurado, responder `provider_not_configured`.
 - No exponer `storage_ref` al frontend.
+- No mostrar botón/enlace de descarga si `download_available=false`.
 - No imprimir URLs firmadas en logs ni chats.
 
 ## UI
@@ -30,7 +33,8 @@ Rutas:
 - empty state honesto;
 - error state;
 - listado real;
-- enlace de descarga solo para documentos reales con proyecto asociado.
+- enlace de descarga solo si `download_available=true`.
+- etiqueta “Descarga no disponible” cuando el documento existe pero no hay fichero/provider configurado.
 
 ## Verificación mínima
 

@@ -99,14 +99,18 @@ export function InvestorDocuments() {
                     {formatBytes(document.byte_size)}
                   </p>
                 </div>
-                {document.project_slug ? (
+                {document.project_slug && document.download_available ? (
                   <a
                     href={`/api/investor/projects/${encodeURIComponent(document.project_slug)}/documents/${encodeURIComponent(document.id)}/download`}
                     className="inline-flex shrink-0 items-center justify-center border border-border px-4 py-3 text-xs font-black uppercase tracking-[0.14em] text-textLight transition hover:border-mineral hover:text-mineral focus:outline-none focus-visible:ring-2 focus-visible:ring-mineral"
                   >
                     Descargar
                   </a>
-                ) : null}
+                ) : (
+                  <span className="inline-flex shrink-0 items-center justify-center border border-border px-4 py-3 text-xs font-black uppercase tracking-[0.14em] text-muted">
+                    Descarga no disponible
+                  </span>
+                )}
               </div>
             </article>
           ))}

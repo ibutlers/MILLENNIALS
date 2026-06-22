@@ -2,6 +2,7 @@ import Fastify from 'fastify';
 import type { FastifyReply, FastifyRequest } from 'fastify';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { Pool } from 'pg';
+import type { StorageProvider } from '../providers/index.js';
 
 type MockPool = { query: ReturnType<typeof vi.fn> };
 
@@ -43,9 +44,20 @@ describe('Private investor routes — project documents', () => {
     vi.restoreAllMocks();
   });
 
-  function buildApp(pool: MockPool) {
+  function buildApp(pool: MockPool, storage?: Partial<StorageProvider>) {
     const app = Fastify({ logger: false });
-    registerPrivateInvestorRoutes(app, { pool: pool as unknown as Pool });
+    registerPrivateInvestorRoutes(app, {
+      pool: pool as unknown as Pool,
+      providers: storage
+        ? {
+          storage: storage as StorageProvider,
+          email: {} as never,
+          kyc: {} as never,
+          signature: {} as never,
+          payments: {} as never,
+        }
+        : undefined,
+    });
     return app;
   }
 
@@ -61,7 +73,16 @@ describe('Private investor routes — project documents', () => {
 
     expect(res.statusCode).toBe(200);
     expect(res.json()).toEqual({
-      data: [{ id: 'doc_1', title: 'Contrato', type: 'legal_document', status: 'active', byte_size: 12345, mime_type: 'application/pdf', project_slug: 'plaza-america' }],
+      data: [{
+        id: 'doc_1',
+        title: 'Contrato',
+        type: 'legal_document',
+        status: 'active',
+        byte_size: 12345,
+        mime_type: 'application/pdf',
+        project_slug: 'plaza-america',
+        download_available: false,
+      }],
     });
     expect(pool.query).toHaveBeenCalledTimes(1);
     const firstCall = pool.query.mock.calls[0] as unknown as [string, unknown[]];
@@ -81,7 +102,7 @@ describe('Private investor routes — project documents', () => {
   it('lists all authorized private documents without querying private_documents', async () => {
     const pool = {
       query: vi.fn(async () => ({
-        rows: [{ id: 'doc_all', title: 'Informe', type: 'quarterly_report', status: 'active', byte_size: 2048, mime_type: 'application/pdf', project_slug: 'plaza-america' }],
+        rows: [{ id: 'doc_all', title: 'Informe', type: 'quarterly_report', status: 'active', byte_size: 2048, mime_type: 'application/pdf', project_slug: 'plaza-america', storage_ref: 'private/doc.pdf', has_storage_ref: true }],
       })),
     };
     const app = buildApp(pool);
@@ -89,9 +110,22 @@ describe('Private investor routes — project documents', () => {
     const res = await app.inject({ method: 'GET', url: '/api/investor/documents' });
 
     expect(res.statusCode).toBe(200);
+    expect(res.json()).toEqual({
+      data: [{
+        id: 'doc_all',
+        title: 'Informe',
+        type: 'quarterly_report',
+        status: 'active',
+        byte_size: 2048,
+        mime_type: 'application/pdf',
+        project_slug: 'plaza-america',
+        download_available: false,
+      }],
+    });
     const firstCall = pool.query.mock.calls[0] as unknown as [string, unknown[]];
     const [sql, params] = firstCall;
     expect(sql).toContain('FROM documents d');
+    expect(sql).toContain("NULLIF(d.storage_ref, '') IS NOT NULL AS has_storage_ref");
     expect(sql).toContain('JOIN project_user_access pua ON pua.opportunity_id = o.id');
     expect(sql).not.toContain('private_documents');
     expect(params).toEqual(['app_user_1']);
@@ -99,15 +133,58 @@ describe('Private investor routes — project documents', () => {
     await app.close();
   });
 
+  it('only marks downloads available when the document has storage_ref and storage provider is configured', async () => {
+    const pool = {
+      query: vi.fn(async () => ({
+        rows: [
+          { id: 'doc_ready', title: 'Contrato firmado', type: 'legal_document', status: 'active', byte_size: 4096, mime_type: 'application/pdf', project_slug: 'plaza-america', storage_ref: 'private/contract.pdf', has_storage_ref: true },
+          { id: 'doc_pending', title: 'Certificado pendiente', type: 'compliance', status: 'active', byte_size: null, mime_type: null, project_slug: 'plaza-america', storage_ref: null, has_storage_ref: false },
+        ],
+      })),
+    };
+    const app = buildApp(pool, {
+      kind: 'storage',
+      health: async () => ({ configured: true, status: 'ok' }),
+    });
+
+    const res = await app.inject({ method: 'GET', url: '/api/investor/documents' });
+
+    expect(res.statusCode).toBe(200);
+    expect(res.json()).toEqual({
+      data: [
+        expect.objectContaining({ id: 'doc_ready', download_available: true }),
+        expect.objectContaining({ id: 'doc_pending', download_available: false }),
+      ],
+    });
+    expect(JSON.stringify(res.json())).not.toContain('storage_ref');
+
+    await app.close();
+  });
+
+  it('rejects invalid document ids before querying the documents table', async () => {
+    const pool = {
+      query: vi.fn(async () => ({ rows: [] })),
+    };
+    const app = buildApp(pool);
+
+    const res = await app.inject({ method: 'GET', url: '/api/investor/projects/plaza-america/documents/not-a-uuid/download' });
+
+    expect(res.statusCode).toBe(400);
+    expect(res.json().error.code).toBe('invalid_document_id');
+    expect(pool.query).not.toHaveBeenCalled();
+
+    await app.close();
+  });
+
   it('returns provider_not_configured instead of a fake URL when storage is disabled', async () => {
     const pool = {
       query: vi.fn(async () => ({
-        rows: [{ id: '00000000-0000-0000-0000-000000000001', title: 'Contrato', storage_ref: 'docs/contract.pdf' }],
+        rows: [{ id: '11111111-1111-4111-8111-111111111111', title: 'Contrato', storage_ref: 'docs/contract.pdf' }],
       })),
     };
     const app = buildApp(pool);
 
-    const res = await app.inject({ method: 'GET', url: '/api/investor/projects/plaza-america/documents/00000000-0000-0000-0000-000000000001/download' });
+    const res = await app.inject({ method: 'GET', url: '/api/investor/projects/plaza-america/documents/11111111-1111-4111-8111-111111111111/download' });
 
     expect(res.statusCode).toBe(503);
     expect(res.json().error.code).toBe('provider_not_configured');

@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { requireMfa } from './middleware.js';
+import { requireMfa, requireProjectAccess } from './middleware.js';
 
 const originalEnv = process.env;
 
@@ -72,5 +72,41 @@ describe('requireMfa — MFA opcional vs obligatorio', () => {
 
     expect(reply.status).toHaveBeenCalledWith(403);
     expect(reply.payload).toMatchObject({ error: { code: 'mfa_required' } });
+  });
+});
+
+describe('requireProjectAccess — validación de referencia de proyecto', () => {
+  it('rechaza referencias inseguras antes de consultar permisos', async () => {
+    const pool = { query: vi.fn() } as any;
+    const reply = makeReply();
+    const request = {
+      appUser: { id: 'app-user-1', role: 'investor' },
+      params: { id: '../secret' },
+    } as any;
+
+    await requireProjectAccess(pool)(request, reply);
+
+    expect(reply.status).toHaveBeenCalledWith(400);
+    expect(reply.payload).toMatchObject({ error: { code: 'invalid_project_reference' } });
+    expect(pool.query).not.toHaveBeenCalled();
+  });
+
+  it('consulta permisos con SQL parametrizado para referencias seguras', async () => {
+    const pool = { query: vi.fn(async () => ({ rows: [{ '?column?': 1 }] })) } as any;
+    const reply = makeReply();
+    const request = {
+      appUser: { id: 'app-user-1', role: 'investor' },
+      params: { id: 'plaza-america' },
+    } as any;
+
+    await requireProjectAccess(pool)(request, reply);
+
+    expect(reply.status).not.toHaveBeenCalled();
+    expect(pool.query).toHaveBeenCalledTimes(1);
+    const [sql, params] = pool.query.mock.calls[0] as [string, string[]];
+    expect(sql).toContain('WHERE pua.app_user_id = $1');
+    expect(sql).toContain('(o.id::text = $2 OR o.slug = $2)');
+    expect(params).toEqual(['app-user-1', 'plaza-america']);
+    expect(request.projectAccess).toEqual({ projectId: 'plaza-america', granted: true });
   });
 });
