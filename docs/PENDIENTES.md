@@ -19,6 +19,7 @@
 - [x] Runbooks de activación futura documentados:
   - `docs/runbooks/auth-preflight-checklist.md`
   - `docs/runbooks/auth-production-activation.md`
+  - `docs/runbooks/auth-temporal-http-ip.md`
 
 ## Aceptación formal de riesgo — ventana temporal auth/admin sobre HTTP/IP
 
@@ -35,7 +36,7 @@ Víctor Pérez (fundador). Cualquier cambio en esta postura requiere su autoriza
 
 ### Caducidad
 
-⚠️ **Pendiente de definir.** La ventana temporal no tiene fecha de expiración concreta. Debe definirse una fecha límite o condición objetiva de cierre (ej: cuando dominio/HTTPS estén listos, máximo 90 días desde 2026-06-19).
+⚠️ **Fecha objetivo de retirada: 2026-07-08.** Si la ventana temporal sigue activa después de esa fecha, tratarlo como alerta operativa P1: priorizar dominio + HTTPS o volver a modo seguro con autorización explícita. La condición objetiva de cierre sigue siendo migrar a HTTPS definitivo y desactivar `AUTH_ALLOW_INSECURE_IP_TEST`.
 
 ### Controles compensatorios activos
 
@@ -43,11 +44,12 @@ Víctor Pérez (fundador). Cualquier cambio en esta postura requiere su autoriza
 2. **Rollback listo**: `./scripts/rollback.sh` operativo y con sintaxis validada. Plan de rollback documentado con backup previo y 4 cambios de flags.
 3. **Rate limiting**: Endpoints de auth y formularios con rate limiting activo en API.
 4. **Startup enforcement**: `rejectInsecureAuth()` bloquea arranque si faltan variables requeridas o hay bypass no autorizados.
-5. **Endpoints E2E no expuestos**: `/api/v1/e2e/*` devuelven 404 en producción.
+5. **Endpoints E2E no expuestos**: `/api/e2e/auth/*` devuelven 404 en producción, verificado por `scripts/auth/check-temporary-http-ip.sh`.
 6. **Sin datos reales de inversores**: Solo 2 app_users (1 admin activo + 1 inversor de prueba). No hay capital, documentos ni KYC reales expuestos.
-7. **Admin único controlado**: 1 solo admin activo con MFA disponible (TOTP). El riesgo de lockout por pérdida de MFA existe y es conocido.
-8. **Cookies HttpOnly/SameSite**: Las cookies de sesión Better Auth usan HttpOnly y SameSite=Lax, limitando exposición XSS y CSRF básico aunque sin Secure.
+7. **Admin único controlado**: 1 solo admin activo; MFA permanece opcional por decisión de producto y el segundo admin real queda como `WAITING_HUMAN: proporcionar ADMIN_EMAIL_2`.
+8. **Cookies/headers sin exposición en smoke**: El check operativo cuenta `Set-Cookie`, `HttpOnly`, `SameSite` y `Secure` sin imprimir valores. En HTTP temporal `Secure=false` es una deuda explícita hasta HTTPS.
 9. **Monitorización básica**: Healthchecks `/health` y `/api/health` activos. Backups y logs accesibles para diagnóstico.
+10. **Smoke automatizado read-only**: `scripts/auth/check-temporary-http-ip.sh` valida postura temporal sin tocar `.env`, DB, contenedores, volúmenes ni flags.
 
 ### Condiciones para cerrar esta ventana
 

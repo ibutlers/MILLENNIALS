@@ -1,96 +1,199 @@
-# Postura temporal de autenticación sobre HTTP/IP
+# Runbook — postura temporal Auth/Admin sobre HTTP/IP
 
-Fecha de decisión operativa: 2026-06-20.
+Fecha de inicio documentada: **2026-06-24**.
+Fecha objetivo de retirada: **2026-07-08** o antes si dominio + HTTPS queda disponible.
+Estado: **temporal aceptado por producto, no definitivo**.
 
-## Advertencia visible
+## Resumen
 
-**VENTANA TEMPORAL DE RIESGO:** producción está activa sobre HTTP/IP solo para la fase controlada de activación. No convertir este estado en permanente. No ampliar el alcance, no añadir nuevos dominios/IPs y no activar 2FA obligatorio global hasta tener al menos dos admins reales con MFA completado y recuperación documentada.
+Producción mantiene temporalmente autenticación, SMTP y panel admin activos sobre HTTP/IP mientras se completa dominio + HTTPS definitivo.
 
-## Decisión vigente
+Postura temporal esperada:
 
-Se mantiene temporalmente la activación de Better Auth/Admin sobre la URL HTTP/IP de producción mientras se completa el dominio + HTTPS.
+- `AUTH_MODE=better-auth`
+- `AUTH_EMAIL_MODE=smtp`
+- `ADMIN_ENABLED=true`
+- `AUTH_ALLOW_INSECURE_IP_TEST=true`
+- `BETTER_AUTH_REQUIRE_2FA=false`
+- `APP_BASE_URL` y `BETTER_AUTH_URL` apuntan temporalmente a HTTP/IP aprobado.
+- `BETTER_AUTH_TRUSTED_ORIGINS` contiene el origen temporal aprobado.
+- `SESSION_COOKIE_SECURE=false` solo mientras dure HTTP temporal.
+- SMTP está configurado, pero sus valores nunca se imprimen.
 
-Esta postura **no es el estado objetivo**. El estado objetivo sigue siendo dominio propio con HTTPS y cookies seguras.
+MFA sigue opcional por decisión de producto. No activar MFA obligatorio sin nueva decisión explícita.
 
-## Alcance permitido
+## Motivo de la activación temporal
 
-La excepción temporal solo es válida si se cumplen todas las condiciones:
-
-- `APP_BASE_URL` apunta exactamente al host HTTP/IP autorizado para la activación temporal.
-- `AUTH_MODE` permanece en modo Better Auth activo.
-- `AUTH_EMAIL_MODE` permanece en modo SMTP real.
-- `ADMIN_ENABLED=true`.
-- `AUTH_ALLOW_INSECURE_IP_TEST=true` está presente únicamente para esta ventana temporal.
-- No se exponen secretos, cookies, hashes, tokens ni enlaces de verificación en logs, tickets o conversaciones.
+- Permitir operación y validación real de Better Auth, SMTP, invitaciones, login y panel admin antes de cerrar DNS/HTTPS definitivo.
+- Evitar SQL manual y flujos inseguros mientras se incorporan admins reales, recuperación de cuenta y documentación operativa.
 
 ## Riesgos aceptados temporalmente
 
-- Transporte HTTP sin cifrado extremo a extremo hasta disponer de HTTPS.
-- Cookies sin garantías equivalentes a la configuración final HTTPS.
-- Mayor sensibilidad operativa en pruebas manuales de acceso real.
-- Necesidad de retirar explícitamente el override temporal al activar dominio/HTTPS.
+- HTTP no cifra tráfico extremo a extremo; credenciales y cookies no deben considerarse protegidas frente a redes no confiables.
+- `SESSION_COOKIE_SECURE=false` es necesario para la ventana HTTP, pero no es aceptable como postura final.
+- `AUTH_ALLOW_INSECURE_IP_TEST=true` relaja la validación que normalmente bloquea auth/admin sin HTTPS.
+- Dominio/HTTPS, SPF/DKIM/DMARC y segundo admin real siguen siendo tareas de cierre operativo.
 
-## Controles compensatorios
+## Alcance permitido durante la ventana
 
-- Mantener la excepción limitada al host exacto; no convertirla en bypass genérico.
-- No cambiar flags críticos sin autorización explícita:
-  - `AUTH_MODE`
-  - `AUTH_EMAIL_MODE`
-  - `ADMIN_ENABLED`
-  - `AUTH_ALLOW_INSECURE_IP_TEST`
-- No imprimir ni almacenar tokens de invitación, verificación, reset, cookies o secretos.
-- Smoke posterior a cada deploy:
-  - `/health`
-  - `/api/health`
-  - `/acceso/login`
-  - `/api/auth/get-session`
-  - `/api/v1/admin/dashboard` sin cookie debe responder 401, no 5xx.
-  - `current_postgres-data` existe.
-  - recursos E2E restantes = 0.
-- Backups antes de cualquier cambio de configuración o despliegue que ejecute migraciones.
-- Revisión periódica de logs sin exponer datos sensibles.
+Permitido:
 
-## Caducidad
+- Mantener auth/admin/SMTP activos para operación controlada.
+- Ejecutar smokes y scripts read-only.
+- Invitar usuarios reales mediante scripts oficiales sin imprimir tokens.
+- Documentar y verificar caducidad.
 
-Esta excepción debe retirarse cuando esté listo el frente definitivo con dominio + HTTPS.
+No permitido sin autorización explícita:
 
-El criterio de retirada es:
+- Editar `/srv/deployments/realstate/shared/.env`.
+- Cambiar `AUTH_MODE`, `AUTH_EMAIL_MODE`, `ADMIN_ENABLED`, `AUTH_ALLOW_INSECURE_IP_TEST` o `BETTER_AUTH_REQUIRE_2FA`.
+- Hacer rollback.
+- Tocar `current_postgres-data`.
+- Ejecutar `docker compose down -v` o `docker system prune -a`.
+- Imprimir secretos, tokens, cookies, enlaces privados, contraseñas o valores SMTP.
 
-1. DNS apunta al proxy definitivo.
-2. HTTPS válido operativo.
-3. `APP_BASE_URL` usa `https://`.
-4. Cookies seguras activadas.
-5. `AUTH_ALLOW_INSECURE_IP_TEST` eliminado o establecido a `false`.
-6. Smoke auth/admin pasa sobre la URL HTTPS.
+## Smoke rápido read-only
 
-## Plan dominio/HTTPS
+En producción, desde `/srv/workspaces/realstate` o desde una release que contenga el script:
 
-No tocar DNS/proxy sin autorización. Plan objetivo:
+```bash
+scripts/auth/check-temporary-http-ip.sh
+```
 
-1. Confirmar dominio definitivo.
-2. Configurar DNS al proxy autorizado.
-3. Emitir/renovar HTTPS válido.
-4. Cambiar `APP_BASE_URL`/Better Auth URL a `https://` con backup previo de `.env`.
-5. Retirar `AUTH_ALLOW_INSECURE_IP_TEST`.
-6. Mantener `AUTH_MODE=better-auth`, `AUTH_EMAIL_MODE=smtp` y `ADMIN_ENABLED=true` solo si los smokes pasan.
-7. Ejecutar `./scripts/deploy.sh` y smoke auth/admin completo.
+El script no modifica DB, `.env`, contenedores, volúmenes ni flags.
 
-## Rollback seguro
+Debe terminar con:
 
-Rollback requiere autorización humana explícita porque cambia la postura de producción.
+```text
+RESULT=ok failures=0
+```
 
-Pasos de rollback, después de autorización y backup:
+Checks principales:
 
-1. Crear backup de `/srv/deployments/realstate/shared/.env` y PostgreSQL.
-2. Desactivar la excepción temporal o volver al modo auth seguro acordado.
-3. Desplegar con `./scripts/deploy.sh`.
-4. Verificar `/health`, `/api/health`, `/acceso/login`, endpoints auth/admin y logs.
-5. Confirmar que no se perdió `current_postgres-data`.
+- `/health` -> 200 y cuerpo `ok`.
+- `/api/health` -> 200 y PostgreSQL `ok`.
+- `/api/config/public` -> `authEnabled=true`, `betterAuthRequire2FA=false`.
+- `/acceso/login` -> 200.
+- `/admin` -> 200.
+- `/api/auth/get-session` sin cookie -> 200 y body `null`.
+- `/api/auth/me` sin cookie -> 401.
+- `/api/v1/admin/dashboard` sin cookie -> 401.
+- Endpoints `/api/e2e/auth/*` -> 404.
+- `current_postgres-data` presente.
+- Flags temporales coherentes dentro del contenedor API, sin imprimir valores secretos.
+- SMTP presente, sin imprimir host/user/password.
 
-## Estado actual verificado
+## Comprobación manual segura
 
-- Producción mantiene Better Auth/Admin activo.
-- La cuenta admin real está enlazada entre `auth.user` y `app_users`.
-- La invitación `INV-20260618-F00B23` está aceptada.
-- La cuenta tiene `role=admin`, `status=active` y email verificado.
-- En la postura temporal actual, MFA no está requerido por flag de producción; no se fuerza ni se simula MFA por SQL.
+Si el script no está disponible:
+
+```bash
+curl -fsS http://127.0.0.1:8088/health
+curl -fsS http://127.0.0.1:8088/api/health
+curl -fsS http://127.0.0.1:8088/api/config/public
+curl -s -o /dev/null -w "login_page=%{http_code}\n" http://127.0.0.1:8088/acceso/login
+curl -s -o /dev/null -w "admin_page=%{http_code}\n" http://127.0.0.1:8088/admin
+curl -s -o /dev/null -w "auth_me_no_cookie=%{http_code}\n" http://127.0.0.1:8088/api/auth/me
+curl -s -o /dev/null -w "admin_dashboard_no_cookie=%{http_code}\n" http://127.0.0.1:8088/api/v1/admin/dashboard
+```
+
+No usar `curl -i` en endpoints autenticados si puede imprimir cookies. Si se inspeccionan headers, contar atributos sin mostrar valores.
+
+## Verificar que endpoints E2E no están expuestos
+
+```bash
+for path in \
+  /api/e2e/auth/captured-emails \
+  /api/e2e/auth/user-status \
+  /api/e2e/auth/mfa-policy \
+  /api/e2e/auth/invitation-token; do
+  curl -s -o /dev/null -w "$path=%{http_code}\n" "http://127.0.0.1:8088$path"
+done
+```
+
+Resultado esperado:
+
+```text
+404
+```
+
+en todos los endpoints.
+
+## Comprobar SMTP sin imprimir valores
+
+Solo comprobar presencia, nunca valores:
+
+```bash
+docker exec current-api-1 sh -lc '[ -n "${SMTP_HOST:-}" ] && [ -n "${SMTP_PORT:-}" ] && [ -n "${SMTP_USER:-}" ] && [ -n "${SMTP_PASSWORD:-}" ]'
+```
+
+Si falla, revisar `.env` solo con autorización explícita y sin imprimir contenido.
+
+## Comprobar admin
+
+Sin sesión:
+
+```bash
+curl -s -o /dev/null -w "admin_page=%{http_code}\n" http://127.0.0.1:8088/admin
+curl -s -o /dev/null -w "admin_dashboard_no_cookie=%{http_code}\n" http://127.0.0.1:8088/api/v1/admin/dashboard
+```
+
+Esperado:
+
+- Página `/admin`: 200, porque el SPA carga.
+- API dashboard sin cookie: 401.
+
+Con sesión real, validar manualmente sin imprimir cookies ni tokens.
+
+## Cómo volver a modo seguro
+
+No ejecutar sin autorización explícita de Víctor.
+
+Procedimiento esperado:
+
+1. Crear backup de DB y de `/srv/deployments/realstate/shared/.env` sin imprimir valores.
+2. Editar `.env` en servidor para desactivar la ventana temporal:
+   - `AUTH_ALLOW_INSECURE_IP_TEST=false`.
+   - Si no hay HTTPS definitivo, valorar también `ADMIN_ENABLED=false` o `AUTH_MODE=disabled` según decisión de producto.
+3. Desplegar con:
+
+```bash
+./scripts/deploy.sh
+```
+
+4. Verificar `/health`, `/api/health`, rutas públicas y que admin/auth quedan en el modo decidido.
+5. Si el deploy rompe salud crítica, usar `./scripts/rollback.sh` según runbook de rollback.
+
+## Checklist para migrar a dominio + HTTPS
+
+- [ ] Dominio definitivo apuntando al servidor.
+- [ ] Caddy/Nginx sirviendo HTTPS válido.
+- [ ] `APP_BASE_URL=https://<dominio>`.
+- [ ] `BETTER_AUTH_URL=https://<dominio>`.
+- [ ] `BETTER_AUTH_TRUSTED_ORIGINS` actualizado a HTTPS definitivo.
+- [ ] `SESSION_COOKIE_SECURE=true`.
+- [ ] `AUTH_ALLOW_INSECURE_IP_TEST=false`.
+- [ ] `AUTH_MODE=better-auth` solo bajo HTTPS.
+- [ ] `AUTH_EMAIL_MODE=smtp` con SPF/DKIM/DMARC revisados.
+- [ ] `/health`, `/api/health`, `/api/config/public`, `/acceso/login`, `/admin` verificados bajo HTTPS.
+- [ ] Cookies de sesión con `Secure`, `HttpOnly`, `SameSite` razonable.
+- [ ] Endpoints HTTP/IP temporales no se usan para login real.
+
+## Caducidad y alerta operativa
+
+- Revisar esta ventana a diario mientras siga activa.
+- Fecha objetivo de retirada: **2026-07-08**.
+- Si en esa fecha sigue activo `AUTH_ALLOW_INSECURE_IP_TEST=true`, tratarlo como alerta operativa P1: priorizar dominio + HTTPS o volver a modo seguro.
+- Ninguna automatización debe cambiar flags por sí sola; la retirada requiere decisión y deploy controlado.
+
+## Evidencia mínima para cerrar la ventana temporal
+
+La ventana temporal se considera cerrada solo cuando:
+
+- `AUTH_ALLOW_INSECURE_IP_TEST=false` en producción.
+- `APP_BASE_URL` y `BETTER_AUTH_URL` usan HTTPS definitivo.
+- `SESSION_COOKIE_SECURE=true`.
+- Smokes HTTPS pasan.
+- No hay endpoints E2E expuestos.
+- `current_postgres-data` se mantiene intacto.
+- La release activa y `REVISION` quedan documentadas.
