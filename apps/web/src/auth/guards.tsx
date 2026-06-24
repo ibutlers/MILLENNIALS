@@ -1,6 +1,7 @@
 import React, { useEffect } from 'react';
 import { useNavigate } from 'react-router';
 import { useAuth } from './context';
+import { hasAnyRole } from './roles';
 
 /** Loading/skeleton component shown while auth state is being determined */
 function AuthGuardLoader() {
@@ -73,7 +74,7 @@ export function RequireRole({ roles, children }: { roles: string[]; children: Re
     );
   }
 
-  const hasRole = roles.some((role) => user.roles?.includes(role));
+  const hasRole = hasAnyRole(user.roles, roles);
   if (!hasRole) {
     return (
       <main className="min-h-screen bg-carbon text-textLight">

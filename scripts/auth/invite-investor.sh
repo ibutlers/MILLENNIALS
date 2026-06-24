@@ -4,9 +4,9 @@ SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 ROOT="$(dirname "$(dirname "$SCRIPT_DIR")")"
 
 usage() {
-  echo "Uso: $0 --lead-ref RS-... [--role investor|staff|admin] [--send] [--pii] [--yes]"
+  echo "Uso: $0 --lead-ref RS-... [--role investor|operator] [--send] [--pii] [--yes]"
   echo "  --lead-ref    Referencia pública del lead Coinvierte"
-  echo "  --role        Rol a asignar (default: investor)"
+  echo "  --role        Rol a asignar (default: investor; staff se acepta como alias legacy de operator)"
   echo "  --send        Enviar correo de invitación (si SMTP configurado)"
   echo "  --pii         Mostrar emails completos"
   echo "  --yes         Confirmar automáticamente"

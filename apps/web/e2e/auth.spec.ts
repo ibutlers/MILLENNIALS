@@ -714,7 +714,7 @@ test.describe('Authorization & IDOR', () => {
     expect([400, 403, 404]).toContain(forbidden.status());
   });
 
-  test('27. Investor cannot access staff-only endpoints', async () => {
+  test('27. Investor cannot access operator/admin endpoints', async () => {
     const res = await contextA.request.get('/api/v1/admin/dashboard');
     expect(res.status()).toBeGreaterThanOrEqual(400);
   });

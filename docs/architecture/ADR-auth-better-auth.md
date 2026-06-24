@@ -60,7 +60,7 @@ Tras evaluar alternativas, se ha decidido migrar a Better Auth como proveedor de
 - Invitaciones propias (`access_invitations`) — puerta de entrada
 - Usuarios internos (`app_users`) — perfil de negocio
 - Autorización por proyecto (`project_user_access`)
-- Roles locales (`investor`, `staff`, `admin`)
+- Roles locales (`investor`, `operator`, `admin`; `staff` queda solo como alias legacy/deprecado y se normaliza a `operator`)
 - Estados del ciclo de vida (`pending_email`, `pending_mfa`, `active`, `suspended`, `revoked`)
 - Vinculación Better Auth user ↔ app_user
 - Correo transaccional (interfaz propia con provider `disabled`/`capture`/`smtp`)
@@ -113,7 +113,7 @@ El registro público está cerrado. El flujo es:
 6. Better Auth crea usuario → vinculación con `app_users`
 7. Verificación email → TOTP obligatorio → activación
 8. Asignación server-side a organización "MILLENNIALS CONSTRUYEN"
-9. Asignación manual de proyectos por staff
+9. Asignación manual de proyectos por operator/admin
 
 ## 7. Modos de autenticación
 

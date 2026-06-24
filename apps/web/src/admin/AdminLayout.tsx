@@ -3,6 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import { Link, Outlet, useLocation } from 'react-router';
 import { apiFetch } from '../api/client';
 import { useAuth } from '../auth/context';
+import { normalizeAuthRoles } from '../auth/roles';
 
 const NAV_ITEMS: Array<{ path: string; label: string; exact?: boolean; roles?: string[] }> = [
   { path: '/admin', label: 'Dashboard', exact: true },
@@ -146,7 +147,7 @@ export default function AdminLayout() {
     );
   }
 
-  const userRoles = user.roles || [];
+  const userRoles = normalizeAuthRoles(user.roles);
   const navRoles = userRoles.some((role) => ['admin', 'operator'].includes(role)) ? userRoles : ['operator'];
 
   const currentLabel = NAV_ITEMS.find((item) => {

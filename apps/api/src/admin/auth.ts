@@ -4,6 +4,7 @@ import type { AppConfig } from '../config.js';
 import { hashToken } from '../auth/sessions.js';
 import { AuthRepository } from '../auth/repository.js';
 import { getBetterAuthServer } from '../auth/better-auth-plugin.js';
+import { hasAppUserRole, normalizeAppUserRole } from '../auth/roles.js';
 
 const SESSION_COOKIE = 'realstate_sid';
 
@@ -80,8 +81,7 @@ async function getBetterAuthUserFromRequest(
   }
   if (appUser.status !== 'active' && !(appUser.status === 'pending_mfa' && !require2FA)) return null;
 
-  const roles = [appUser.role];
-  if (appUser.role === 'staff') roles.push('operator');
+  const roles = [normalizeAppUserRole(String(appUser.role))];
   return { userId: appUser.id, roles };
 }
 
@@ -95,7 +95,7 @@ async function getLegacyUserFromRequest(request: FastifyRequest, pool: Pool): Pr
   if (!session || session.revokedAt || new Date(session.expiresAt) < new Date()) return null;
   if (session.userStatus !== 'active') return null;
 
-  const roles = await repo.getUserRoles(session.userId);
+  const roles = (await repo.getUserRoles(session.userId)).map((role) => normalizeAppUserRole(role));
   return { userId: session.userId, roles };
 }
 
@@ -138,7 +138,7 @@ export function requireRole(
       void reply.status(401).send({ error: { code: 'unauthorized', message: 'Autenticación requerida.' } });
       return;
     }
-    const hasRole = requiredRoles.some((role) => user.roles.includes(role));
+    const hasRole = user.roles.some((role) => hasAppUserRole(role, requiredRoles));
     if (!hasRole) {
       void reply.status(403).send({ error: { code: 'forbidden', message: 'No tienes permisos para esta acción.' } });
       return;
@@ -153,6 +153,6 @@ export function requireAdmin(pool: Pool, config?: MfaRequirement) {
 
 export function requireOperator(pool: Pool, config?: MfaRequirement) {
   return config === undefined
-    ? requireRole(pool, 'admin', 'operator', 'staff')
-    : requireRole(pool, config, 'admin', 'operator', 'staff');
+    ? requireRole(pool, 'admin', 'operator')
+    : requireRole(pool, config, 'admin', 'operator');
 }

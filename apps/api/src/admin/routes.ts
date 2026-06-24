@@ -7,6 +7,7 @@ import { buildPaginatedResponse } from './helpers.js';
 import { z } from 'zod';
 import { convertLeadToInvestor, upsertProjectCapitalAssignment } from './lead-workflow.js';
 import { approveInvestmentRequest, confirmInvestmentRequest, rejectInvestmentRequest } from '../investor/investment-requests.js';
+import { normalizeAppUserRole } from '../auth/roles.js';
 
 // ── Schemas ──
 
@@ -257,6 +258,14 @@ function adminGate(config: AppConfig) {
       });
     }
   };
+}
+
+function normalizeUserRoleFields<T extends Record<string, any>>(row: T): T {
+  const role = typeof row.role === 'string' ? normalizeAppUserRole(row.role) : row.role;
+  const roles = Array.isArray(row.roles)
+    ? Array.from(new Set(row.roles.map((item: unknown) => normalizeAppUserRole(String(item)))))
+    : row.roles;
+  return { ...row, role, roles };
 }
 
 // ── Main ──
@@ -578,7 +587,7 @@ export function registerAdminRoutes(app: FastifyInstance, options: { pool: Pool;
       [q.limit, q.offset]
     );
     const { rows: [{ count }] } = await pool.query('SELECT count(*)::int FROM app_users');
-    return buildPaginatedResponse(rows, Number(count), q.limit, q.offset);
+    return buildPaginatedResponse(rows.map(normalizeUserRoleFields), Number(count), q.limit, q.offset);
   });
 
   // ═══ User Detail ═══
@@ -611,7 +620,7 @@ export function registerAdminRoutes(app: FastifyInstance, options: { pool: Pool;
       [(req.params as any).reference]
     );
     if (!rows[0]) return reply.status(404).send({ error: { code: 'not_found', message: 'Usuario no encontrado.' } });
-    return { data: rows[0] };
+    return { data: normalizeUserRoleFields(rows[0]) };
   });
 
   // ═══ User Status ═══
@@ -642,7 +651,7 @@ export function registerAdminRoutes(app: FastifyInstance, options: { pool: Pool;
       [ref, body.status]
     );
     if (!rows[0]) return reply.status(404).send({ error: { code: 'not_found', message: 'Usuario no encontrado.' } });
-    return { data: rows[0] };
+    return { data: normalizeUserRoleFields(rows[0]) };
   });
 
   // ═══ User Roles ═══
@@ -665,14 +674,19 @@ export function registerAdminRoutes(app: FastifyInstance, options: { pool: Pool;
        RETURNING id::text AS public_reference, role`,
       [target.id, body.role]
     );
-    return reply.status(201).send({ data: { created: true, role: u.role } });
+    return reply.status(201).send({ data: { created: true, role: normalizeAppUserRole(u.role) } });
   });
 
   app.delete('/api/v1/admin/users/:reference/roles/:role', {
     preHandler: [adminGate(config), requireRole(pool, config, 'admin')]
   }, async (req, reply) => {
     const ref = (req.params as any).reference;
-    const role = (req.params as any).role;
+    let role: string;
+    try {
+      role = normalizeAppUserRole(String((req.params as any).role));
+    } catch {
+      return reply.status(400).send({ error: { code: 'invalid_role', message: 'Rol no válido.' } });
+    }
     const { rows: [target] } = await pool.query('SELECT id, role, status FROM app_users WHERE id::text=$1', [ref]);
     if (!target) return reply.status(404).send({ error: { code: 'not_found', message: 'Usuario no encontrado.' } });
     if (role === 'admin' && target.role === 'admin' && target.status === 'active') {
@@ -681,7 +695,7 @@ export function registerAdminRoutes(app: FastifyInstance, options: { pool: Pool;
         return reply.status(409).send({ error: { code: 'last_admin', message: 'No se puede retirar el rol del último admin activo.' } });
       }
     }
-    if (target.role === role) {
+    if (normalizeAppUserRole(String(target.role)) === role) {
       await pool.query("UPDATE app_users SET role='investor', updated_at=now() WHERE id=$1", [target.id]);
     }
     return { data: { removed: true } };

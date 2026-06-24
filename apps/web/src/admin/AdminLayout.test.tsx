@@ -192,4 +192,21 @@ describe('AdminLayout', () => {
     expect(screen.getByText(/no se pudo verificar el acceso/i)).toBeInTheDocument();
     expect(screen.getByText('Network error')).toBeInTheDocument();
   });
+
+  it('muestra staff legacy como operator y oculta navegación admin-only', () => {
+    resetAuth();
+    resetQuery();
+    setAuth({ id: 'u7', email: 'staff@mc.test', name: 'Staff Legacy', roles: ['staff'] });
+
+    render(
+      <MemoryRouter initialEntries={['/admin']}>
+        <AdminLayout />
+      </MemoryRouter>,
+    );
+
+    expect(screen.getByText('operator')).toBeInTheDocument();
+    expect(screen.queryByText('staff')).not.toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: 'Usuarios' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: 'Auditoría' })).not.toBeInTheDocument();
+  });
 });

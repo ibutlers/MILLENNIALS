@@ -5,8 +5,8 @@
  *         or via shell wrappers in scripts/auth/
  *
  * Commands:
- *   invite-investor     --lead-ref RS-... [--role investor] [--send]
- *   invite-email        --email user@example.com [--role investor|staff|admin] [--send]
+ *   invite-investor     --lead-ref RS-... [--role investor|operator] [--send]
+ *   invite-email        --email user@example.com [--role investor|operator|admin] [--send]
  *   invite-admin        --email admin@dominio-real.com [--dry-run] [--yes]
  *   resend-invitation    <ref>
  *   list-invitations     [--status pending] [--email ...]
@@ -36,6 +36,7 @@ import { InvitationRepository } from './invitations.js';
 import { getConfig } from '../config.js';
 import { createAuthEmailProvider } from './email-provider.js';
 import { AdminInvitationError, createSecondAdminInvitation, formatAdminInvitationResult } from './admin-invite.js';
+import { isAcceptedAppUserRoleInput, normalizeAppUserRole, toDatabaseAppUserRole } from './roles.js';
 
 const pool = getPool();
 
@@ -44,8 +45,8 @@ function usage(): void {
 Uso: npx tsx apps/api/src/auth/cli.ts <comando> [opciones]
 
 Comandos:
-  invite-investor         --lead-ref RS-... [--role investor] [--send]
-  invite-email            --email user@example.com [--role investor|staff|admin] [--send]
+  invite-investor         --lead-ref RS-... [--role investor|operator] [--send]
+  invite-email            --email user@example.com [--role investor|operator|admin] [--send]
   invite-admin            --email admin@dominio-real.com [--dry-run] [--yes]
   resend-invitation        <ref>
   list-invitations         [--status pending] [--email ...]
@@ -141,8 +142,9 @@ async function main(): Promise<void> {
     case 'invite-investor': {
       const leadRef = args['lead-ref'];
       if (!leadRef) { console.error('ERROR: --lead-ref RS-... es requerido'); process.exit(1); }
-      const role = args['role'] || 'investor';
-      if (!['investor', 'staff', 'admin'].includes(role)) { console.error('ERROR: --role debe ser investor, staff o admin'); process.exit(1); }
+      const inputRole = args['role'] || 'investor';
+      if (!isAcceptedAppUserRoleInput(inputRole) || inputRole === 'admin') { console.error('ERROR: --role debe ser investor u operator (staff se acepta solo como alias legacy de operator)'); process.exit(1); }
+      const role = toDatabaseAppUserRole(inputRole);
 
       const leadResult = await pool.query(
         `SELECT id, email, public_reference FROM leads WHERE public_reference = $1 AND kind = 'coinvest'`,
@@ -158,7 +160,7 @@ async function main(): Promise<void> {
 
       const { invitation, token } = await invitations.create({
         emailNormalized, coinvestLeadId: lead.id as string,
-        intendedRole: role as 'investor' | 'staff' | 'admin',
+        intendedRole: role,
       });
       console.log(`\n✓ Invitación creada: ${invitation.publicReference}`);
       console.log(`  Email: ${showPii ? emailNormalized : maskEmail(emailNormalized)}`);
@@ -176,8 +178,9 @@ async function main(): Promise<void> {
     case 'invite-email': {
       const email = args['email'];
       if (!email || !email.includes('@')) { console.error('ERROR: --email válido requerido'); process.exit(1); }
-      const role = args['role'] || 'investor';
-      if (!['investor', 'staff', 'admin'].includes(role)) { console.error('ERROR: --role debe ser investor, staff o admin'); process.exit(1); }
+      const inputRole = args['role'] || 'investor';
+      if (!isAcceptedAppUserRoleInput(inputRole)) { console.error('ERROR: --role debe ser investor, operator o admin (staff se acepta solo como alias legacy de operator)'); process.exit(1); }
+      const role = toDatabaseAppUserRole(inputRole);
       const emailNormalized = email.toLowerCase().trim();
       console.log(`Email: ${showPii ? emailNormalized : maskEmail(emailNormalized)}`);
       console.log(`Rol: ${role}`);
@@ -185,7 +188,7 @@ async function main(): Promise<void> {
 
       const { invitation, token } = await invitations.create({
         emailNormalized,
-        intendedRole: role as 'investor' | 'staff' | 'admin',
+        intendedRole: role,
       });
       console.log(`\n✓ Invitación creada: ${invitation.publicReference}`);
       console.log(`  Email: ${showPii ? emailNormalized : maskEmail(emailNormalized)}`);
@@ -270,7 +273,15 @@ async function main(): Promise<void> {
       const limit = args['limit'] ? parseInt(args['limit'], 10) : 50;
       let where = 'WHERE 1=1'; const params: unknown[] = []; let p = 0;
       if (status) { p++; where += ` AND status = $${p}`; params.push(status); }
-      if (role) { p++; where += ` AND role = $${p}`; params.push(role); }
+      if (role) {
+        if (!isAcceptedAppUserRoleInput(role)) { console.error('ERROR: --role debe ser investor, operator o admin (staff alias legacy de operator)'); process.exit(1); }
+        const canonicalRole = toDatabaseAppUserRole(role);
+        if (canonicalRole === 'operator') {
+          p++; where += ` AND role = ANY($${p}::app_user_role[])`; params.push(['operator', 'staff']);
+        } else {
+          p++; where += ` AND role = $${p}`; params.push(canonicalRole);
+        }
+      }
       if (email) { p++; where += ` AND email_normalized = $${p}`; params.push(email.toLowerCase().trim()); }
       p++; params.push(limit);
       const result = await pool.query(
@@ -279,7 +290,8 @@ async function main(): Promise<void> {
       console.log('-'.repeat(80));
       for (const u of result.rows) {
         const email = u.email_normalized as string;
-        console.log(`${showPii ? email : maskEmail(email)} | ${u.role} | ${u.status} | ${u.created_at ? new Date(u.created_at as string).toISOString().slice(0, 10) : '-'}`);
+        const canonicalRole = normalizeAppUserRole(String(u.role));
+        console.log(`${showPii ? email : maskEmail(email)} | ${canonicalRole} | ${u.status} | ${u.created_at ? new Date(u.created_at as string).toISOString().slice(0, 10) : '-'}`);
       }
       break;
     }

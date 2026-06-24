@@ -379,7 +379,7 @@ describe('IDOR — Authorization Boundaries', () => {
   // Role escalation attempts
   // ──────────────────────────────────────────────────────────────────────
 
-  it('Investor cannot access staff endpoints', async () => {
+  it('Investor cannot access operator/admin endpoints', async () => {
     const res = await app.inject({ method: 'GET', url: '/api/v1/admin/dashboard' });
     expect(res.statusCode).toBeGreaterThanOrEqual(400);
   });

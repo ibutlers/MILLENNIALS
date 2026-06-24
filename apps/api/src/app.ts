@@ -30,6 +30,7 @@ import { createAuthEmailProvider } from './auth/email-provider.js';
 import { InvitationRepository } from './auth/invitations.js';
 import { registerInvitationRoutes } from './auth/invitation-routes.js';
 import { registerE2EAuthHelpers } from './auth/e2e-auth-helpers.js';
+import { toDatabaseAppUserRole } from './auth/roles.js';
 
 export type AppDependencies = {
   pool?: Pool;
@@ -151,6 +152,7 @@ export function buildApp(dependencies: AppDependencies = {}): FastifyInstance {
 
           if (invResult.rows.length > 0) {
             const inv = invResult.rows[0];
+            const intendedRole = toDatabaseAppUserRole(inv.intended_role || 'investor');
 
             // 2. Link a provisional lead-created app_user when present, otherwise create it.
             const linkedPending = await pgClient.query(
@@ -161,7 +163,7 @@ export function buildApp(dependencies: AppDependencies = {}): FastifyInstance {
                    updated_at = now()
                WHERE email_normalized = $2 AND better_auth_user_id LIKE 'pending-lead:%'
                RETURNING id`,
-              [baUserId, email, userName || email, inv.intended_role || 'investor'],
+              [baUserId, email, userName || email, intendedRole],
             );
 
             if (linkedPending.rows.length === 0) {
@@ -169,7 +171,7 @@ export function buildApp(dependencies: AppDependencies = {}): FastifyInstance {
                 `INSERT INTO app_users (better_auth_user_id, email_normalized, display_name, role, status)
                  VALUES ($1, $2, $3, $4, 'pending_email')
                  ON CONFLICT (better_auth_user_id) DO NOTHING`,
-                [baUserId, email, userName || email, inv.intended_role || 'investor'],
+                [baUserId, email, userName || email, intendedRole],
               );
             }
 
@@ -234,6 +236,7 @@ export function buildApp(dependencies: AppDependencies = {}): FastifyInstance {
 
             if (pendingInv.rows.length > 0) {
               const inv = pendingInv.rows[0];
+              const intendedRole = toDatabaseAppUserRole(inv.intended_role || 'investor');
 
               const linkedPending = await pgClient.query(
                 `UPDATE app_users
@@ -243,7 +246,7 @@ export function buildApp(dependencies: AppDependencies = {}): FastifyInstance {
                      updated_at = now()
                  WHERE email_normalized = $2 AND better_auth_user_id LIKE 'pending-lead:%'
                  RETURNING id`,
-                [baUserId, email, email, inv.intended_role || 'investor'],
+                [baUserId, email, email, intendedRole],
               );
 
               if (linkedPending.rows.length === 0) {
@@ -251,7 +254,7 @@ export function buildApp(dependencies: AppDependencies = {}): FastifyInstance {
                   `INSERT INTO app_users (better_auth_user_id, email_normalized, display_name, role, status)
                    VALUES ($1, $2, $3, $4, 'pending_email')
                    ON CONFLICT (better_auth_user_id) DO NOTHING`,
-                  [baUserId, email, email, inv.intended_role || 'investor'],
+                  [baUserId, email, email, intendedRole],
                 );
               }
 

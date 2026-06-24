@@ -11,7 +11,7 @@ import type { AppConfig } from '../config.js';
 import { InvitationRepository } from './invitations.js';
 import { requireBetterAuthSession, requireActiveAppUser, requireMfa, requireRole } from './middleware.js';
 import type { AuthEmailProvider } from './email-provider.js';
-import { isAcceptedAppUserRole, toDatabaseAppUserRole } from './roles.js';
+import { isAcceptedAppUserRoleInput, toDatabaseAppUserRole, normalizeAppUserRole } from './roles.js';
 
 type AppError = Error & { code?: string; statusCode?: number };
 
@@ -60,9 +60,10 @@ export function registerInvitationRoutes(
 
     const emailNormalized = email.toLowerCase().trim();
 
-    if (!isAcceptedAppUserRole(intendedRole) && intendedRole !== 'staff') {
+    if (!isAcceptedAppUserRoleInput(intendedRole)) {
       return reply.status(400).send(publicError('invalid_request', 'Rol no valido.'));
     }
+    const canonicalIntendedRole = toDatabaseAppUserRole(intendedRole);
 
     try {
       let coinvestLeadId: string | null = null;
@@ -78,11 +79,15 @@ export function registerInvitationRoutes(
 
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const appUser = (request as any).appUser;
+      const actorRole = normalizeAppUserRole(String(appUser?.role || 'investor'));
+      if (canonicalIntendedRole === 'admin' && actorRole !== 'admin') {
+        return reply.status(403).send(publicError('forbidden', 'Solo un administrador puede invitar administradores.'));
+      }
 
       const { invitation, token } = await repo.create({
         emailNormalized,
         coinvestLeadId: coinvestLeadId || undefined,
-        intendedRole: toDatabaseAppUserRole(intendedRole),
+        intendedRole: canonicalIntendedRole,
         createdBy: appUser?.id,
       });
 
@@ -193,6 +198,11 @@ export function registerInvitationRoutes(
     const invitation = await repo.findByReference(reference);
     if (!invitation) {
       return reply.status(404).send(publicError('not_found', 'Invitacion no encontrada.'));
+    }
+
+    const actorRole = normalizeAppUserRole(String(appUser?.role || 'investor'));
+    if (invitation.intendedRole === 'admin' && actorRole !== 'admin') {
+      return reply.status(403).send(publicError('forbidden', 'Solo un administrador puede revocar invitaciones de administrador.'));
     }
 
     const revoked = await repo.revoke(invitation.id, appUser.id, reason);

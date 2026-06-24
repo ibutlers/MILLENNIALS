@@ -7,6 +7,7 @@
  */
 import { randomBytes, createHash, timingSafeEqual } from 'node:crypto';
 import type { Pool, PoolClient } from 'pg';
+import { toDatabaseAppUserRole, normalizeAppUserRole, type AppUserRole, type AcceptedAppUserRoleInput } from './roles.js';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -20,7 +21,7 @@ export interface AccessInvitation {
   coinvestLeadId: string | null;
   betterAuthUserId: string | null;
   appUserId: string | null;
-  intendedRole: 'investor' | 'staff' | 'admin' | 'operator';
+  intendedRole: AppUserRole;
   status: 'pending' | 'accepted' | 'expired' | 'revoked' | 'failed';
   createdAt: string;
   expiresAt: string;
@@ -36,7 +37,7 @@ export interface AccessInvitation {
 export interface CreateInvitationInput {
   emailNormalized: string;
   coinvestLeadId?: string;
-  intendedRole?: 'investor' | 'staff' | 'admin' | 'operator';
+  intendedRole?: AcceptedAppUserRoleInput;
   createdBy?: string;
   ttlHours?: number;
 }
@@ -88,7 +89,7 @@ function rowToInvitation(row: Record<string, unknown>): AccessInvitation {
     coinvestLeadId: (row.coinvest_lead_id as string) || null,
     betterAuthUserId: (row.better_auth_user_id as string) || null,
     appUserId: (row.app_user_id as string) || null,
-    intendedRole: (row.intended_role as 'investor' | 'staff' | 'admin') || 'investor',
+    intendedRole: normalizeAppUserRole(String(row.intended_role || 'investor')),
     status: row.status as AccessInvitation['status'],
     createdAt: new Date(row.created_at as string).toISOString(),
     expiresAt: new Date(row.expires_at as string).toISOString(),
@@ -153,6 +154,7 @@ export class InvitationRepository {
       const publicReference = generatePublicReference();
       const ttlHours = input.ttlHours ?? 48;
 
+      const intendedRole = toDatabaseAppUserRole(input.intendedRole || 'investor');
       const result = await client.query(
         `INSERT INTO access_invitations
          (public_reference, email_normalized, token_hash, coinvest_lead_id,
@@ -164,7 +166,7 @@ export class InvitationRepository {
           input.emailNormalized,
           tokenHash,
           input.coinvestLeadId || null,
-          input.intendedRole || 'investor',
+          intendedRole,
           input.createdBy || null,
           ttlHours.toString(),
         ],
@@ -179,7 +181,7 @@ export class InvitationRepository {
         [
           input.createdBy || null,
           invitation.id,
-          JSON.stringify({ email: input.emailNormalized, intended_role: input.intendedRole }),
+          JSON.stringify({ email: input.emailNormalized, intended_role: intendedRole }),
         ],
       );
 
@@ -357,7 +359,7 @@ export class InvitationRepository {
   }
 
   /**
-   * List invitations (for staff/admins).
+   * List invitations (for operators/admins).
    */
   async list(options: { status?: string; email?: string; limit?: number; offset?: number } = {}): Promise<{
     invitations: AccessInvitation[];

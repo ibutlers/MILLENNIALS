@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { requireMfa, requireProjectAccess } from './middleware.js';
+import { requireMfa, requireProjectAccess, requireRole } from './middleware.js';
 
 const originalEnv = process.env;
 
@@ -108,5 +108,32 @@ describe('requireProjectAccess — validación de referencia de proyecto', () =>
     expect(sql).toContain('(o.id::text = $2 OR o.slug = $2)');
     expect(params).toEqual(['app-user-1', 'plaza-america']);
     expect(request.projectAccess).toEqual({ projectId: 'plaza-america', granted: true });
+  });
+});
+
+
+describe('requireRole — compatibilidad staff legacy', () => {
+  it('interpreta staff como operator para autorización y contexto público', async () => {
+    const reply = makeReply();
+    const request = {
+      appUser: { id: 'app-staff-1', role: 'staff' },
+    } as any;
+
+    await requireRole('operator')(request, reply);
+
+    expect(reply.status).not.toHaveBeenCalled();
+    expect(request.appUser.role).toBe('operator');
+  });
+
+  it('no permite que staff legacy satisfaga permisos admin-only', async () => {
+    const reply = makeReply();
+    const request = {
+      appUser: { id: 'app-staff-1', role: 'staff' },
+    } as any;
+
+    await requireRole('admin')(request, reply);
+
+    expect(reply.status).toHaveBeenCalledWith(403);
+    expect(reply.payload).toMatchObject({ error: { code: 'forbidden' } });
   });
 });

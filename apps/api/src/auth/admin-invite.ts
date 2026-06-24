@@ -41,7 +41,7 @@ export interface AdminInvitationDependencies {
         id: string;
         publicReference: string;
         emailNormalized: string;
-        intendedRole: 'admin' | 'staff' | 'investor' | 'operator';
+        intendedRole: 'admin' | 'investor' | 'operator';
         expiresAt: string;
       };
       token: string;

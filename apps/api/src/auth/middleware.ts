@@ -13,6 +13,7 @@ import type { FastifyRequest, FastifyReply } from 'fastify';
 import type { Pool } from 'pg';
 import type { AppConfig } from '../config.js';
 import { getBetterAuthServer } from './better-auth-plugin.js';
+import { hasAppUserRole, normalizeAppUserRole } from './roles.js';
 
 type MfaRequirement = boolean | Pick<AppConfig, 'betterAuthRequire2FA'> | (() => boolean);
 const safeProjectReferencePattern = /^[a-z0-9-]{1,200}$/;
@@ -102,6 +103,7 @@ export function requireActiveAppUser(pool: Pool) {
     }
 
     const user = result.rows[0];
+    const canonicalRole = normalizeAppUserRole(String(user.role));
 
     if (user.status === 'suspended') {
       return reply.status(403).send(publicError('account_suspended', 'La cuenta está suspendida.'));
@@ -120,7 +122,7 @@ export function requireActiveAppUser(pool: Pool) {
       betterAuthUserId: user.better_auth_user_id as string,
       emailNormalized: user.email_normalized as string,
       displayName: user.display_name as string | null,
-      role: user.role as string,
+      role: canonicalRole,
       status: user.status as string,
       emailVerifiedAt: user.email_verified_at as string | null,
       mfaEnabledAt: user.mfa_enabled_at as string | null,
@@ -187,7 +189,9 @@ export function requireRole(...roles: string[]) {
     if (!user) {
       return reply.status(401).send(publicError('unauthorized', 'Usuario no encontrado.'));
     }
-    if (!roles.includes(user.role)) {
+    const canonicalRole = normalizeAppUserRole(user.role);
+    user.role = canonicalRole;
+    if (!hasAppUserRole(canonicalRole, roles)) {
       return reply.status(403).send(publicError('forbidden', 'No tienes permisos para acceder a este recurso.'));
     }
   };
@@ -208,8 +212,8 @@ export function requireProjectAccess(pool: Pool) {
       return reply.status(401).send(publicError('unauthorized', 'Usuario no encontrado.'));
     }
 
-    // Operator/staff/admin can access any project
-    if (user.role === 'staff' || user.role === 'operator' || user.role === 'admin') {
+    // Operator/admin can access any project
+    if (user.role === 'operator' || user.role === 'admin') {
       return;
     }
 

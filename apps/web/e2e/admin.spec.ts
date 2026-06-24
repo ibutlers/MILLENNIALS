@@ -18,7 +18,7 @@ if (!INTERNAL_KEY) {
 
 type JsonObject = Record<string, unknown>;
 type RequestLike = APIRequestContext | BrowserContext['request'] | Page['request'];
-type TestRole = 'investor' | 'staff' | 'admin';
+type TestRole = 'investor' | 'operator' | 'admin';
 type TestUser = { email: string; password: string; name: string; role: TestRole };
 type ActiveUser = TestUser & { context: BrowserContext; page: Page; totpUri: string };
 
@@ -30,7 +30,7 @@ type CapturedEmail = { to?: string; url?: string; type?: string; subject?: strin
 
 const unique = Date.now().toString(36);
 const adminUser: TestUser = { email: `admin-${unique}@e2e.realstate.test`, password: 'AdminE2E-Pass12345!', name: 'Admin E2E Better Auth', role: 'admin' };
-const operatorUser: TestUser = { email: `operator-${unique}@e2e.realstate.test`, password: 'OperatorE2E-Pass12345!', name: 'Operator E2E Better Auth', role: 'staff' };
+const operatorUser: TestUser = { email: `operator-${unique}@e2e.realstate.test`, password: 'OperatorE2E-Pass12345!', name: 'Operator E2E Better Auth', role: 'operator' };
 const investorUser: TestUser = { email: `investor-${unique}@e2e.realstate.test`, password: 'InvestorE2E-Pass12345!', name: 'Investor E2E Better Auth', role: 'investor' };
 const newUser: TestUser = { email: `new-${unique}@e2e.realstate.test`, password: 'NewUserE2E-Pass12345!', name: 'New User E2E', role: 'investor' };
 
@@ -654,11 +654,29 @@ test.describe('Operator Role Restrictions', () => {
     expect(publish.status).toBe(403);
   });
 
-  test('30. Operator CANNOT manage users or roles', async () => {
+  test('30. Operator CANNOT manage users, roles or admin invitations', async () => {
     const users = await operatorApi('/api/v1/admin/users');
     expect(users.status).toBe(403);
     const role = await operatorApi('/api/v1/admin/users/USR-DOES-NOT-EXIST/roles', { method: 'POST', body: { role: 'admin' } });
     expect(role.status).toBe(403);
+    const adminInvitation = await operatorApi('/api/v1/invitations', {
+      method: 'POST',
+      body: { email: `operator-admin-${unique}@e2e.realstate.test`, intendedRole: 'admin' },
+    });
+    expect(adminInvitation.status).toBe(403);
+
+    const createdAdminInvitation = await adminApi('/api/v1/invitations', {
+      method: 'POST',
+      body: { email: `admin-invitation-revoke-${unique}@e2e.realstate.test`, intendedRole: 'admin' },
+    });
+    expect(createdAdminInvitation.status).toBe(201);
+    const publicReference = (createdAdminInvitation.body.data as { publicReference?: string }).publicReference;
+    expect(publicReference).toBeTruthy();
+    const revokeAdminInvitation = await operatorApi(`/api/v1/invitations/${publicReference}/revoke`, {
+      method: 'POST',
+      body: { reason: 'operator cannot revoke admin invitation' },
+    });
+    expect(revokeAdminInvitation.status).toBe(403);
   });
 });
 

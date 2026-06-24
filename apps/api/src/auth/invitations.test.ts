@@ -60,3 +60,46 @@ describe('InvitationRepository.validateTokenForActivation', () => {
     expect(result).toEqual({ valid: false, reason: 'not_found' });
   });
 });
+
+
+describe('InvitationRepository.create — roles canónicos', () => {
+  it('normaliza staff legacy a operator antes de persistir nuevas invitaciones', async () => {
+    const insertedRoles: unknown[] = [];
+    const auditPayloads: unknown[] = [];
+    const query = vi.fn(async (sql: string, params?: unknown[]) => {
+      if (sql === 'BEGIN' || sql === 'COMMIT' || sql === 'ROLLBACK') return { rows: [] };
+      if (sql.includes("WHERE email_normalized = $1 AND status = 'pending'")) return { rows: [] };
+      if (sql.includes('FROM app_users')) return { rows: [] };
+      if (sql.includes('INSERT INTO access_invitations')) {
+        insertedRoles.push(params?.[4]);
+        const now = new Date();
+        return {
+          rows: [makeInvitationRow({
+            intended_role: params?.[4],
+            email_normalized: params?.[1],
+            created_at: now,
+            expires_at: new Date(now.getTime() + 48 * 60 * 60 * 1000),
+          })],
+        };
+      }
+      if (sql.includes('INSERT INTO auth_audit_events')) {
+        auditPayloads.push(params?.[2]);
+        return { rows: [] };
+      }
+      throw new Error(`Unexpected SQL: ${sql}`);
+    });
+    const client = { query, release: vi.fn() };
+    const pool = { connect: vi.fn(async () => client) };
+    const repo = new InvitationRepository(pool as never);
+
+    const { invitation } = await repo.create({
+      emailNormalized: 'operator@example.test',
+      intendedRole: 'staff',
+    });
+
+    expect(insertedRoles).toEqual(['operator']);
+    expect(invitation.intendedRole).toBe('operator');
+    expect(auditPayloads).toHaveLength(1);
+    expect(JSON.parse(String(auditPayloads[0]))).toMatchObject({ intended_role: 'operator' });
+  });
+});

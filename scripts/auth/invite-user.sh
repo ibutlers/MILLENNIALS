@@ -4,9 +4,9 @@ SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 ROOT="$(dirname "$(dirname "$SCRIPT_DIR")")"
 
 usage() {
-  echo "Uso: $0 --email user@example.com [--role investor|staff|admin] [--send] [--pii] [--yes]"
+  echo "Uso: $0 --email user@example.com [--role investor|operator|admin] [--send] [--pii] [--yes]"
   echo "  --email       Email del usuario a invitar"
-  echo "  --role        Rol a asignar (default: investor)"
+  echo "  --role        Rol a asignar (default: investor; staff se acepta como alias legacy de operator)"
   echo "  --send        Enviar correo de invitación por el proveedor configurado"
   echo "  --pii         Mostrar emails completos"
   echo "  --yes         Confirmar automáticamente"

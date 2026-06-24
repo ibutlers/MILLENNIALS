@@ -100,10 +100,10 @@ Con `AUTH_MODE=better-auth`:
 - `GET /api/investor/projects/:id` — Detalle con autorización SQL
 - `GET /api/investor/projects/:id/documents` — Documentos privados
 - `GET /api/investor/profile` — Perfil del inversor
-- `POST /api/v1/invitations` — Crear invitación (staff/admin)
-- `GET /api/v1/invitations` — Listar invitaciones (staff/admin)
+- `POST /api/v1/invitations` — Crear invitación (operator/admin)
+- `GET /api/v1/invitations` — Listar invitaciones (operator/admin)
 - `POST /api/v1/invitations/validate` — Validar invitación (público, sin autenticación)
-- `POST /api/v1/invitations/:ref/revoke` — Revocar invitación (staff/admin)
+- `POST /api/v1/invitations/:ref/revoke` — Revocar invitación (operator/admin)
 
 ## Actualización de Better Auth
 

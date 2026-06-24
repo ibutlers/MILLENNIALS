@@ -17,7 +17,7 @@ La API de listado no expone `storage_ref`. En su lugar devuelve `download_availa
 ## Reglas de seguridad
 
 - No usar `private_documents`; esa tabla no es parte del runtime.
-- No mostrar documentos de proyectos sin `project_user_access.status='active'` salvo roles operativos (`operator`, `staff`, `admin`).
+- No mostrar documentos de proyectos sin `project_user_access.status='active'` salvo roles operativos (`operator`, `admin`; `staff` legacy se normaliza a `operator`).
 - No generar enlaces falsos.
 - Si el documento no tiene fichero, responder `document_unavailable`.
 - Si storage está deshabilitado/no configurado, responder `provider_not_configured`.

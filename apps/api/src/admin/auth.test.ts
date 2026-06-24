@@ -44,14 +44,14 @@ function setBetterAuthSession(twoFactorEnabled: boolean) {
   } as any);
 }
 
-function makePool() {
+function makePool(role = 'admin') {
   return {
     query: vi.fn(async (sql: string) => {
       if (sql.includes('FROM app_users')) {
         return {
           rows: [{
             id: 'app-admin-1',
-            role: 'admin',
+            role,
             status: 'active',
             email_verified_at: new Date(),
             mfa_enabled_at: null,
@@ -105,5 +105,15 @@ describe('admin auth — MFA opcional vs obligatorio', () => {
     expect(reply.status).toHaveBeenCalledWith(403);
     expect(reply.payload).toMatchObject({ error: { code: 'mfa_required' } });
     expect(request._authUser).toBeUndefined();
+  });
+
+  it('interpreta staff legacy como operator sin exponer staff en el contexto admin', async () => {
+    const request: any = { headers: {} };
+    const reply = makeReply();
+
+    await requireRole(makePool('staff') as any, 'operator')(request, reply);
+
+    expect(reply.status).not.toHaveBeenCalled();
+    expect(request._authUser).toMatchObject({ userId: 'app-admin-1', roles: ['operator'] });
   });
 });

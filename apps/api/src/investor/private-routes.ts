@@ -162,7 +162,7 @@ export function registerPrivateInvestorRoutes(
          AND d.status = 'active'
          AND d.visibility = 'private'`;
 
-    const result = appUser.role === 'staff' || appUser.role === 'operator' || appUser.role === 'admin'
+    const result = appUser.role === 'operator' || appUser.role === 'admin'
       ? await pool.query(`${selectDocuments}
        ${where}
        ORDER BY d.created_at DESC
@@ -185,9 +185,9 @@ export function registerPrivateInvestorRoutes(
   }, async (request: FastifyRequest) => {
     const appUser = (request as any).appUser;
 
-    // Staff/admin see all projects; investors see only granted ones
+    // Operator/admin see all projects; investors see only granted ones
     let result;
-    if (appUser.role === 'staff' || appUser.role === 'operator' || appUser.role === 'admin') {
+    if (appUser.role === 'operator' || appUser.role === 'admin') {
       result = await pool.query(
         `SELECT o.id, o.slug, o.title, o.short_description, o.city, o.status, o.risk_level,
                 o.target_return_type, o.target_return_bps, o.target_amount_cents,

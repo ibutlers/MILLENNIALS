@@ -15,6 +15,7 @@
   - 2FA no obligatorio (betterAuthRequire2FA=false)
   - 1 admin real activo
 - [x] Procedimiento de backup/restore con tablas `auth.*` documentado en `docs/runbooks/auth-backup-recovery.md`.
+- [x] Modelo canónico de roles documentado: `operator` sustituye a `staff`, que queda como alias legacy normalizado.
 - [x] Runbooks de activación futura documentados:
   - `docs/runbooks/auth-preflight-checklist.md`
   - `docs/runbooks/auth-production-activation.md`
@@ -103,3 +104,4 @@ La ventana temporal se considerará cerrada cuando se cumplan **todos** los requ
 - `docs/runbooks/auth-email-setup.md` — configuración de correo.
 - `docs/runbooks/second-admin-setup.md` — flujo seguro para invitar y activar un segundo admin real.
 - `docs/runbooks/observabilidad-minima.md` — health/logs/backups y alerta cron read-only.
+- `docs/runbooks/roles-operator-staff-admin.md` — modelo canónico de roles y compatibilidad legacy `staff`.

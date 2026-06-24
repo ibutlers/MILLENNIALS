@@ -16,6 +16,7 @@
 import { createContext, useContext, useEffect, useState, useCallback, type ReactNode } from 'react';
 import { createAuthClient } from 'better-auth/client';
 import { AccountDisabledError, AuthDisabledError, AuthResponseError, InvalidCredentialsError, RateLimitedError, TwoFactorRequiredError } from './client';
+import { normalizeAuthRole } from './roles';
 
 export interface AuthUser {
   id: string;
@@ -93,7 +94,7 @@ export function AuthProvider({ children, baseURL }: { children: ReactNode; baseU
             name: userData.name,
             emailVerified: userData.emailVerified || false,
             twoFactorEnabled: userData.twoFactorEnabled || false,
-            roles: userData.role ? [userData.role] : ['investor'],
+            roles: userData.role ? [normalizeAuthRole(userData.role)] : ['investor'],
             status: 'active',
             createdAt: userData.createdAt,
           });
@@ -215,7 +216,7 @@ export function AuthProvider({ children, baseURL }: { children: ReactNode; baseU
         name: userData.name,
         emailVerified: userData.emailVerified || false,
         twoFactorEnabled: userData.twoFactorEnabled || false,
-        roles: userData.role ? [userData.role] : ['investor'],
+        roles: userData.role ? [normalizeAuthRole(userData.role)] : ['investor'],
         status: 'active',
         createdAt: userData.createdAt,
       });
@@ -278,7 +279,7 @@ function toAuthUser(userData: BetterAuthUserLike): AuthUser {
     name: userData.name,
     emailVerified: userData.emailVerified || false,
     twoFactorEnabled: userData.twoFactorEnabled || false,
-    roles: userData.role ? [userData.role] : ['investor'],
+    roles: userData.role ? [normalizeAuthRole(userData.role)] : ['investor'],
     status: 'active',
     createdAt: userData.createdAt,
   };

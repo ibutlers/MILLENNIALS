@@ -467,7 +467,7 @@ describe('Auth bootstrap & authorization', () => {
 
     it('allowUserToInviteMembers=false blocks invites', async () => {
       const app = buildAuthApp();
-      // The /api/v1/invitations endpoint requires staff/admin role
+      // The /api/v1/invitations endpoint requires operator/admin role
       const res = await app.inject({
         method: 'POST',
         url: '/api/v1/invitations',

@@ -6,7 +6,7 @@
 ╔══════════════════╗
 ║ Invitación       ║  (access_invitations.status = 'pending')
 ║ enviada por      ║
-║ staff/admin      ║
+║ operator/admin   ║
 ╚══════╤═══════════╝
        │ Usuario acepta invitación
        ▼
@@ -47,8 +47,8 @@
 | pending_email | pending_mfa | Usuario | Verifica email con `BETTER_AUTH_REQUIRE_2FA=true` |
 | pending_mfa | active | Usuario | Configura TOTP cuando MFA es obligatorio |
 | active | active | Usuario | Configura TOTP opcional; se rellena `mfa_enabled_at` tras verificación real |
-| active | suspended | Staff/Admin | Manual |
-| suspended | active | Staff/Admin | Manual |
+| active | suspended | Operator/Admin | Manual |
+| suspended | active | Operator/Admin | Manual |
 | active | revoked | Admin | Manual (irreversible) |
 | pending_email | revoked | Admin | Manual |
 | pending_mfa | revoked | Admin | Manual |
@@ -73,7 +73,7 @@ La suspensión:
 - Restaura `status = 'active'`
 - NO restaura accesos a proyectos revocados explícitamente
 - El usuario deberá iniciar sesión de nuevo
-- Requiere autorización staff/admin
+- Requiere autorización operator/admin
 - Auditoría obligatoria
 
 **Comando:**
