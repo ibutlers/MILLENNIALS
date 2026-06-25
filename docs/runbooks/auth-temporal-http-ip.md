@@ -54,13 +54,14 @@ No permitido sin autorización explícita:
 
 ## Smoke rápido read-only
 
-En producción, desde `/srv/workspaces/realstate` o desde una release que contenga el script:
+En producción, desde `/srv/workspaces/realstate` o desde una release que contenga los scripts:
 
 ```bash
 scripts/auth/check-temporary-http-ip.sh
+scripts/ops/check-auth-posture.sh
 ```
 
-El script no modifica DB, `.env`, contenedores, volúmenes ni flags.
+Los scripts no modifican DB, `.env`, contenedores, volúmenes ni flags.
 
 Debe terminar con:
 

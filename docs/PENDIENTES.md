@@ -20,6 +20,7 @@
   - `docs/runbooks/auth-preflight-checklist.md`
   - `docs/runbooks/auth-production-activation.md`
   - `docs/runbooks/auth-temporal-http-ip.md`
+- [x] QA operacional y observabilidad básica read-only documentadas en `docs/runbooks/qa-operational-checks.md`.
 
 ## Aceptación formal de riesgo — ventana temporal auth/admin sobre HTTP/IP
 
@@ -105,5 +106,5 @@ La ventana temporal se considerará cerrada cuando se cumplan **todos** los requ
 - `docs/runbooks/auth-secret-rotation.md` — rotación de secretos.
 - `docs/runbooks/auth-email-setup.md` — configuración de correo.
 - `docs/runbooks/second-admin-setup.md` — flujo seguro para invitar y activar un segundo admin real.
-- `docs/runbooks/observabilidad-minima.md` — health/logs/backups y alerta cron read-only.
+- `docs/runbooks/qa-operational-checks.md` — QA operacional, health/logs/backups y scripts read-only.
 - `docs/runbooks/roles-operator-staff-admin.md` — modelo canónico de roles y compatibilidad legacy `staff`.

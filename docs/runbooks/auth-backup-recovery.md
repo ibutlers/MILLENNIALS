@@ -111,10 +111,21 @@ docker rm -f pg-restore-test
 
 ## Frecuencia
 
-- Backup diario automático (configurar cron)
+- Backup diario automático (configurar cron si se requiere alerta continua)
 - Backup antes de cada deploy con migraciones nuevas
 - Backup antes de cualquier operación manual en BD
+- Backup específico de `/srv/deployments/realstate/shared/.env` antes de editar flags
 - Retener últimos 30 backups
+
+## Check operacional read-only
+
+Para auditar backups sin imprimir secretos ni tocar datos:
+
+```bash
+scripts/ops/check-backups.sh
+```
+
+El script comprueba conteos, edad, tamaño, permisos y lectura estructural del último dump con `pg_restore --list` si está disponible. No imprime contenido de `.env` ni valores sensibles.
 
 ## No hacer
 
