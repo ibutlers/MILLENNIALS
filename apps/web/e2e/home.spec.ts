@@ -23,6 +23,23 @@ test.describe('public landing and projects', () => {
     await expect(page.getByText(/oportunidad privada demo no pública/i)).toHaveCount(0);
   });
 
+  test('hero content width matches the projects container on desktop', async ({ page }) => {
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await page.goto('/');
+    const heroContainer = page.getByTestId('hero-container');
+    await expect(heroContainer).toBeVisible();
+    const heroBox = await heroContainer.boundingBox();
+
+    await page.getByRole('link', { name: /ver proyectos/i }).first().click();
+    await expect(page.getByRole('article').first()).toBeVisible();
+    const projectsBox = await page.getByTestId('projects-container').boundingBox();
+
+    expect(heroBox).not.toBeNull();
+    expect(projectsBox).not.toBeNull();
+    expect(Math.abs((heroBox?.x ?? 0) - (projectsBox?.x ?? 0))).toBeLessThanOrEqual(1);
+    expect(Math.abs((heroBox?.width ?? 0) - (projectsBox?.width ?? 0))).toBeLessThanOrEqual(1);
+  });
+
   test('project detail route works and legacy catalog redirects to project section', async ({ page, request }) => {
     const list = await request.get('/api/v1/opportunities?limit=2');
     const body = await list.json();
@@ -38,6 +55,19 @@ test.describe('public landing and projects', () => {
 
     await page.goto('/proyectos/slug-inexistente');
     await expect(page.getByRole('heading', { name: /proyecto no encontrado|oportunidad no encontrada/i })).toBeVisible();
+  });
+
+  test('primary navigation and legacy methodology route target the methodology section', async ({ page }) => {
+    await page.goto('/');
+    await page.getByRole('link', { name: 'Cómo trabajamos' }).first().click();
+    await expect(page).toHaveURL(/#metodologia/);
+    await expect(page.locator('#metodologia')).toBeVisible();
+    await expect(page.getByRole('heading', { name: /de la oportunidad al seguimiento/i })).toBeVisible();
+    await expectNoOverflow(page);
+
+    await page.goto('/metodologia');
+    await expect(page).toHaveURL(/#metodologia/);
+    await expect(page.locator('#metodologia')).toBeVisible();
   });
 
   test('public API health and opportunities endpoints continue to work', async ({ request }) => {

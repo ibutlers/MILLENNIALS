@@ -3,16 +3,16 @@ import { fetchPublicOpportunities, formatProgress, formatReturnValue, getInvestm
 import { submitContact, submitCoinvest, type ContactCreated, type CoinvestCreated } from './leads/api';
 
 const navigation = [
-  { label: 'Proyectos', href: '/#proyectos' },
   { label: 'Nosotros', href: '/#nosotros' },
   { label: 'Cómo trabajamos', href: '/#metodologia' },
+  { label: 'Proyectos', href: '/#proyectos' },
   { label: 'Contacto', href: '/#contacto' }
 ];
 
 const drawerLinks = [
-  { label: 'Proyectos', href: '/#proyectos' },
   { label: 'Nosotros', href: '/#nosotros' },
   { label: 'Cómo trabajamos', href: '/#metodologia' },
+  { label: 'Proyectos', href: '/#proyectos' },
   { label: 'Contacto', href: '/#contacto' },
   { label: 'FAQ', href: '/#faq' },
   { label: 'Solicitar acceso', href: '/acceso#solicitud' }
@@ -235,11 +235,8 @@ function Header() {
             })}
           </nav>
 
-          {/* Right zone: Lang + Login */}
-          <div className="hidden xl:flex flex-shrink-0 items-center gap-5">
-            <button type="button" aria-label="Idioma español seleccionado" className="text-[13px] font-medium text-charcoal/70 hover:text-electric transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-electric">
-              <span className="text-electric font-semibold">ES</span> · EN
-            </button>
+          {/* Right zone: Login */}
+          <div className="hidden xl:flex flex-shrink-0 items-center">
             <a href="/acceso" className="inline-flex h-10 w-[100px] items-center justify-center rounded bg-ink text-[14px] font-semibold text-white transition hover:bg-electric focus:outline-none focus-visible:ring-2 focus-visible:ring-electric focus-visible:ring-offset-2">
               Login
             </a>
@@ -284,9 +281,6 @@ function Header() {
               ))}
             </nav>
             <div className="grid gap-4">
-              <div className="flex items-center gap-4 text-[14px] font-medium text-charcoal/70">
-                <span className="text-electric font-semibold">ES</span> · EN
-              </div>
               <a href="/acceso" onClick={() => setIsOpen(false)} className="rounded bg-electric px-6 py-4 text-center text-sm font-bold text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-electric">
                 Login
               </a>
@@ -302,8 +296,8 @@ function Header() {
 
 function Hero() {
   return (
-    <section className="relative overflow-hidden bg-lavender">
-      <div className="relative mx-auto flex max-w-[1440px] flex-col justify-center px-8 py-16 sm:px-12 lg:px-12 lg:py-20">
+    <section className="relative bg-lavender">
+      <div data-testid="hero-container" className="relative mx-auto flex max-w-7xl flex-col justify-center px-4 py-16 sm:px-6 lg:px-8 lg:py-20">
         <p className="mb-5 max-w-max border border-electric/20 bg-electric/5 px-3 py-2 text-xs font-black uppercase tracking-[0.26em] text-electric">
           Club privado de inversión inmobiliaria
         </p>
@@ -389,7 +383,7 @@ function ProcessSection() {
 
 function Methodology() {
   return (
-    <section id="como-trabajamos" className="bg-white py-16 sm:py-24">
+    <section id="metodologia" className="bg-white py-16 sm:py-24">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <div className="max-w-3xl">
           <p className="text-xs font-black uppercase tracking-[0.28em] text-electric">Cómo trabajamos</p>
@@ -509,7 +503,7 @@ function ProjectsSection() {
 
   return (
     <section id="proyectos" className="bg-lavender py-16 sm:py-24">
-      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+      <div data-testid="projects-container" className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <div className="max-w-3xl">
           <p className="text-xs font-black uppercase tracking-[0.28em] text-electric">Proyectos seleccionados</p>
           <h2 className="mt-5 font-serif text-4xl leading-tight tracking-[-0.03em] text-ink sm:text-6xl">

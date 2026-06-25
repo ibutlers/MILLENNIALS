@@ -82,7 +82,7 @@ const router = createBrowserRouter([
 
   // ── Legacy redirects ──
   { path: '/firma', loader: redirectTo('/#nosotros'), element: null as unknown as React.ReactNode },
-  { path: '/metodologia', loader: redirectTo('/#actividad'), element: null as unknown as React.ReactNode },
+  { path: '/metodologia', loader: redirectTo('/#metodologia'), element: null as unknown as React.ReactNode },
   { path: '/oportunidades', loader: redirectTo('/#proyectos'), element: null as unknown as React.ReactNode },
   { path: '/oportunidades/:slug', loader: ({ request, params }) => { const url = new URL(request.url); const slug = params.slug ?? ''; return Response.redirect(new URL(`/proyectos/${slug}${url.search}${url.hash}`, url.origin), 301); }, element: null as unknown as React.ReactNode },
   { path: '/oportunidades/:slug/solicitar-informacion', loader: ({ request, params }) => { const url = new URL(request.url); const slug = params.slug ?? ''; return Response.redirect(new URL(`/proyectos/${slug}/solicitar-informacion${url.search}${url.hash}`, url.origin), 301); }, element: null as unknown as React.ReactNode },

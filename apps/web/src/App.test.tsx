@@ -63,7 +63,17 @@ describe('MILLENNIALS CONSTRUYEN landing', () => {
       })
     ).toBeInTheDocument();
     expect(screen.queryByText(/scaffold|entorno preparado/i)).not.toBeInTheDocument();
-    expect(screen.getByRole('navigation', { name: /navegación principal/i })).toBeInTheDocument();
+    const primaryNav = screen.getByRole('navigation', { name: /navegación principal/i });
+    expect(primaryNav).toBeInTheDocument();
+    expect(within(primaryNav).getAllByRole('link').map((link) => link.textContent)).toEqual([
+      'Nosotros',
+      'Cómo trabajamos',
+      'Proyectos',
+      'Contacto'
+    ]);
+    expect(screen.queryByRole('button', { name: /idioma/i })).not.toBeInTheDocument();
+    expect(screen.getByText('Club privado de inversión inmobiliaria')).toBeInTheDocument();
+    expect(screen.queryByRole('complementary', { name: /proyecto destacado/i })).not.toBeInTheDocument();
     await screen.findAllByRole('article');
 
     const forbiddenClaims = /capital gestionado|rentabilidad histórica|proyectos ejecutados|oficinas internacionales|propiedades analizadas al mes|retorno histórico/i;
