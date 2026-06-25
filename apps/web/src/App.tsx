@@ -562,11 +562,16 @@ function Faq() {
   const [openIndex, setOpenIndex] = useState<number | null>(0);
 
   return (
-    <section id="faq" className="bg-white py-12 sm:py-20">
-      <div className="mx-auto max-w-[880px] px-4 sm:px-6">
-        <p className="text-xs font-black uppercase tracking-[0.28em] text-electric">FAQ</p>
-        <h2 className="mt-5 font-serif text-4xl tracking-[-0.03em] text-ink sm:text-6xl">Preguntas frecuentes</h2>
-        <div className="mt-8 divide-y divide-frost border-y border-frost">
+    <section id="faq" className="border-t border-frost/70 bg-white py-16 sm:py-24">
+      <div data-testid="faq-container" className="mx-auto grid max-w-7xl gap-8 px-4 sm:px-6 lg:grid-cols-[minmax(260px,0.36fr)_minmax(0,0.64fr)] lg:gap-12 lg:px-8">
+        <div className="max-w-xl">
+          <p className="text-xs font-black uppercase tracking-[0.28em] text-electric">FAQ</p>
+          <h2 className="mt-5 font-serif text-4xl leading-tight tracking-[-0.03em] text-ink sm:text-6xl">Preguntas frecuentes</h2>
+          <p className="mt-5 max-w-prose leading-8 text-charcoal/75">
+            Respuestas claras sobre acceso, selección de proyectos, análisis previo y riesgos de inversión.
+          </p>
+        </div>
+        <div data-testid="faq-list" className="divide-y divide-frost overflow-hidden rounded-2xl border border-frost bg-white shadow-[0_18px_55px_rgba(5,5,5,0.04)]">
           {faqs.map((item, i) => {
             const isOpen = openIndex === i;
             return (
@@ -575,17 +580,17 @@ function Faq() {
                   <button
                     type="button"
                     aria-expanded={isOpen}
-                    className="flex w-full items-center justify-between gap-4 py-4 text-left text-lg font-semibold text-ink transition hover:text-electric focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-electric"
+                    className="flex w-full items-center justify-between gap-4 px-5 py-4 text-left text-base font-bold leading-snug text-ink transition hover:text-electric focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-electric sm:px-6 sm:py-5 sm:text-lg"
                     onClick={() => setOpenIndex(isOpen ? null : i)}
                   >
-                    {item.question}
-                    <span aria-hidden="true" className="flex-shrink-0 text-xl text-electric/70 transition-transform" style={{ transform: isOpen ? 'rotate(45deg)' : 'rotate(0deg)' }}>
+                    <span>{item.question}</span>
+                    <span aria-hidden="true" className="flex-shrink-0 text-xl leading-none text-electric/70 transition-transform" style={{ transform: isOpen ? 'rotate(45deg)' : 'rotate(0deg)' }}>
                       +
                     </span>
                   </button>
                 </h3>
                 {isOpen ? (
-                  <div className="pb-5 pr-10 leading-7 text-charcoal/70">
+                  <div className="px-5 pb-5 leading-7 text-charcoal/70 sm:px-6 sm:pb-6">
                     {item.answer}
                   </div>
                 ) : null}

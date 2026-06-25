@@ -23,7 +23,7 @@ test.describe('public landing and projects', () => {
     await expect(page.getByText(/oportunidad privada demo no pública/i)).toHaveCount(0);
   });
 
-  test('hero content width matches the projects container on desktop', async ({ page }) => {
+  test('hero and FAQ content widths match the projects container on desktop', async ({ page }) => {
     await page.setViewportSize({ width: 1440, height: 900 });
     await page.goto('/');
     const heroContainer = page.getByTestId('hero-container');
@@ -34,10 +34,16 @@ test.describe('public landing and projects', () => {
     await expect(page.getByRole('article').first()).toBeVisible();
     const projectsBox = await page.getByTestId('projects-container').boundingBox();
 
+    await page.locator('#faq').scrollIntoViewIfNeeded();
+    const faqBox = await page.getByTestId('faq-container').boundingBox();
+
     expect(heroBox).not.toBeNull();
     expect(projectsBox).not.toBeNull();
+    expect(faqBox).not.toBeNull();
     expect(Math.abs((heroBox?.x ?? 0) - (projectsBox?.x ?? 0))).toBeLessThanOrEqual(1);
     expect(Math.abs((heroBox?.width ?? 0) - (projectsBox?.width ?? 0))).toBeLessThanOrEqual(1);
+    expect(Math.abs((faqBox?.x ?? 0) - (projectsBox?.x ?? 0))).toBeLessThanOrEqual(1);
+    expect(Math.abs((faqBox?.width ?? 0) - (projectsBox?.width ?? 0))).toBeLessThanOrEqual(1);
   });
 
   test('project detail route works and legacy catalog redirects to project section', async ({ page, request }) => {
