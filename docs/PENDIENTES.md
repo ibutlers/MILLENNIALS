@@ -15,6 +15,7 @@
   - `docs/runbooks/operations-checklist.md`
   - `docs/runbooks/qa-operational-checks.md`
   - `docs/runbooks/monitoring-recurring.md`
+- [x] Informe ejecutivo de readiness creado en `docs/runbooks/production-readiness-executive-summary.md`.
 
 ## WAITING_HUMAN
 
@@ -61,6 +62,7 @@ Fecha objetivo de retirada de la ventana HTTP/IP temporal: **2026-07-08**.
 ## Runbooks principales
 
 - `docs/runbooks/production-operations.md` — índice operativo final.
+- `docs/runbooks/production-readiness-executive-summary.md` — resumen ejecutivo de readiness.
 - `docs/runbooks/operations-checklist.md` — checklist diario/semanal/mensual.
 - `docs/runbooks/monitoring-recurring.md` — plantilla cron/systemd no activada.
 - `docs/runbooks/qa-operational-checks.md` — QA operacional y scripts read-only.
