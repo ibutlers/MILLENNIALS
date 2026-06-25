@@ -75,6 +75,8 @@ describe('MILLENNIALS CONSTRUYEN landing', () => {
     expect(screen.getByText('Club privado de inversión inmobiliaria')).toBeInTheDocument();
     expect(screen.queryByRole('complementary', { name: /proyecto destacado/i })).not.toBeInTheDocument();
     await screen.findAllByRole('article');
+    expect(screen.getByLabelText(/resumen de proyectos publicados/i)).toHaveTextContent(/1/);
+    expect(screen.getByText(/proyectos públicos/i)).toBeInTheDocument();
 
     const forbiddenClaims = /capital gestionado|rentabilidad histórica|proyectos ejecutados|oficinas internacionales|propiedades analizadas al mes|retorno histórico/i;
     expect(document.body).not.toHaveTextContent(forbiddenClaims);
