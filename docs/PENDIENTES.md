@@ -1,110 +1,73 @@
 # Pendientes de Realstate
 
-## Estado técnico ya completado
+## Cerrado técnicamente
 
-- [x] Better Auth implementado y desplegado en producción (ventana temporal controlada con auth/admin activos).
-- [x] Admin E2E migrado a Better Auth.
-- [x] E2E auth validado.
-- [x] E2E admin validado.
-- [x] E2E público validado.
-- [x] 20 migraciones versionadas (0001–0020) en el repositorio.
-- [x] Producción en ventana temporal controlada (HTTP/IP, sin dominio/HTTPS definitivo):
-  - Better Auth activo
-  - SMTP activo
-  - Admin activo
-  - 2FA no obligatorio (betterAuthRequire2FA=false)
-  - 1 admin real activo
-- [x] Procedimiento de backup/restore con tablas `auth.*` documentado en `docs/runbooks/auth-backup-recovery.md`.
-- [x] Modelo canónico de roles documentado: `operator` sustituye a `staff`, que queda como alias legacy normalizado.
-- [x] Runbooks de activación futura documentados:
-  - `docs/runbooks/auth-preflight-checklist.md`
-  - `docs/runbooks/auth-production-activation.md`
-  - `docs/runbooks/auth-temporal-http-ip.md`
-- [x] QA operacional y observabilidad básica read-only documentadas en `docs/runbooks/qa-operational-checks.md`.
+- [x] Better Auth/Admin base implementado, validado y desplegado.
+- [x] MFA opcional por decisión de producto (`betterAuthRequire2FA=false`).
+- [x] Recovery/reset real con Better Auth + SMTP/capture, anti-enumeración y tests.
+- [x] Segundo admin real preparado técnicamente mediante flujo oficial de invitación; no ejecutado por falta de email real.
+- [x] Documentos privados inversor sin exposición de `storage_ref`.
+- [x] Roles `operator/staff/admin` cerrados: `operator` canónico, `staff` legacy normalizado.
+- [x] Hardening HTTP/IP temporal documentado y verificado con `scripts/auth/check-temporary-http-ip.sh`.
+- [x] QA gaps final / observabilidad básica cerrada con scripts ops read-only.
+- [x] Runbooks operativos consolidados:
+  - `docs/runbooks/production-operations.md`
+  - `docs/runbooks/operations-checklist.md`
+  - `docs/runbooks/qa-operational-checks.md`
+  - `docs/runbooks/monitoring-recurring.md`
 
-## Aceptación formal de riesgo — ventana temporal auth/admin sobre HTTP/IP
+## WAITING_HUMAN
 
-**Decisión**: Mantener la ventana temporal con auth/admin/email activos sobre IP/HTTP.
-**Fecha de la decisión**: 2026-06-19 (hilo Kanban t_1245c893, comentario de desbloqueo de Víctor).
+- [ ] Proporcionar `ADMIN_EMAIL_2` para crear/invitar un segundo administrador real.
 
-### Riesgo aceptado
-
-Autenticación Better Auth, envío de correo transaccional (SMTP) y panel administrativo accesibles desde http://65.108.251.196:8088 sin HTTPS, dominio real ni 2FA obligatorio. Tráfico entre cliente y servidor viaja en texto plano. Las cookies de sesión no tienen flag Secure.
-
-### Responsable
-
-Víctor Pérez (fundador). Cualquier cambio en esta postura requiere su autorización explícita.
-
-### Caducidad
-
-⚠️ **Fecha objetivo de retirada: 2026-07-08.** Si la ventana temporal sigue activa después de esa fecha, tratarlo como alerta operativa P1: priorizar dominio + HTTPS o volver a modo seguro con autorización explícita. La condición objetiva de cierre sigue siendo migrar a HTTPS definitivo y desactivar `AUTH_ALLOW_INSECURE_IP_TEST`.
-
-### Controles compensatorios activos
-
-1. **Backups**: DB y .env respaldados antes de cada cambio de configuración. Último backup pre-rollback en `/srv/backups/realstate/database-pre-auth-rollback-20260619T190440Z.dump` (136 KB) y `shared-env-pre-auth-rollback-20260619T190440Z.env` (1010 B).
-2. **Rollback listo**: `./scripts/rollback.sh` operativo y con sintaxis validada. Plan de rollback documentado con backup previo y 4 cambios de flags.
-3. **Rate limiting**: Endpoints de auth y formularios con rate limiting activo en API.
-4. **Startup enforcement**: `rejectInsecureAuth()` bloquea arranque si faltan variables requeridas o hay bypass no autorizados.
-5. **Endpoints E2E no expuestos**: `/api/e2e/auth/*` devuelven 404 en producción, verificado por `scripts/auth/check-temporary-http-ip.sh`.
-6. **Sin datos reales de inversores**: Solo 2 app_users (1 admin activo + 1 inversor de prueba). No hay capital, documentos ni KYC reales expuestos.
-7. **Admin único controlado**: 1 solo admin activo; MFA permanece opcional por decisión de producto y el segundo admin real queda como `WAITING_HUMAN: proporcionar ADMIN_EMAIL_2`.
-8. **Cookies/headers sin exposición en smoke**: El check operativo cuenta `Set-Cookie`, `HttpOnly`, `SameSite` y `Secure` sin imprimir valores. En HTTP temporal `Secure=false` es una deuda explícita hasta HTTPS.
-9. **Monitorización básica**: Healthchecks `/health` y `/api/health` activos. Backups y logs accesibles para diagnóstico.
-10. **Smoke automatizado read-only**: `scripts/auth/check-temporary-http-ip.sh` valida postura temporal sin tocar `.env`, DB, contenedores, volúmenes ni flags.
-
-### Condiciones para cerrar esta ventana
-
-La ventana temporal se considerará cerrada cuando se cumplan **todos** los requisitos de activación definitiva listados en este documento (dominio, HTTPS, SMTP definitivo, SPF/DKIM/DMARC, legal completo, dos admins reales, E2E verdes). MFA permanece opcional por decisión de producto; activar MFA obligatorio requerirá decisión futura explícita. En ese momento `AUTH_ALLOW_INSECURE_IP_TEST` pasará a `false`.
-
-## Pendientes externos antes de activación definitiva
+## EXTERNOS / NO BLOQUEANTES
 
 - [ ] Dominio definitivo.
-- [ ] HTTPS válido para el dominio definitivo.
-- [ ] SMTP real.
-- [ ] SPF configurado.
-- [ ] DKIM configurado.
-- [ ] DMARC configurado.
-- [ ] Datos legales completos:
-  - [ ] Razón social.
-  - [ ] NIF/CIF.
-  - [ ] Domicilio.
-  - [ ] Correo de contacto.
-  - [ ] Datos registrales, si aplican.
-- [ ] Aviso legal definitivo.
-- [ ] Política de privacidad definitiva.
-- [ ] Política de cookies definitiva.
-- [ ] Revisión legal de textos de consentimiento.
-- [ ] Procedimiento humano de brecha/incidencia.
-- [ ] Dos cuentas admin reales.
-- [ ] Procedimiento de recuperación si un admin pierde MFA.
-- [ ] Prueba final con dominio real.
-- [ ] Prueba final con SMTP real.
-- [ ] Prueba final con MFA real.
+- [ ] HTTPS definitivo.
+- [ ] Retirar `AUTH_ALLOW_INSECURE_IP_TEST` cuando haya dominio + HTTPS.
+- [ ] Legal/cookies/política de privacidad definitivos.
+- [ ] Cron/alertas recurrentes si se desea monitorización automática.
+- [ ] Restore drill completo en entorno efímero con backup reciente.
+- [ ] SMTP fail/retry real automatizado.
 
-## No hacer sin plan explícito
+## Estado temporal aceptado
 
-- [ ] No desactivar auth/admin/SMTP sin plan de rollback a modo seguro.
-- [ ] No activar 2FA obligatorio sin segundo admin real y procedimiento de recuperación.
-- [ ] No crear admins reales con datos ficticios.
-- [ ] No enviar correos reales sin SPF/DKIM/DMARC.
-- [ ] No editar `/srv/deployments/realstate/shared/.env` sin backup previo.
-- [ ] No tocar DNS.
-- [ ] No cambiar Caddy/proxy.
-- [ ] No borrar datos.
-- [ ] No borrar backups.
-- [ ] No borrar ni recrear `current_postgres-data`.
-- [ ] No borrar volúmenes `current_*`.
-- [ ] No ejecutar `docker compose down -v`.
-- [ ] No ejecutar `docker system prune -a`.
+Producción mantiene temporalmente auth/admin/email activos sobre HTTP/IP por decisión de producto:
 
-## Runbooks relacionados
+- `AUTH_MODE=better-auth`
+- `AUTH_EMAIL_MODE=smtp`
+- `ADMIN_ENABLED=true`
+- `AUTH_ALLOW_INSECURE_IP_TEST=true` temporal
+- `BETTER_AUTH_REQUIRE_2FA=false` opcional
 
-- `docs/runbooks/auth-preflight-checklist.md` — checklist previo completo.
-- `docs/runbooks/auth-production-activation.md` — procedimiento futuro de activación, creación de admins, smoke y rollback.
-- `docs/runbooks/auth-backup-recovery.md` — backup y recuperación.
-- `docs/runbooks/auth-incident.md` — respuesta a incidencias.
-- `docs/runbooks/auth-secret-rotation.md` — rotación de secretos.
-- `docs/runbooks/auth-email-setup.md` — configuración de correo.
-- `docs/runbooks/second-admin-setup.md` — flujo seguro para invitar y activar un segundo admin real.
-- `docs/runbooks/qa-operational-checks.md` — QA operacional, health/logs/backups y scripts read-only.
-- `docs/runbooks/roles-operator-staff-admin.md` — modelo canónico de roles y compatibilidad legacy `staff`.
+Fecha objetivo de retirada de la ventana HTTP/IP temporal: **2026-07-08**.
+
+## No hacer sin autorización explícita
+
+- No editar `/srv/deployments/realstate/shared/.env` sin backup previo y autorización.
+- No cambiar flags críticos.
+- No desactivar auth/admin/SMTP sin plan de rollback.
+- No activar 2FA obligatorio sin decisión explícita.
+- No crear admins reales con datos ficticios.
+- No tocar DNS/proxy sin autorización.
+- No borrar datos.
+- No borrar backups.
+- No borrar ni recrear `current_postgres-data`.
+- No borrar volúmenes `current_*`.
+- No ejecutar `docker compose down -v`.
+- No ejecutar `docker system prune -a`.
+- No imprimir secretos, tokens, cookies ni enlaces privados.
+
+## Runbooks principales
+
+- `docs/runbooks/production-operations.md` — índice operativo final.
+- `docs/runbooks/operations-checklist.md` — checklist diario/semanal/mensual.
+- `docs/runbooks/monitoring-recurring.md` — plantilla cron/systemd no activada.
+- `docs/runbooks/qa-operational-checks.md` — QA operacional y scripts read-only.
+- `docs/runbooks/auth-temporal-http-ip.md` — ventana temporal HTTP/IP.
+- `docs/runbooks/auth-production-activation.md` — activación futura con dominio/HTTPS.
+- `docs/runbooks/auth-backup-recovery.md` — backups y recuperación.
+- `docs/runbooks/auth-recovery-reset.md` — recuperación/restablecimiento de contraseña.
+- `docs/runbooks/second-admin-setup.md` — segundo admin real.
+- `docs/runbooks/roles-operator-staff-admin.md` — roles.
+- `docs/runbooks/investor-private-documents.md` — documentos privados.
