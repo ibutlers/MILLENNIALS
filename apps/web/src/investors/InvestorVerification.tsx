@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useAuth } from '../auth/context';
 import { setPageMetadata } from '../metadata';
 
@@ -63,6 +63,7 @@ export function InvestorVerification() {
   const { user } = useAuth();
   const displayName = user?.name || user?.email?.split('@')[0] || 'Perfil principal';
   const nameParts = useMemo(() => splitDisplayName(user?.name, user?.email), [user?.email, user?.name]);
+  const stepPanelRef = useRef<HTMLElement | null>(null);
   const [step, setStep] = useState(1);
   const [accountType, setAccountType] = useState<AccountType | null>(null);
   const [individual, setIndividual] = useState<Values>({});
@@ -76,6 +77,17 @@ export function InvestorVerification() {
     setIndividual((current) => ({ ...current, firstName: current.firstName || nameParts.firstName, lastName: current.lastName || nameParts.lastName }));
     setCompany((current) => ({ ...current, representativeFirstName: current.representativeFirstName || nameParts.firstName, representativeLastName: current.representativeLastName || nameParts.lastName }));
   }, [nameParts.firstName, nameParts.lastName]);
+
+  useEffect(() => {
+    if (step === 1) return;
+    const frame = window.requestAnimationFrame(() => {
+      const panel = stepPanelRef.current;
+      if (!panel) return;
+      const targetTop = Math.max(0, panel.getBoundingClientRect().top + window.scrollY - 104);
+      window.scrollTo({ top: targetTop, behavior: 'auto' });
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, [step]);
 
   const activeFields = accountType === 'company' ? companyFields : individualFields;
   const activeValues = accountType === 'company' ? company : individual;
@@ -127,7 +139,7 @@ export function InvestorVerification() {
 
         <ProgressBar step={step} />
 
-        <section className="mt-8 rounded-[1.6rem] border border-frost bg-white p-5 shadow-[0_24px_80px_rgba(5,5,5,0.08)] sm:p-8 lg:p-10">
+        <section ref={stepPanelRef} className="mt-8 rounded-[1.6rem] border border-frost bg-white p-5 shadow-[0_24px_80px_rgba(5,5,5,0.08)] sm:p-8 lg:p-10">
           {step === 1 ? <AccountTypeStep accountType={accountType} onSelect={setAccountType} onContinue={() => setStep(2)} /> : null}
           {step === 2 && accountType ? <ProfileStep accountType={accountType} fields={activeFields} values={activeValues} canContinue={canContinueFromData} onChange={updateValue} onBack={() => setStep(1)} onContinue={() => setStep(3)} /> : null}
           {step === 3 ? <DocumentStep accountType={accountType} onBack={() => setStep(2)} /> : null}
