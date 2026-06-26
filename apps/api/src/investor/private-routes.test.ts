@@ -2,7 +2,7 @@ import Fastify from 'fastify';
 import type { FastifyReply, FastifyRequest } from 'fastify';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { Pool } from 'pg';
-import type { StorageProvider } from '../providers/index.js';
+import type { KycProvider, StorageProvider } from '../providers/index.js';
 
 type MockPool = { query: ReturnType<typeof vi.fn> };
 
@@ -44,15 +44,15 @@ describe('Private investor routes — project documents', () => {
     vi.restoreAllMocks();
   });
 
-  function buildApp(pool: MockPool, storage?: Partial<StorageProvider>) {
+  function buildApp(pool: MockPool, storage?: Partial<StorageProvider>, kyc?: Partial<KycProvider>) {
     const app = Fastify({ logger: false });
     registerPrivateInvestorRoutes(app, {
       pool: pool as unknown as Pool,
-      providers: storage
+      providers: storage || kyc
         ? {
-          storage: storage as StorageProvider,
+          storage: (storage ?? {}) as StorageProvider,
           email: {} as never,
-          kyc: {} as never,
+          kyc: (kyc ?? {}) as KycProvider,
           signature: {} as never,
           payments: {} as never,
         }
@@ -60,6 +60,87 @@ describe('Private investor routes — project documents', () => {
     });
     return app;
   }
+
+  it('exposes KYC verification status through the Better Auth private API without fake approval', async () => {
+    const pool = { query: vi.fn(async () => ({ rows: [] })) };
+    const app = buildApp(pool);
+
+    const res = await app.inject({ method: 'GET', url: '/api/investor/verification' });
+
+    expect(res.statusCode).toBe(200);
+    expect(res.json()).toEqual({
+      data: {
+        status: 'not_configured',
+        providerStatus: {
+          configured: false,
+          status: 'not_configured',
+          message: 'Proveedor KYC no configurado.',
+        },
+        canInitiate: false,
+        disclaimer: 'El proveedor de verificación de identidad (KYC) no está configurado. No se simula un estado verificado.',
+      },
+    });
+    expect(JSON.stringify(res.json())).not.toMatch(/approved|aprobado|identidad verificada|kyc aprobado/i);
+    expect(pool.query).not.toHaveBeenCalled();
+
+    await app.close();
+  });
+
+  it('reports KYC provider availability without claiming that the investor is verified', async () => {
+    const pool = { query: vi.fn(async () => ({ rows: [] })) };
+    const app = buildApp(pool, undefined, {
+      kind: 'kyc',
+      health: async () => ({ configured: true, status: 'ok' }),
+    });
+
+    const res = await app.inject({ method: 'GET', url: '/api/investor/verification' });
+
+    expect(res.statusCode).toBe(200);
+    expect(res.json()).toEqual({
+      data: {
+        status: 'not_started',
+        providerStatus: {
+          configured: true,
+          status: 'ok',
+          message: 'Proveedor KYC disponible.',
+        },
+        canInitiate: false,
+        disclaimer: 'El proveedor KYC está disponible, pero el inicio de sesión externa todavía no está habilitado para este perfil.',
+      },
+    });
+    expect(JSON.stringify(res.json())).not.toMatch(/approved|aprobado|identidad verificada/i);
+    expect(pool.query).not.toHaveBeenCalled();
+
+    await app.close();
+  });
+
+  it('keeps KYC initiation disabled and hides internal provider errors when health fails', async () => {
+    const pool = { query: vi.fn(async () => ({ rows: [] })) };
+    const app = buildApp(pool, undefined, {
+      kind: 'kyc',
+      health: async () => { throw new Error('raw provider timeout with internal details'); },
+    });
+
+    const res = await app.inject({ method: 'GET', url: '/api/investor/verification' });
+
+    expect(res.statusCode).toBe(200);
+    expect(res.json()).toEqual({
+      data: {
+        status: 'not_configured',
+        providerStatus: {
+          configured: false,
+          status: 'error',
+          message: 'No se ha podido comprobar el proveedor KYC.',
+        },
+        canInitiate: false,
+        disclaimer: 'El proveedor de verificación de identidad (KYC) no está configurado. No se simula un estado verificado.',
+      },
+    });
+    expect(JSON.stringify(res.json())).not.toContain('raw provider timeout');
+    expect(pool.query).not.toHaveBeenCalled();
+
+    await app.close();
+  });
 
   it('lists active private documents from the canonical documents table using id or slug', async () => {
     const pool = {

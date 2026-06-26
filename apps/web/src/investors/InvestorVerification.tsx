@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useAuth } from '../auth/context';
 import { setPageMetadata } from '../metadata';
+import { fetchInvestorJson, type InvestorVerificationStatus } from './api';
 
 type AccountType = 'individual' | 'company';
 type Values = Record<string, string>;
@@ -15,6 +16,13 @@ type FieldDef = {
 };
 
 const countries = ['España', 'Portugal', 'Francia', 'Italia', 'Alemania', 'Reino Unido', 'Estados Unidos', 'México', 'Otro'];
+
+const fallbackVerificationStatus: InvestorVerificationStatus = {
+  status: 'not_configured',
+  providerStatus: { configured: false, status: 'not_configured' },
+  canInitiate: false,
+  disclaimer: 'El proveedor de verificación de identidad (KYC) no está configurado. No se simula un estado verificado.',
+};
 
 const individualFields: FieldDef[] = [
   { name: 'firstName', label: 'Nombre', autoComplete: 'given-name' },
@@ -68,9 +76,27 @@ export function InvestorVerification() {
   const [accountType, setAccountType] = useState<AccountType | null>(null);
   const [individual, setIndividual] = useState<Values>({});
   const [company, setCompany] = useState<Values>({});
+  const [verificationStatus, setVerificationStatus] = useState<InvestorVerificationStatus>(fallbackVerificationStatus);
+  const [verificationLoadStatus, setVerificationLoadStatus] = useState<'loading' | 'success' | 'error'>('loading');
 
   useEffect(() => {
     setPageMetadata('KYC | MILLENNIALS CONSTRUYEN', 'Apartado KYC de verificación de identidad para inversores de MILLENNIALS CONSTRUYEN.');
+  }, []);
+
+  useEffect(() => {
+    const controller = new AbortController();
+    setVerificationLoadStatus('loading');
+    fetchInvestorJson<InvestorVerificationStatus>('/api/investor/verification', controller.signal)
+      .then((data) => {
+        setVerificationStatus(data);
+        setVerificationLoadStatus('success');
+      })
+      .catch((error: unknown) => {
+        if (error instanceof DOMException && error.name === 'AbortError') return;
+        setVerificationStatus(fallbackVerificationStatus);
+        setVerificationLoadStatus('error');
+      });
+    return () => controller.abort();
   }, []);
 
   useEffect(() => {
@@ -119,8 +145,10 @@ export function InvestorVerification() {
             <p className="text-xs font-black uppercase tracking-[0.18em] text-charcoal/75">Estado actual</p>
             <h2 className="mt-2 font-serif text-3xl leading-tight tracking-[-0.035em] text-ink">Verificación de identidad pendiente</h2>
             <div className="mt-5 rounded-2xl border border-warning/25 bg-warning/10 p-4 text-sm leading-6 text-charcoal/80">
-              <strong className="text-ink">Proveedor KYC no configurado.</strong> Puedes revisar el flujo y preparar los datos, pero todavía no se envía información sensible ni se inicia una validación externa.
+              <strong className="text-ink">{verificationStatus.providerStatus.configured ? 'Proveedor KYC configurado.' : 'Proveedor KYC no configurado.'}</strong> {verificationStatus.disclaimer}
             </div>
+            {verificationLoadStatus === 'loading' ? <p className="mt-3 text-xs leading-5 text-charcoal/65" role="status">Consultando el estado privado de verificación…</p> : null}
+            {verificationLoadStatus === 'error' ? <p className="mt-3 text-xs leading-5 text-danger" role="alert">No hemos podido consultar el estado KYC. Mantenemos la verificación externa bloqueada por seguridad.</p> : null}
             <p className="mt-3 text-xs leading-5 text-charcoal/75">No se generan enlaces, códigos QR ni estados verificados ficticios.</p>
           </aside>
         </div>
@@ -142,7 +170,7 @@ export function InvestorVerification() {
         <section ref={stepPanelRef} className="mt-8 rounded-[1.6rem] border border-frost bg-white p-5 shadow-[0_24px_80px_rgba(5,5,5,0.08)] sm:p-8 lg:p-10">
           {step === 1 ? <AccountTypeStep accountType={accountType} onSelect={setAccountType} onContinue={() => setStep(2)} /> : null}
           {step === 2 && accountType ? <ProfileStep accountType={accountType} fields={activeFields} values={activeValues} canContinue={canContinueFromData} onChange={updateValue} onBack={() => setStep(1)} onContinue={() => setStep(3)} /> : null}
-          {step === 3 ? <DocumentStep accountType={accountType} onBack={() => setStep(2)} /> : null}
+          {step === 3 ? <DocumentStep accountType={accountType} verificationStatus={verificationStatus} onBack={() => setStep(2)} /> : null}
         </section>
       </div>
     </div>
@@ -216,7 +244,7 @@ function ProfileStep({ accountType, fields, values, canContinue, onChange, onBac
       <div className="mt-4 max-w-4xl space-y-3 leading-7 text-charcoal/75"><p>Necesitamos algunos datos básicos para verificar tu identidad y cumplir con los requisitos legales antes de que puedas invertir.</p><p>Cuando se active el proveedor KYC, el tratamiento de estos datos deberá quedar cubierto por el flujo seguro, la política de privacidad y las garantías aplicables.</p></div>
       <div className="mt-8 grid gap-5 rounded-2xl bg-lavender/55 p-4 sm:p-6 lg:grid-cols-2">{fields.map((field) => <KycField key={field.name} field={field} value={values[field.name] ?? ''} onChange={(value) => onChange(field.name, value)} />)}</div>
       <div className="mt-8 flex flex-col gap-3 sm:flex-row"><button type="button" onClick={onBack} className="h-14 rounded-2xl border border-frost bg-white px-6 text-sm font-black uppercase tracking-[0.14em] text-ink transition hover:border-electric hover:text-electric">Volver</button><button type="button" disabled={!canContinue} onClick={onContinue} className="h-14 flex-1 rounded-2xl bg-ink px-6 text-sm font-black uppercase tracking-[0.14em] text-white transition hover:bg-electric disabled:cursor-not-allowed disabled:bg-charcoal/35">Continuar al paso documental</button></div>
-      <p className="mt-5 rounded-2xl bg-lavender/70 p-4 text-sm leading-6 text-charcoal/70">Estos datos preparan la validación, pero todavía no se guardan ni se envían a un tercero porque el proveedor KYC no está activo.</p>
+      <p className="mt-5 rounded-2xl bg-lavender/70 p-4 text-sm leading-6 text-charcoal/70">Estos datos preparan la validación, pero todavía no se guardan ni se envían a un tercero desde esta pantalla hasta que el flujo externo quede habilitado de extremo a extremo.</p>
       <p className="sr-only">Tipo de cuenta seleccionado: {accountType}</p>
     </div>
   );
@@ -253,14 +281,15 @@ function KycField({ field, value, onChange }: { field: FieldDef; value: string; 
   );
 }
 
-function DocumentStep({ accountType, onBack }: { accountType: AccountType | null; onBack: () => void }) {
+function DocumentStep({ accountType, verificationStatus, onBack }: { accountType: AccountType | null; verificationStatus: InvestorVerificationStatus; onBack: () => void }) {
   const documents = accountType === 'company' ? ['Documento del representante', 'Escritura o poderes de representación', 'Certificado de titularidad real', 'Justificante de domicilio fiscal'] : ['Documento de identidad oficial', 'Comprobante de domicilio', 'Autocertificación de residencia fiscal'];
+  const providerConfigured = verificationStatus.providerStatus.configured;
   return (
     <div>
       <p className="text-sm font-black uppercase tracking-[0.18em] text-electric">3. Documentación</p>
       <h2 className="mt-3 font-serif text-4xl leading-tight tracking-[-0.04em] text-ink">Documentación y verificación externa</h2>
-      <p className="mt-4 max-w-4xl leading-7 text-charcoal/75">Este paso quedará conectado al proveedor KYC cuando esté contratado y configurado. Hasta entonces, la pantalla no permite subir documentos ni escanear códigos reales.</p>
-      <div className="mt-8 grid gap-5 lg:grid-cols-[minmax(0,0.56fr)_minmax(280px,0.44fr)]"><section className="rounded-2xl bg-lavender/60 p-5"><h3 className="font-serif text-2xl tracking-[-0.03em] text-ink">Documentos previstos</h3><ul className="mt-5 space-y-3 text-sm leading-6 text-charcoal/75">{documents.map((document) => <li key={document} className="flex items-start gap-3 rounded-xl bg-white p-4 shadow-sm"><span className="mt-0.5 grid h-6 w-6 shrink-0 place-items-center rounded-full bg-electric/10 text-electric" aria-hidden="true">✓</span><span>{document}</span></li>)}</ul></section><section className="rounded-2xl border border-frost bg-white p-5 text-center shadow-sm"><p className="text-xs font-black uppercase tracking-[0.18em] text-charcoal/75">Verificación externa</p><div className="mx-auto mt-5 grid aspect-square max-w-[280px] place-items-center rounded-[2rem] border border-dashed border-electric/35 bg-lavender/65 p-8"><div className="grid h-24 w-24 place-items-center rounded-3xl bg-ink text-4xl font-black text-electric">MC</div></div><h3 className="mt-5 font-serif text-2xl tracking-[-0.03em] text-ink">Sesión externa pendiente</h3><p className="mt-3 text-sm leading-6 text-charcoal/75">No se generan enlaces, códigos QR ni estados verificados ficticios. La integración real deberá abrir una sesión segura del proveedor contratado.</p><button type="button" disabled className="mt-5 h-12 w-full rounded-2xl border border-charcoal/25 bg-frost px-5 text-sm font-black uppercase tracking-[0.14em] text-charcoal/75 cursor-not-allowed">Iniciar verificación externa</button></section></div>
+      <p className="mt-4 max-w-4xl leading-7 text-charcoal/75">{providerConfigured ? 'El proveedor KYC informa que está disponible. Falta activar el inicio de sesión externa para este perfil antes de permitir una validación real.' : 'Este paso quedará conectado al proveedor KYC cuando esté contratado y configurado. Hasta entonces, la pantalla no permite subir documentos ni escanear códigos reales.'}</p>
+      <div className="mt-8 grid gap-5 lg:grid-cols-[minmax(0,0.56fr)_minmax(280px,0.44fr)]"><section className="rounded-2xl bg-lavender/60 p-5"><h3 className="font-serif text-2xl tracking-[-0.03em] text-ink">Documentos previstos</h3><ul className="mt-5 space-y-3 text-sm leading-6 text-charcoal/75">{documents.map((document) => <li key={document} className="flex items-start gap-3 rounded-xl bg-white p-4 shadow-sm"><span className="mt-0.5 grid h-6 w-6 shrink-0 place-items-center rounded-full bg-electric/10 text-electric" aria-hidden="true">✓</span><span>{document}</span></li>)}</ul></section><section className="rounded-2xl border border-frost bg-white p-5 text-center shadow-sm"><p className="text-xs font-black uppercase tracking-[0.18em] text-charcoal/75">Verificación externa</p><div className="mx-auto mt-5 grid aspect-square max-w-[280px] place-items-center rounded-[2rem] border border-dashed border-electric/35 bg-lavender/65 p-8"><div className="grid h-24 w-24 place-items-center rounded-3xl bg-ink text-4xl font-black text-electric">MC</div></div><h3 className="mt-5 font-serif text-2xl tracking-[-0.03em] text-ink">{providerConfigured ? 'Sesión externa no iniciada' : 'Sesión externa pendiente'}</h3><p className="mt-3 text-sm leading-6 text-charcoal/75">{verificationStatus.disclaimer} No se generan enlaces, códigos QR ni estados verificados ficticios.</p><button type="button" disabled className="mt-5 h-12 w-full rounded-2xl border border-charcoal/25 bg-frost px-5 text-sm font-black uppercase tracking-[0.14em] text-charcoal/75 cursor-not-allowed">Iniciar verificación externa</button></section></div>
       <button type="button" onClick={onBack} className="mt-8 h-14 rounded-2xl border border-frost bg-white px-6 text-sm font-black uppercase tracking-[0.14em] text-ink transition hover:border-electric hover:text-electric">Volver a datos del perfil</button>
     </div>
   );

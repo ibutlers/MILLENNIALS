@@ -41,6 +41,8 @@ const transferReportSchema = z.object({
 const projectReferenceSchema = z.string().regex(/^[a-z0-9-]{1,200}$/);
 const documentIdSchema = z.string().uuid();
 
+type ProviderHealth = { configured: boolean; status: string; message?: string };
+
 type DocumentRow = {
   id: string;
   title: string;
@@ -62,6 +64,27 @@ async function isStorageConfigured(storageProvider: ProviderSet['storage'] | und
     return health.configured === true;
   } catch {
     return false;
+  }
+}
+
+function publicKycStatus(status: string | undefined, configured: boolean): string {
+  const allowed = new Set(['ok', 'available', 'not_configured', 'degraded', 'error']);
+  if (status && allowed.has(status)) return status;
+  return configured ? 'available' : 'not_configured';
+}
+
+async function getKycHealth(kycProvider: ProviderSet['kyc'] | undefined): Promise<ProviderHealth> {
+  if (!kycProvider) return { configured: false, status: 'not_configured', message: 'Proveedor KYC no configurado.' };
+  try {
+    const health = await kycProvider.health();
+    const configured = health.configured === true;
+    return {
+      configured,
+      status: publicKycStatus(health.status, configured),
+      message: configured ? 'Proveedor KYC disponible.' : 'Proveedor KYC no configurado.',
+    };
+  } catch {
+    return { configured: false, status: 'error', message: 'No se ha podido comprobar el proveedor KYC.' };
   }
 }
 
@@ -93,6 +116,7 @@ export function registerPrivateInvestorRoutes(
 ): void {
   const { pool } = options;
   const storageProvider = options.providers?.storage;
+  const kycProvider = options.providers?.kyc;
 
   // ── Auth chain shared by all private routes ──
   const authChain = [
@@ -136,6 +160,23 @@ export function registerPrivateInvestorRoutes(
       request.log.error({ err, requestId: (request as any).id }, 'dashboard handler error');
       return reply.status(500).send({ error: { code: 'internal_error', message: 'Internal error' } });
     }
+  });
+
+  // ── GET /api/investor/verification ──
+  app.get('/api/investor/verification', {
+    preHandler: authChain,
+  }, async () => {
+    const providerStatus = await getKycHealth(kycProvider);
+    return {
+      data: {
+        status: providerStatus.configured ? 'not_started' : 'not_configured',
+        providerStatus,
+        canInitiate: false,
+        disclaimer: providerStatus.configured
+          ? 'El proveedor KYC está disponible, pero el inicio de sesión externa todavía no está habilitado para este perfil.'
+          : 'El proveedor de verificación de identidad (KYC) no está configurado. No se simula un estado verificado.',
+      },
+    };
   });
 
   // ── GET /api/investor/documents ──

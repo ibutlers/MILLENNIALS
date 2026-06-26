@@ -40,6 +40,19 @@ export interface InvestmentRequest {
   transfer_reference: string | null;
 }
 
+export interface InvestorProviderHealth {
+  configured: boolean;
+  status: string;
+  message?: string;
+}
+
+export interface InvestorVerificationStatus {
+  status: 'not_configured' | 'not_started' | 'pending' | 'in_review' | 'approved' | 'rejected' | 'expired' | string;
+  providerStatus: InvestorProviderHealth;
+  canInitiate: boolean;
+  disclaimer: string;
+}
+
 export type InvestorApiErrorKind = 'unauthorized' | 'forbidden' | 'server' | 'network' | 'unknown';
 
 export class InvestorApiError extends Error {
