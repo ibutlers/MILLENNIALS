@@ -17,6 +17,16 @@ export default {
         forest: '#5B9A7C',
         warning: '#D4A24E',
         danger: '#C75B5B',
+        // Legacy private-area aliases kept intentionally so investor/auth pages
+        // that still use the older semantic names render with real CSS classes.
+        carbon: '#050505',
+        petroleum: '#111522',
+        mineral: '#93A4FF',
+        mineralHover: '#B7C1FF',
+        textLight: '#F4F4FE',
+        textDark: '#050505',
+        muted: '#AEB4C2',
+        border: '#2B2F3A',
       },
       fontFamily: {
         sans: ['Inter', 'ui-sans-serif', 'system-ui', 'sans-serif'],

@@ -35,11 +35,11 @@ function generateTotpCode(uri: string): string {
 }
 
 async function apiFetch(request: RequestLike, path: string, options: { method?: string; body?: unknown; headers?: Record<string, string> } = {}) {
-  const res = await request.fetch(`${WEB}${path}`, {
+  const res = await withRequestRetry(`${options.method || "GET"} ${path}`, () => request.fetch(`${WEB}${path}`, {
     method: options.method || "GET",
     headers: { "Content-Type": "application/json", ...options.headers },
     data: options.body,
-  });
+  }));
   const text = await res.text();
   let body: unknown;
   try { body = JSON.parse(text); } catch { body = { _raw: text }; }
@@ -73,6 +73,46 @@ function pageWait(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
+function isTransientRequestError(error: unknown): boolean {
+  const message = error instanceof Error ? error.message : String(error);
+  return /ECONNREFUSED|ECONNRESET|socket hang up|fetch failed/i.test(message);
+}
+
+function sanitizeRequestError(error: unknown): string {
+  const message = error instanceof Error ? error.message : String(error);
+  return message
+    .replaceAll(INTERNAL_KEY, '[REDACTED_E2E_SECRET]')
+    .replace(/mc\.[a-z_]+=[^\s\n;]+/gi, 'mc.[cookie]=[REDACTED]')
+    .split('\n')
+    .slice(0, 3)
+    .join('\n');
+}
+
+async function withRequestRetry<T>(label: string, fn: () => Promise<T>): Promise<T> {
+  let lastError: unknown;
+  for (let attempt = 1; attempt <= 3; attempt += 1) {
+    try {
+      return await fn();
+    } catch (error) {
+      lastError = error;
+      if (!isTransientRequestError(error) || attempt === 3) break;
+      await pageWait(750 * attempt);
+    }
+  }
+  throw new Error(`${label} failed after retries: ${sanitizeRequestError(lastError)}`);
+}
+
+async function requestPost(request: RequestLike, path: string, data: unknown = {}, headers: Record<string, string> = {}) {
+  return withRequestRetry(`POST ${path}`, () => request.post(`${WEB}${path}`, {
+    headers: { Origin: WEB, ...headers },
+    data,
+  }));
+}
+
+async function requestGet(request: RequestLike, path: string) {
+  return withRequestRetry(`GET ${path}`, () => request.get(`${WEB}${path}`));
+}
+
 async function ensureActiveInvestor(context: BrowserContext): Promise<void> {
   if (investorActivated) return;
 
@@ -99,20 +139,14 @@ async function ensureActiveInvestor(context: BrowserContext): Promise<void> {
   await verificationPage.waitForLoadState("networkidle").catch(() => undefined);
   await verificationPage.close();
 
-  const enable = await context.request.post("/api/auth/two-factor/enable", {
-    headers: { Origin: WEB },
-    data: { password: INVESTOR.password, issuer: "MILLENNIALS CONSTRUYEN" },
-  });
+  const enable = await requestPost(context.request, "/api/auth/two-factor/enable", { password: INVESTOR.password, issuer: "MILLENNIALS CONSTRUYEN" });
   expect(enable.status()).toBe(200);
   const enableBody = await enable.json() as { totpURI?: string; data?: { totpURI?: string } };
   investorTotpUri = enableBody.totpURI || enableBody.data?.totpURI || "";
   expect(investorTotpUri).toContain("otpauth://totp/");
-  const verify = await context.request.post("/api/auth/two-factor/verify-totp", {
-    headers: { Origin: WEB },
-    data: { code: generateTotpCode(investorTotpUri) },
-  });
+  const verify = await requestPost(context.request, "/api/auth/two-factor/verify-totp", { code: generateTotpCode(investorTotpUri) });
   expect(verify.status()).toBe(200);
-  const reconcile = await context.request.post("/api/auth/reconcile-mfa", { headers: { Origin: WEB } });
+  const reconcile = await requestPost(context.request, "/api/auth/reconcile-mfa");
   expect(reconcile.status()).toBe(200);
   investorActivated = true;
 }
@@ -120,21 +154,15 @@ async function ensureActiveInvestor(context: BrowserContext): Promise<void> {
 async function loginViaUI(page: Page) {
   const context = page.context();
   await ensureActiveInvestor(context);
-  await context.request.post("/api/auth/sign-out", { headers: { Origin: WEB } }).catch(() => undefined);
-  const login = await context.request.post("/api/auth/sign-in/email", {
-    headers: { Origin: WEB },
-    data: { email: INVESTOR.email, password: INVESTOR.password },
-  });
+  await requestPost(context.request, "/api/auth/sign-out").catch(() => undefined);
+  const login = await requestPost(context.request, "/api/auth/sign-in/email", { email: INVESTOR.email, password: INVESTOR.password });
   expect(login.status()).toBe(200);
   const loginBody = await login.json().catch(() => ({})) as { twoFactorRedirect?: boolean; data?: { twoFactorRedirect?: boolean } };
   if (loginBody.twoFactorRedirect || loginBody.data?.twoFactorRedirect) {
     await page.waitForTimeout(11000);
-    const verify = await context.request.post("/api/auth/two-factor/verify-totp", {
-      headers: { Origin: WEB },
-      data: { code: generateTotpCode(investorTotpUri) },
-    });
+    const verify = await requestPost(context.request, "/api/auth/two-factor/verify-totp", { code: generateTotpCode(investorTotpUri) });
     expect(verify.status()).toBe(200);
-    const reconcile = await context.request.post("/api/auth/reconcile-mfa", { headers: { Origin: WEB } });
+    const reconcile = await requestPost(context.request, "/api/auth/reconcile-mfa");
     expect(reconcile.status()).toBe(200);
   }
   await page.goto(`${WEB}/inversores`, { waitUntil: "networkidle" });
@@ -224,13 +252,16 @@ test.describe("investor E2E flow", () => {
     expect(downloadLinks).toBe(0);
   });
 
-  test("7. verification shows disabled KYC, button disabled", async () => {
+  test("7. KYC shows preparatory flow without fake external verification", async () => {
     await page.goto(`${WEB}/inversores/verificacion`, { waitUntil: "networkidle" });
     await page.waitForTimeout(2000);
     const bodyText = await page.textContent("body");
-    expect(bodyText).toContain("todavía no está disponible");
-    const button = page.getByRole("button").filter({ hasText: /iniciar verificación/i }).first();
-    expect(await button.isDisabled().catch(() => true)).toBe(true);
+    expect(bodyText).toContain("Completa tu verificación KYC");
+    expect(bodyText).toContain("Proveedor KYC no configurado");
+    expect(bodyText).toContain("No se generan enlaces, códigos QR ni estados verificados ficticios");
+    expect(page.getByRole("button", { name: /continuar/i })).toBeDisabled();
+    await page.getByRole("button", { name: /persona física/i }).click();
+    await expect(page.getByRole("button", { name: /^continuar$/i })).toBeEnabled();
   });
 
   test("8. no fake amounts in any private investor page", async () => {
@@ -247,7 +278,7 @@ test.describe("investor E2E flow", () => {
   test("9. logout invalidates session", async () => {
     await page.goto(`${WEB}/inversores/cuenta`, { waitUntil: "networkidle" });
     await page.waitForTimeout(2000);
-    const signOut = await page.context().request.post("/api/auth/sign-out", { headers: { Origin: WEB } });
+    const signOut = await requestPost(page.context().request, "/api/auth/sign-out");
     expect([200, 302, 303]).toContain(signOut.status());
     await page.goto(`${WEB}/inversores`, { waitUntil: "domcontentloaded" });
     await page.waitForTimeout(2000);
@@ -284,17 +315,17 @@ test.describe("investor API security", () => {
   });
 
   test("A1. API dashboard returns 200 after investor login", async () => {
-    const res = await secPage.request.get("/api/investor/dashboard");
+    const res = await requestGet(secPage.request, "/api/investor/dashboard");
     expect(res.status()).toBe(200);
   });
 
   test("A2. investor gets 401 on admin opportunities endpoint", async () => {
-    const res = await secPage.request.get("/api/v1/admin/opportunities");
+    const res = await requestGet(secPage.request, "/api/v1/admin/opportunities");
     expect(res.status()).toBeGreaterThanOrEqual(400);
   });
 
   test("A3. investor gets 401 on admin users endpoint", async () => {
-    const res = await secPage.request.get("/api/v1/admin/users");
+    const res = await requestGet(secPage.request, "/api/v1/admin/users");
     expect(res.status()).toBeGreaterThanOrEqual(400);
   });
 

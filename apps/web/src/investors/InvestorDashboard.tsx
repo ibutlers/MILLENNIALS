@@ -47,7 +47,7 @@ export function InvestorDashboard() {
         <QuickLink to="/inversores/perfil" title="Perfil" description="Revisa los datos que tenemos registrados sobre ti." />
         <QuickLink to="/inversores/cartera" title="Cartera" description="Tus inversiones activas y su estado actual." />
         <QuickLink to="/inversores/documentos" title="Documentos" description="Contratos, certificados y documentación de tus proyectos." />
-        <QuickLink to="/inversores/verificacion" title="Verificación" description="Estado de tu proceso de verificación de identidad (KYC)." />
+        <QuickLink to="/inversores/verificacion" title="KYC" description="Completa tu perfil y revisa el estado de verificación de identidad." />
         <QuickLink to="/inversores/oportunidades" title="Oportunidades" description="Catálogo público de oportunidades de inversión." />
         <QuickLink to="/inversores/cuenta" title="Cuenta" description="Configuración, sesiones activas y seguridad." />
       </div>

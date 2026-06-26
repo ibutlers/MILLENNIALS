@@ -7,7 +7,7 @@ const navItems = [
   { label: 'Perfil', href: '/inversores/perfil' },
   { label: 'Cartera', href: '/inversores/cartera' },
   { label: 'Documentos', href: '/inversores/documentos' },
-  { label: 'Verificación', href: '/inversores/verificacion' },
+  { label: 'KYC', href: '/inversores/verificacion' },
   { label: 'Oportunidades', href: '/inversores/oportunidades' },
   { label: 'Cuenta', href: '/inversores/cuenta' },
 ];
