@@ -410,11 +410,11 @@ function Methodology() {
 
 // ── Opportunity card ──
 
-function CardMetric({ label, value, emphasis = false }: { label: string; value: string; emphasis?: boolean }) {
+function CardMetric({ label, value }: { label: string; value: string }) {
   return (
-    <div className="min-w-0 rounded-xl border border-frost/80 bg-lavender/55 p-3">
-      <dt className="text-[0.62rem] font-black uppercase tracking-[0.1em] text-charcoal/55">{label}</dt>
-      <dd className={`mt-1 break-words ${emphasis ? 'font-serif text-2xl leading-none tracking-[-0.03em]' : 'text-sm font-bold'} text-ink`}>{value}</dd>
+    <div className="min-w-0 rounded-xl border border-frost/80 bg-lavender/45 p-3">
+      <dt className="text-[0.62rem] font-black uppercase tracking-[0.12em] text-charcoal/70">{label}</dt>
+      <dd className="mt-1 break-words text-sm font-bold text-ink">{value}</dd>
     </div>
   );
 }
@@ -426,44 +426,58 @@ function OpportunityCard({ opportunity }: { opportunity: PublicOpportunity }) {
   const showProgress = showFinancials;
   const isFunded = progress === 100 && showProgress;
   const investment = getInvestmentBreakdown(opportunity);
+  const imageIsProvisional = !opportunity.primaryImage || /provisional/i.test(opportunity.primaryImage.altText);
+  const secondaryMetrics = showFinancials
+    ? [
+        { label: 'Plazo estimado', value: `${opportunity.estimatedTermMonths} meses` },
+        { label: 'Ticket mínimo', value: opportunity.minimumInvestment?.formatted ?? '—' },
+        { label: 'Inversión total', value: investment.total }
+      ]
+    : [
+        { label: 'Estado', value: statusLabel(opportunity.status) },
+        { label: 'Activo', value: opportunity.assetType },
+        { label: 'Estrategia', value: opportunity.strategy }
+      ];
 
   return (
-    <article className="group relative flex h-full flex-col overflow-hidden rounded-2xl border border-frost/90 bg-white shadow-[0_18px_55px_rgba(5,5,5,0.045)] transition duration-300 hover:-translate-y-1 hover:border-electric/25 hover:shadow-[0_24px_70px_rgba(45,80,236,0.10)] focus-within:border-electric/40 focus-within:ring-2 focus-within:ring-electric/25">
-      <div className="relative aspect-[4/3] overflow-hidden bg-electric/5">
+    <article className="group relative flex h-full flex-col overflow-hidden rounded-[1.4rem] border border-frost/90 bg-white shadow-[0_18px_55px_rgba(5,5,5,0.045)] transition duration-300 hover:-translate-y-1 hover:border-electric/25 hover:shadow-[0_28px_80px_rgba(45,80,236,0.11)] focus-within:border-electric/40 focus-within:ring-2 focus-within:ring-electric/25">
+      <div className="relative aspect-[16/10] overflow-hidden bg-electric/5">
         {opportunity.primaryImage ? (
-          <img src={opportunity.primaryImage.url} alt={opportunity.primaryImage.altText} width="900" height="675" loading="lazy" className="h-full w-full object-cover transition duration-500 group-hover:scale-[1.035]" />
+          <img src={opportunity.primaryImage.url} alt={opportunity.primaryImage.altText} width="960" height="600" loading="lazy" className="h-full w-full object-cover transition duration-500 group-hover:scale-[1.035]" />
         ) : (
           <div className="h-full w-full" role="img" aria-label="Imagen pendiente de publicar" />
         )}
-        <div className="pointer-events-none absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-ink/20 to-transparent" aria-hidden="true" />
-        {!opportunity.primaryImage ? <span className="absolute bottom-2 right-2 bg-ink/50 px-2 py-0.5 text-[0.58rem] font-medium uppercase tracking-[0.12em] text-white/80 backdrop-blur-sm">IMAGEN PROVISIONAL</span> : null}
+        <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-ink/45 via-ink/5 to-transparent" aria-hidden="true" />
+        <div className="absolute left-4 top-4 flex flex-wrap items-center gap-1.5">
+          <span className="rounded-full border border-white/40 bg-white/90 px-2.5 py-1 text-[0.62rem] font-black uppercase tracking-[0.15em] text-electric shadow-sm backdrop-blur">{statusLabel(opportunity.status)}</span>
+          {isFunded ? <span className="rounded-full border border-white/40 bg-white/90 px-2.5 py-1 text-[0.62rem] font-black uppercase tracking-[0.15em] text-electric shadow-sm backdrop-blur">Financiación cerrada</span> : null}
+        </div>
+        <div className="absolute inset-x-4 bottom-4 flex items-end justify-between gap-3">
+          <p className="text-xs font-black uppercase tracking-[0.16em] text-white drop-shadow-sm">{location}</p>
+          {imageIsProvisional ? <span className="flex-shrink-0 rounded-full bg-ink/55 px-2.5 py-1 text-[0.58rem] font-bold uppercase tracking-[0.12em] text-white/90 backdrop-blur-sm">Imagen provisional</span> : null}
+        </div>
       </div>
       <div className="flex flex-1 flex-col p-5 sm:p-6">
-        <div className="flex flex-wrap items-center gap-1.5">
-          <span className="rounded-full border border-electric/25 bg-electric/5 px-2.5 py-1 text-[0.62rem] font-black uppercase tracking-[0.15em] text-electric">{statusLabel(opportunity.status)}</span>
-          {isFunded ? <span className="rounded-full border border-electric/25 bg-electric/5 px-2.5 py-1 text-[0.62rem] font-black uppercase tracking-[0.15em] text-electric">Financiación cerrada</span> : null}
-          {opportunity.strategy === 'Cambio de uso' ? <span className="rounded-full border border-frost bg-white px-2.5 py-1 text-[0.62rem] font-semibold uppercase tracking-[0.14em] text-charcoal/55">Cambio de uso</span> : null}
+        <div className="flex flex-wrap items-center gap-2 text-[0.66rem] font-black uppercase tracking-[0.14em] text-charcoal/70">
+          <span>{opportunity.assetType}</span>
+          <span aria-hidden="true" className="text-electric">•</span>
+          <span>{opportunity.strategy}</span>
         </div>
-        <h3 className="mt-4 min-h-[4.5rem] font-serif text-[1.65rem] leading-[1.08] tracking-[-0.03em] text-ink line-clamp-3">{opportunity.title}</h3>
-        <p className="mt-2 text-xs font-black uppercase tracking-[0.16em] text-charcoal/50">{location}</p>
+        <h3 className="mt-4 min-h-[4.4rem] font-serif text-[1.72rem] leading-[1.05] tracking-[-0.04em] text-ink line-clamp-3">{opportunity.title}</h3>
+        <p className="mt-3 leading-7 text-charcoal/70 line-clamp-3">{opportunity.shortDescription}</p>
         {showProgress ? (
-          <div className="mt-4">
-            <div className="mb-2 flex justify-between gap-3 text-[0.68rem] font-black uppercase tracking-[0.14em] text-charcoal/50"><span>Financiación</span><span>Capital cubierto · {formatProgress(progress)}</span></div>
+          <div className="mt-5 rounded-2xl border border-frost/80 bg-white p-3.5">
+            <div className="mb-2 flex justify-between gap-3 text-[0.68rem] font-black uppercase tracking-[0.14em] text-charcoal/70"><span>Financiación</span><span>Capital cubierto · {formatProgress(progress)}</span></div>
             <div className="h-2 overflow-hidden rounded-full bg-frost" role="progressbar" aria-label="Financiación comprometida" aria-valuemin={0} aria-valuemax={100} aria-valuenow={progress}><div className="h-2 rounded-full bg-electric" style={{ width: `${progress}%` }} /></div>
           </div>
         ) : null}
-        {showFinancials ? (
-          <dl className="mt-5 grid grid-cols-2 gap-2 text-sm">
-            <CardMetric label="Rentabilidad total estimada" value={formatReturnValue(opportunity.targetReturn, opportunity.estimatedTermMonths)} emphasis />
-            <CardMetric label="Plazo estimado" value={`${opportunity.estimatedTermMonths} meses`} />
-            <CardMetric label="Ticket mínimo" value={opportunity.minimumInvestment?.formatted ?? '—'} />
-            <CardMetric label="Inversión total" value={investment.total} />
-          </dl>
-        ) : null}
+        <dl className="mt-4 grid grid-cols-2 gap-2 text-sm">
+          {showFinancials ? <CardMetric label="Retorno estimado" value={formatReturnValue(opportunity.targetReturn, opportunity.estimatedTermMonths)} /> : null}
+          {secondaryMetrics.map((metric) => <CardMetric key={metric.label} label={metric.label} value={metric.value} />)}
+        </dl>
         <div className="mt-auto pt-5">
-          <p className="leading-7 text-charcoal/70 line-clamp-4">{opportunity.shortDescription}</p>
-          <span aria-hidden="true" className="mt-5 inline-flex items-center gap-2 rounded-full border border-frost px-4 py-2.5 text-xs font-black uppercase tracking-[0.14em] text-ink transition group-hover:border-electric/40 group-hover:text-electric">
-            Ver proyecto <span aria-hidden="true">→</span>
+          <span aria-hidden="true" className="inline-flex items-center gap-2 rounded-full bg-electric px-4 py-2.5 text-xs font-black uppercase tracking-[0.14em] text-white shadow-[0_12px_32px_rgba(45,80,236,0.20)] transition group-hover:bg-electric-hover">
+            Ver ficha pública <span aria-hidden="true">→</span>
           </span>
         </div>
       </div>

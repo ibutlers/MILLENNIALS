@@ -56,7 +56,7 @@ describe('public opportunities catalog', () => {
     expect(within(card).getByText(/42,4%/)).toBeInTheDocument();
     expect(within(card).getByRole('progressbar', { name: /financiación/i })).toHaveAttribute('aria-valuenow', '42.4');
     expect(within(card).getByText(/18 meses/i)).toBeInTheDocument();
-    expect(within(card).getByText(/rentabilidad total/i)).toBeInTheDocument();
+    expect(within(card).getByText(/retorno estimado/i)).toBeInTheDocument();
     expect(within(card).getByText(/12,3% \+50%\*/i)).toBeInTheDocument();
     expect(within(card).getByRole('link', { name: /ver proyecto/i })).toHaveAttribute('href', '/proyectos/eixample-rehabilitacion-luminosa');
     const zeroProgressCard = cards[1];
@@ -110,7 +110,7 @@ describe('public opportunity detail', () => {
     expect(screen.getByText(/financiación bancaria/i)).toBeInTheDocument();
     expect(screen.getByRole('progressbar', { name: /financiación/i })).toHaveAttribute('aria-valuenow', '42.4');
     expect(screen.getByText(/ticket mínimo/i)).toBeInTheDocument();
-    expect(screen.getByText(/rentabilidad total objetivo estimada/i)).toBeInTheDocument();
+    expect(screen.getByText(/retorno estimado/i)).toBeInTheDocument();
     expect(screen.getByText(/12,3% \+50%\*/i)).toBeInTheDocument();
     expect(document.body).not.toHaveTextContent(/nivel de riesgo|riesgo medio/i);
     expect(screen.getByRole('heading', { name: /highlights/i })).toBeInTheDocument();
@@ -118,7 +118,7 @@ describe('public opportunity detail', () => {
     expect(screen.getByRole('heading', { name: /hitos/i })).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: /media disponible/i })).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: /próximos pasos/i })).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: /solicitar información/i })).toHaveAttribute('href', '/proyectos/eixample-rehabilitacion-luminosa/solicitar-informacion');
+    expect(screen.getAllByRole('link', { name: /solicitar información/i })[0]).toHaveAttribute('href', '/proyectos/eixample-rehabilitacion-luminosa/solicitar-informacion');
     expect(screen.getByRole('link', { name: /coinvierte con nosotros/i })).toHaveAttribute('href', '/coinvierte');
     expect(document.body).not.toHaveTextContent(/invertir ahora|simulador|orden de inversión/i);
   });
