@@ -429,9 +429,10 @@ function OpportunityCard({ opportunity }: { opportunity: PublicOpportunity }) {
   const imageIsProvisional = !opportunity.primaryImage || /provisional/i.test(opportunity.primaryImage.altText);
   const secondaryMetrics = showFinancials
     ? [
+        { label: 'Inversión total', value: investment.total },
         { label: 'Plazo estimado', value: `${opportunity.estimatedTermMonths} meses` },
         { label: 'Ticket mínimo', value: opportunity.minimumInvestment?.formatted ?? '—' },
-        { label: 'Inversión total', value: investment.total }
+        { label: 'Retorno estimado', value: formatReturnValue(opportunity.targetReturn, opportunity.estimatedTermMonths) }
       ]
     : [
         { label: 'Estado', value: statusLabel(opportunity.status) },
@@ -472,7 +473,6 @@ function OpportunityCard({ opportunity }: { opportunity: PublicOpportunity }) {
           </div>
         ) : null}
         <dl className="mt-4 grid grid-cols-2 gap-2 text-sm">
-          {showFinancials ? <CardMetric label="Retorno estimado" value={formatReturnValue(opportunity.targetReturn, opportunity.estimatedTermMonths)} /> : null}
           {secondaryMetrics.map((metric) => <CardMetric key={metric.label} label={metric.label} value={metric.value} />)}
         </dl>
         <div className="mt-auto pt-5">

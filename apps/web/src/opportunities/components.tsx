@@ -69,10 +69,10 @@ export function OpportunityCard({ opportunity, preserveSearch = true }: { opport
         {showProgress ? <div className="mt-4"><FundingProgress value={opportunity.fundingProgress} /></div> : null}
         {showFinancials ? (
           <dl className="mt-5 grid grid-cols-2 gap-2 lg:grid-cols-3">
-            <Metric label="Retorno estimado" value={formatReturnValue(opportunity.targetReturn, opportunity.estimatedTermMonths)} />
+            <Metric label="Inversión total" value={investment.total} />
             <Metric label="Plazo" value={`${opportunity.estimatedTermMonths} meses`} />
             <Metric label="Ticket mínimo" value={opportunity.minimumInvestment?.formatted ?? '—'} />
-            <Metric label="Inversión total" value={investment.total} />
+            <Metric label="Retorno estimado" value={formatReturnValue(opportunity.targetReturn, opportunity.estimatedTermMonths)} />
             <Metric label="Fondos aportados" value={investment.contributed} />
             <Metric label="Financiación bancaria" value={investment.bankFinanced} />
           </dl>

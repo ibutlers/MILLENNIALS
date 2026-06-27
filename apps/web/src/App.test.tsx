@@ -92,6 +92,11 @@ describe('MILLENNIALS CONSTRUYEN landing', () => {
 
     // Verify the first project card links to the expected slug
     expect(projectLinks[0].getAttribute('href')).toContain('eixample-rehabilitacion-luminosa');
+    const firstProjectCard = projectLinks[0].closest('article');
+    expect(firstProjectCard).not.toBeNull();
+    const firstProjectText = firstProjectCard?.textContent ?? '';
+    expect(firstProjectText.indexOf('Inversión total')).toBeGreaterThanOrEqual(0);
+    expect(firstProjectText.indexOf('Inversión total')).toBeLessThan(firstProjectText.indexOf('Retorno estimado'));
     // Disclaimer present on page
     expect(screen.getByText(/datos ilustrativos/i)).toBeInTheDocument();
     expect(screen.getByText(/los objetivos no están garantizados/i)).toBeInTheDocument();

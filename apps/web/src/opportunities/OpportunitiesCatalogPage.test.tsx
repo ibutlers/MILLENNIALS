@@ -46,6 +46,9 @@ describe('public opportunities catalog', () => {
     expect(within(card).getByText(/rehabilitación energética/i)).toBeInTheDocument();
     expect(within(card).getByText(/en financiación/i)).toBeInTheDocument();
     expect(within(card).queryByText(/nivel de riesgo|riesgo medio/i)).not.toBeInTheDocument();
+    const cardText = card.textContent ?? '';
+    expect(cardText.indexOf('Inversión total')).toBeGreaterThanOrEqual(0);
+    expect(cardText.indexOf('Inversión total')).toBeLessThan(cardText.indexOf('Retorno estimado'));
     expect(within(card).getByText(/15\.000\s*€/)).toBeInTheDocument();
     expect(within(card).getByText(/inversión total/i)).toBeInTheDocument();
     expect(within(card).getByText(/680\.000\s*€/)).toBeInTheDocument();
