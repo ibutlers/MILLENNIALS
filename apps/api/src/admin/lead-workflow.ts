@@ -188,7 +188,7 @@ export async function upsertProjectCapitalAssignment(
     }
 
     const { rows: [opportunity] } = await client.query(
-      `SELECT id, currency FROM opportunities WHERE id::text = $1 OR slug = $1 FOR UPDATE`,
+      `SELECT id, currency, committed_amount_cents FROM opportunities WHERE id::text = $1 OR slug = $1 FOR UPDATE`,
       [input.opportunityId],
     );
     if (!opportunity) {
@@ -224,19 +224,6 @@ export async function upsertProjectCapitalAssignment(
       [appUser.id, opportunity.id, input.status, input.actorId ?? null, input.status === 'revoked' ? 'Revocado desde admin' : null, amount, input.currency.toUpperCase(), input.notes ?? null],
     );
 
-    const { rows: [projectTotals] } = await client.query(
-      `UPDATE opportunities o
-       SET committed_amount_cents = COALESCE((
-         SELECT SUM(committed_amount_cents)::bigint
-         FROM project_user_access
-         WHERE opportunity_id = o.id AND status = 'active'
-       ), 0),
-       updated_at = now()
-       WHERE o.id = $1
-       RETURNING committed_amount_cents`,
-      [opportunity.id],
-    );
-
     await audit(client, {
       actorId: input.actorId,
       action: 'project_capital_assignment_upserted',
@@ -253,7 +240,7 @@ export async function upsertProjectCapitalAssignment(
     await client.query('COMMIT');
     return {
       assignment,
-      projectCommittedAmountCents: Number(projectTotals.committed_amount_cents ?? 0),
+      projectCommittedAmountCents: Number(opportunity.committed_amount_cents ?? 0),
     };
   } catch (err) {
     await client.query('ROLLBACK').catch(() => {});

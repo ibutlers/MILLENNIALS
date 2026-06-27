@@ -107,7 +107,6 @@ describe('investment request workflow', () => {
       [{ id: 'req-1', public_reference: 'IR-TEST', status: 'transfer_reported', app_user_id: 'app-1', opportunity_id: 'opp-1', approved_amount_cents: 2500000, currency: 'EUR' }],
       [{ id: 'req-1', public_reference: 'IR-TEST', status: 'confirmed', confirmed_at: new Date().toISOString() }],
       [{ id: 'access-1' }],
-      [{ committed_amount_cents: 2500000 }],
       [],
       [],
     ]);
@@ -120,6 +119,6 @@ describe('investment request workflow', () => {
 
     expect(result.status).toBe('confirmed');
     expect(calls.some((c) => /INSERT INTO project_user_access/i.test(c.sql) && /committed_amount_cents/i.test(c.sql))).toBe(true);
-    expect(calls.some((c) => /UPDATE opportunities/i.test(c.sql) && /committed_amount_cents/i.test(c.sql))).toBe(true);
+    expect(calls.some((c) => /UPDATE opportunities/i.test(c.sql) && /committed_amount_cents/i.test(c.sql))).toBe(false);
   });
 });

@@ -259,18 +259,6 @@ export async function confirmInvestmentRequest(
       [request.app_user_id, request.opportunity_id, input.actorId, amount, request.currency, input.confirmationNotes ?? 'Transferencia confirmada'],
     );
 
-    await client.query(
-      `UPDATE opportunities o
-       SET committed_amount_cents = COALESCE((
-         SELECT SUM(committed_amount_cents)::bigint
-         FROM project_user_access
-         WHERE opportunity_id = o.id AND status = 'active'
-       ), 0), updated_at=now()
-       WHERE o.id=$1
-       RETURNING committed_amount_cents`,
-      [request.opportunity_id],
-    );
-
     await audit(client, {
       actorId: input.actorId,
       action: 'investment_request_confirmed',

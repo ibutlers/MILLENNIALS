@@ -56,13 +56,12 @@ describe('lead workflow', () => {
     expect(calls.some((c) => /UPDATE leads/i.test(c.sql) && /assigned_user_id/i.test(c.sql))).toBe(true);
   });
 
-  it('upserts project access with committed capital and recomputes project committed amount', async () => {
+  it('upserts project access with committed capital without mutating the public project committed amount', async () => {
     const { pool, calls } = makeClient([
       [],
       [{ id: 'app-1', email_normalized: 'user@example.com', status: 'active' }],
-      [{ id: 'opp-1', currency: 'EUR' }],
+      [{ id: 'opp-1', currency: 'EUR', committed_amount_cents: 80000000 }],
       [{ id: 'access-1', app_user_id: 'app-1', opportunity_id: 'opp-1', committed_amount_cents: 2500000, status: 'active' }],
-      [{ committed_amount_cents: 2500000 }],
       [],
       [],
     ]);
@@ -78,7 +77,8 @@ describe('lead workflow', () => {
     });
 
     expect(result.assignment.committed_amount_cents).toBe(2500000);
+    expect(result.projectCommittedAmountCents).toBe(80000000);
     expect(calls.some((c) => /INSERT INTO project_user_access/i.test(c.sql) && /committed_amount_cents/i.test(c.sql))).toBe(true);
-    expect(calls.some((c) => /UPDATE opportunities/i.test(c.sql) && /committed_amount_cents/i.test(c.sql))).toBe(true);
+    expect(calls.some((c) => /UPDATE opportunities/i.test(c.sql) && /committed_amount_cents/i.test(c.sql))).toBe(false);
   });
 });

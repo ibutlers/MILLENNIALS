@@ -163,7 +163,7 @@ export default function AdminUserDetail() {
       {roles.includes('investor') && (
         <section className="rounded border border-[#1A3E48] bg-[#08191C] p-5">
           <h3 className="font-serif text-lg text-[#7FA88C]">Capital y acceso por proyecto</h3>
-          <p className="mt-1 text-sm text-[#9B7E5F]">Asigna el capital comprometido real del inversor. Esto concede acceso al proyecto y actualiza el capital comprometido agregado del proyecto.</p>
+          <p className="mt-1 text-sm text-[#9B7E5F]">Asigna el capital real de este inversor y concede acceso al proyecto. La métrica pública de capital del proyecto se gestiona en la ficha del proyecto.</p>
 
           <div className="mt-4 grid gap-3 lg:grid-cols-[1.2fr_0.7fr_1fr_auto]">
             <select value={assignment.opportunityId} onChange={(e) => setAssignment((prev) => ({ ...prev, opportunityId: e.target.value }))} className="rounded border border-[#1A3E48] bg-[#0F2A30] px-3 py-2 text-sm text-[#FBF7F0] focus:border-[#7FA88C] focus:outline-none">
@@ -177,7 +177,7 @@ export default function AdminUserDetail() {
 
           <div className="mt-5 overflow-x-auto rounded border border-[#1A3E48]">
             <table className="w-full text-sm">
-              <thead><tr className="border-b border-[#1A3E48] text-left text-[#9B7E5F]"><th className="p-3">Proyecto</th><th className="p-3">Estado</th><th className="p-3">Capital inversor</th><th className="p-3">Capital proyecto</th><th className="p-3">Acciones</th></tr></thead>
+              <thead><tr className="border-b border-[#1A3E48] text-left text-[#9B7E5F]"><th className="p-3">Proyecto</th><th className="p-3">Estado</th><th className="p-3">Capital inversor</th><th className="p-3">Capital público proyecto</th><th className="p-3">Acciones</th></tr></thead>
               <tbody>
                 {activeAssignments.length === 0 ? <tr><td colSpan={5} className="p-4 text-center text-[#5C8D7A]">Sin capital asignado.</td></tr> : activeAssignments.map((item) => (
                   <tr key={item.opportunity_id} className="border-b border-[#0F2A30]">
