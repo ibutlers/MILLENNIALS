@@ -40,6 +40,37 @@ export interface InvestmentRequest {
   transfer_reference: string | null;
 }
 
+export interface InvestorMoney {
+  cents: number;
+  currency: string;
+  formatted: string;
+}
+
+export interface InvestorOpportunity {
+  slug: string;
+  title: string;
+  shortDescription: string;
+  city: string;
+  countryCode: string;
+  district: string | null;
+  assetType: string;
+  strategy: string;
+  status: string;
+  currency: string;
+  projectTotalAmount: InvestorMoney | null;
+  minimumInvestment: InvestorMoney | null;
+  estimatedTermMonths: number;
+  publicReturnDisplay: string;
+  fundingProgress: number;
+  primaryImage: { type: string; url: string; altText: string; position: number } | null;
+  investorAccess: {
+    status: string;
+    committedAmount: InvestorMoney | null;
+    notes: string | null;
+  } | null;
+  investmentRequests: InvestmentRequest[];
+}
+
 export interface InvestorProviderHealth {
   configured: boolean;
   status: string;
@@ -129,4 +160,8 @@ export function investorErrorTitle(error: InvestorApiError): string {
   if (error.kind === 'server') return 'Servicio temporalmente no disponible';
   if (error.kind === 'network') return 'Sin conexión';
   return 'No se ha podido cargar la información';
+}
+
+export function fetchInvestorOpportunities(signal?: AbortSignal): Promise<InvestorOpportunity[]> {
+  return fetchInvestorJson<InvestorOpportunity[]>('/api/investor/opportunities', signal);
 }

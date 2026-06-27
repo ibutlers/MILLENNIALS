@@ -1,5 +1,5 @@
 import { FormEvent, useEffect, useRef, useState } from 'react';
-import { fetchPublicOpportunities, formatProgress, formatReturnValue, getInvestmentBreakdown, statusLabel, type PublicOpportunity } from './opportunities/api';
+import { fetchPublicOpportunities, formatProgress, statusLabel, type PublicOpportunity } from './opportunities/api';
 import { submitContact, submitCoinvest, type ContactCreated, type CoinvestCreated } from './leads/api';
 
 const navigation = [
@@ -422,17 +422,16 @@ function CardMetric({ label, value }: { label: string; value: string }) {
 function OpportunityCard({ opportunity }: { opportunity: PublicOpportunity }) {
   const progress = Math.max(0, Math.min(100, opportunity.fundingProgress));
   const location = [opportunity.city, opportunity.district].filter(Boolean).join(' · ');
-  const showFinancials = (opportunity.targetAmount?.cents ?? 0) > 1;
+  const showFinancials = (opportunity.projectTotalAmount?.cents ?? 0) > 1;
   const showProgress = showFinancials;
   const isFunded = progress === 100 && showProgress;
-  const investment = getInvestmentBreakdown(opportunity);
   const imageIsProvisional = !opportunity.primaryImage || /provisional/i.test(opportunity.primaryImage.altText);
   const secondaryMetrics = showFinancials
     ? [
-        { label: 'Inversión total', value: investment.total },
+        { label: 'Inversión total', value: opportunity.projectTotalAmount?.formatted ?? '—' },
         { label: 'Plazo estimado', value: `${opportunity.estimatedTermMonths} meses` },
         { label: 'Ticket mínimo', value: opportunity.minimumInvestment?.formatted ?? '—' },
-        { label: 'Retorno estimado', value: formatReturnValue(opportunity.targetReturn, opportunity.estimatedTermMonths) }
+        { label: 'Retorno estimado', value: opportunity.publicReturnDisplay }
       ]
     : [
         { label: 'Estado', value: statusLabel(opportunity.status) },

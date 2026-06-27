@@ -40,6 +40,13 @@ export function calculateFundingProgress(committedCents: number | string | bigin
   return Math.max(0, Math.min(100, Math.round((committed / target) * 10_000) / 100));
 }
 
+export function formatPublicReturnDisplay(basisPoints: number | null, estimatedTermMonths: number): string {
+  if (basisPoints === null) return '—';
+  const totalReturnPercent = (basisPoints / 100) * (estimatedTermMonths / 12);
+  const formattedTotal = new Intl.NumberFormat('es-ES', { maximumFractionDigits: 1 }).format(totalReturnPercent);
+  return `${formattedTotal}% +50%*`;
+}
+
 export function serializeDate(value: Date | string | null): string | null {
   if (value === null) return null;
   if (value instanceof Date) return value.toISOString().slice(0, 10);

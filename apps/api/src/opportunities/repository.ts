@@ -1,6 +1,6 @@
 import type { Pool } from 'pg';
 import { DEMO_OPPORTUNITY_DISCLAIMER } from '../db/seed.js';
-import { calculateFundingProgress, serializeDate, serializeDateTime, serializeMoney, serializePercentage } from './finance.js';
+import { calculateFundingProgress, formatPublicReturnDisplay, serializeDate, serializeDateTime, serializeMoney } from './finance.js';
 import type { z } from 'zod';
 import { opportunityListQuerySchema } from './schemas.js';
 
@@ -63,20 +63,24 @@ function mapSummary(row: DbOpportunity, media: DbMedia | null = null) {
     strategy: row.strategy,
     status: row.status,
     currency,
-    targetAmount: serializeMoney(row.target_amount_cents, currency),
-    committedAmount: serializeMoney(row.committed_amount_cents, currency),
     projectTotalAmount: serializeMoney(row.project_total_amount_cents ?? row.target_amount_cents, currency),
-    bankFinancingAmount: serializeMoney(row.bank_financing_amount_cents ?? Math.max(0, Number(row.target_amount_cents) - Number(row.committed_amount_cents)), currency),
     minimumInvestment: serializeMoney(row.minimum_investment_cents, currency),
     estimatedTermMonths: row.estimated_term_months,
-    targetReturnType: row.target_return_type,
-    targetReturn: serializePercentage(row.target_return_bps),
-    riskLevel: row.risk_level,
-    closingDate: serializeDate(row.closing_date),
-    publishedAt: serializeDateTime(row.published_at),
+    publicReturnDisplay: formatPublicReturnDisplay(row.target_return_bps, row.estimated_term_months),
     fundingProgress: calculateFundingProgress(row.committed_amount_cents, row.target_amount_cents),
     primaryImage: media ? mapMedia(media) : null,
     disclaimer: DEMO_OPPORTUNITY_DISCLAIMER
+  };
+}
+
+function mapDetail(row: DbOpportunity, media: DbMedia | null = null) {
+  const currency = row.currency;
+  const totalCents = row.project_total_amount_cents ?? row.target_amount_cents;
+  return {
+    ...mapSummary(row, media),
+    publicCommittedAmount: serializeMoney(row.committed_amount_cents, currency),
+    bankFinancingAmount: serializeMoney(row.bank_financing_amount_cents ?? Math.max(0, Number(totalCents) - Number(row.committed_amount_cents)), currency),
+    closingDate: serializeDate(row.closing_date),
   };
 }
 
@@ -84,7 +88,7 @@ export class OpportunityRepository {
   constructor(private readonly pool: Pool) {}
 
   async list(query: ListQuery) {
-    const filters = ['o.visibility = $1', 'o.published_at IS NOT NULL'];
+    const filters = ['o.visibility = $1', "o.editorial_status = 'published'", 'o.published_at IS NOT NULL'];
     const values: unknown[] = ['public'];
 
     const addFilter = (sql: string, value: unknown) => {
@@ -130,7 +134,7 @@ export class OpportunityRepository {
   async findBySlug(slug: string) {
     const opportunity = await this.pool.query<DbOpportunity>(
       `SELECT * FROM opportunities
-       WHERE slug = $1 AND visibility = 'public' AND published_at IS NOT NULL
+       WHERE slug = $1 AND visibility = 'public' AND editorial_status = 'published' AND published_at IS NOT NULL
        LIMIT 1`,
       [slug]
     );
@@ -146,7 +150,7 @@ export class OpportunityRepository {
 
     return {
       data: {
-        ...mapSummary(row, media.rows[0] ?? null),
+        ...mapDetail(row, media.rows[0] ?? null),
         description: row.description ?? '',
         media: media.rows.map(mapMedia),
         highlights: highlights.rows,

@@ -24,7 +24,7 @@ describe('investment request workflow', () => {
   it('lets an active investor request investment only in open/funding public projects', async () => {
     const { pool, calls } = makeClient([
       [],
-      [{ id: 'opp-1', slug: 'vigo-open', status: 'open', visibility: 'public', published_at: new Date().toISOString(), currency: 'EUR', minimum_investment_cents: 1000000, target_amount_cents: 100000000, committed_amount_cents: 20000000 }],
+      [{ id: 'opp-1', slug: 'vigo-open', status: 'open', visibility: 'public', editorial_status: 'published', published_at: new Date().toISOString(), currency: 'EUR', minimum_investment_cents: 1000000, target_amount_cents: 100000000, committed_amount_cents: 20000000 }],
       [],
       [{ id: 'req-1', public_reference: 'IR-TEST', status: 'requested', requested_amount_cents: 2500000 }],
       [],
@@ -48,7 +48,7 @@ describe('investment request workflow', () => {
   it('rejects requests below the project minimum ticket before inserting anything', async () => {
     const { pool, calls } = makeClient([
       [],
-      [{ id: 'opp-1', slug: 'vigo-open', status: 'open', visibility: 'public', published_at: new Date().toISOString(), currency: 'EUR', minimum_investment_cents: 1000000, target_amount_cents: 100000000, committed_amount_cents: 0 }],
+      [{ id: 'opp-1', slug: 'vigo-open', status: 'open', visibility: 'public', editorial_status: 'published', published_at: new Date().toISOString(), currency: 'EUR', minimum_investment_cents: 1000000, target_amount_cents: 100000000, committed_amount_cents: 0 }],
     ]);
 
     await expect(createInvestmentRequest(pool as never, {

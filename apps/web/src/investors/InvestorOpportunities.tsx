@@ -1,22 +1,14 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router';
-import { fetchPublicOpportunities, type PublicOpportunity, statusLabel } from '../opportunities/api';
+import { statusLabel, type OpportunityStatus } from '../opportunities/api';
 import { setPageMetadata } from '../metadata';
+import { fetchInvestorOpportunities, type InvestmentRequest, type InvestorOpportunity } from './api';
 
 type State =
   | { status: 'loading' }
   | { status: 'error' }
   | { status: 'empty' }
-  | { status: 'success'; data: PublicOpportunity[] };
-
-interface InvestmentRequest {
-  public_reference: string;
-  status: string;
-  opportunity_slug: string;
-  requested_amount_cents: number;
-  approved_amount_cents: number | null;
-  transfer_reference: string | null;
-}
+  | { status: 'success'; data: InvestorOpportunity[] };
 
 const STATUS_LABEL: Record<string, string> = {
   requested: 'Solicitada · pendiente de revisión',
@@ -38,8 +30,13 @@ function cents(centsValue: number | null | undefined, currency = 'EUR') {
   return ((centsValue ?? 0) / 100).toLocaleString('es-ES', { style: 'currency', currency });
 }
 
-function isOpen(status: PublicOpportunity['status']) {
+function isOpen(status: InvestorOpportunity['status']) {
   return status === 'open' || status === 'funding';
+}
+
+function publicStatusLabel(status: string) {
+  const knownStatuses = ['coming_soon', 'open', 'funding', 'funded', 'in_execution', 'in_study', 'commercializing', 'closed', 'cancelled'];
+  return knownStatuses.includes(status) ? statusLabel(status as OpportunityStatus) : status;
 }
 
 export function InvestorOpportunities() {
@@ -65,14 +62,16 @@ export function InvestorOpportunities() {
     setState({ status: 'loading' });
 
     Promise.all([
-      fetchPublicOpportunities(controller.signal, { limit: 20 }),
+      fetchInvestorOpportunities(controller.signal),
       reloadRequests(controller.signal),
     ])
-      .then(([response]) => {
-        if (response.data.length === 0) {
+      .then(([opportunities]) => {
+        const combinedRequests = opportunities.flatMap((opportunity) => opportunity.investmentRequests ?? []);
+        if (combinedRequests.length > 0) setRequests(combinedRequests);
+        if (opportunities.length === 0) {
           setState({ status: 'empty' });
         } else {
-          setState({ status: 'success', data: response.data });
+          setState({ status: 'success', data: opportunities });
         }
       })
       .catch((error: unknown) => {
@@ -83,7 +82,7 @@ export function InvestorOpportunities() {
     return () => controller.abort();
   }, []);
 
-  async function submitRequest(opportunity: PublicOpportunity) {
+  async function submitRequest(opportunity: InvestorOpportunity) {
     const current = form[opportunity.slug] ?? { amount: '', message: '' };
     const amountCents = eurToCents(current.amount);
     setSubmitting(opportunity.slug);
@@ -134,10 +133,10 @@ export function InvestorOpportunities() {
 
   return (
     <div className="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
-      <p className="text-xs font-black uppercase tracking-[0.24em] text-mineral">Oportunidades</p>
-      <h1 className="mt-4 font-serif text-5xl leading-[0.95] tracking-[-0.04em] sm:text-6xl">Oportunidades disponibles</h1>
+      <p className="text-xs font-black uppercase tracking-[0.24em] text-mineral">Catálogo inversor</p>
+      <h1 className="mt-4 font-serif text-5xl leading-[0.95] tracking-[-0.04em] sm:text-6xl">Catálogo público con acciones privadas</h1>
       <p className="mt-4 max-w-3xl text-lg leading-8 text-muted">
-        Puedes solicitar inversión en los proyectos abiertos. La solicitud llega al equipo, se acepta manualmente, después realizas transferencia y finalmente confirmamos la operación.
+        La información de proyecto visible aquí es pública. Si tienes acceso o una solicitud activa, añadimos tu estado privado, capital asignado y acciones de solicitud o transferencia.
       </p>
 
       {notice ? <div className="mt-6 border border-mineral/40 bg-petroleum p-4 text-sm leading-6 text-textLight" role="status">{notice}</div> : null}
@@ -179,17 +178,22 @@ export function InvestorOpportunities() {
             const current = form[opportunity.slug] ?? { amount: '', message: '' };
             const existing = requests.find((request) => request.opportunity_slug === opportunity.slug && ['requested', 'approved_pending_transfer', 'transfer_reported'].includes(request.status));
             return (
-              <article key={opportunity.slug} className="overflow-hidden border border-border bg-carbon transition hover:border-mineral/50">
+              <article key={opportunity.slug} aria-label={opportunity.title} className="overflow-hidden border border-border bg-carbon transition hover:border-mineral/50">
                 {opportunity.primaryImage ? <img src={opportunity.primaryImage.url} alt={opportunity.primaryImage.altText} width="900" height="600" loading="lazy" className="h-44 w-full object-cover opacity-80" /> : <div className="h-44 w-full bg-gradient-to-br from-petroleum to-carbon" role="img" aria-label="Imagen pendiente de publicar" />}
                 <div className="p-5">
                   <div className="flex flex-wrap items-center gap-2">
-                    <span className="border border-border px-2 py-0.5 text-[0.6rem] font-bold uppercase tracking-[0.14em] text-muted">{statusLabel(opportunity.status)}</span>
+                    <span className="border border-border px-2 py-0.5 text-[0.6rem] font-bold uppercase tracking-[0.14em] text-muted">{publicStatusLabel(opportunity.status)}</span>
                     {open ? <span className="border border-mineral/50 px-2 py-0.5 text-[0.6rem] font-black uppercase tracking-[0.14em] text-mineral">Abierta a solicitudes</span> : null}
                   </div>
                   <h3 className="mt-4 font-serif text-2xl leading-tight tracking-[-0.02em]">{opportunity.title}</h3>
                   <p className="mt-2 text-sm text-muted">{[opportunity.city, opportunity.district].filter(Boolean).join(' · ')}</p>
                   <p className="mt-3 line-clamp-2 text-sm leading-6 text-muted">{opportunity.shortDescription}</p>
-                  <div className="mt-4 grid gap-2 text-sm text-muted"><span>Ticket mínimo: {opportunity.minimumInvestment?.formatted ?? '—'}</span><span>Comprometido: {opportunity.committedAmount?.formatted ?? '—'}</span></div>
+                  <div className="mt-4 grid gap-2 text-sm text-muted">
+                    <span>Ticket mínimo: {opportunity.minimumInvestment?.formatted ?? '—'}</span>
+                    <span>Inversión total: {opportunity.projectTotalAmount?.formatted ?? '—'}</span>
+                    <span>Retorno estimado: {opportunity.publicReturnDisplay}</span>
+                    {opportunity.investorAccess ? <span>Capital asignado: {opportunity.investorAccess.committedAmount?.formatted ?? '—'}</span> : null}
+                  </div>
                   {open ? (
                     <div className="mt-4 space-y-2 rounded border border-border bg-petroleum p-3">
                       {existing ? <p className="text-sm text-mineral">Ya tienes una solicitud activa para este proyecto.</p> : (
@@ -201,7 +205,10 @@ export function InvestorOpportunities() {
                       )}
                     </div>
                   ) : <p className="mt-4 rounded border border-border bg-petroleum p-3 text-sm text-muted">Este proyecto no está abierto a nuevas solicitudes de inversión.</p>}
-                  <Link to={`/proyectos/${opportunity.slug}`} className="mt-4 inline-flex border border-border px-3 py-2 text-xs font-black uppercase tracking-[0.14em] text-textLight transition hover:border-mineral hover:text-mineral focus:outline-none focus-visible:ring-2 focus-visible:ring-mineralHover">Ver detalle público</Link>
+                  <div className="mt-4 flex flex-wrap gap-2">
+                    {opportunity.investorAccess ? <Link to={`/inversores/proyectos/${opportunity.slug}`} className="inline-flex border border-mineral px-3 py-2 text-xs font-black uppercase tracking-[0.14em] text-mineral transition hover:border-mineralHover hover:text-mineralHover focus:outline-none focus-visible:ring-2 focus-visible:ring-mineralHover">Ver detalle privado</Link> : null}
+                    <Link to={`/proyectos/${opportunity.slug}`} className="inline-flex border border-border px-3 py-2 text-xs font-black uppercase tracking-[0.14em] text-textLight transition hover:border-mineral hover:text-mineral focus:outline-none focus-visible:ring-2 focus-visible:ring-mineralHover">Ver detalle público</Link>
+                  </div>
                 </div>
               </article>
             );

@@ -142,6 +142,79 @@ describe('Private investor routes — project documents', () => {
     await app.close();
   });
 
+  it('serves an authenticated opportunities catalog with public project data plus per-user private state', async () => {
+    const pool = {
+      query: vi.fn(async () => ({
+        rows: [{
+          slug: 'plaza-america',
+          title: 'Promoción Plaza América',
+          short_description: 'Proyecto público con solicitud privada.',
+          city: 'Vigo',
+          country_code: 'ES',
+          district: 'Plaza América',
+          asset_type: 'Residencial',
+          strategy: 'Promoción residencial',
+          status: 'open',
+          currency: 'EUR',
+          project_total_amount_cents: '250000000',
+          minimum_investment_cents: '500000',
+          estimated_term_months: 36,
+          target_return_bps: 700,
+          committed_amount_cents: '80000000',
+          target_amount_cents: '80000000',
+          primary_image_url: '/images/plaza-america.jpg',
+          primary_image_alt_text: 'Fachada Plaza América',
+          access_status: 'active',
+          investor_committed_amount_cents: '2500000',
+          investor_currency: 'EUR',
+          investor_notes: 'Acceso concedido por el equipo',
+          investment_requests: [{ public_reference: 'IR-TEST', status: 'requested', requested_amount_cents: 2500000, approved_amount_cents: null, transfer_reference: null }],
+        }],
+      })),
+    };
+    const app = buildApp(pool);
+
+    const res = await app.inject({ method: 'GET', url: '/api/investor/opportunities' });
+
+    expect(res.statusCode).toBe(200);
+    expect(res.json()).toEqual({
+      data: [{
+        slug: 'plaza-america',
+        title: 'Promoción Plaza América',
+        shortDescription: 'Proyecto público con solicitud privada.',
+        city: 'Vigo',
+        countryCode: 'ES',
+        district: 'Plaza América',
+        assetType: 'Residencial',
+        strategy: 'Promoción residencial',
+        status: 'open',
+        currency: 'EUR',
+        projectTotalAmount: { cents: 250000000, currency: 'EUR', formatted: '2.500.000 €' },
+        minimumInvestment: { cents: 500000, currency: 'EUR', formatted: '5000 €' },
+        estimatedTermMonths: 36,
+        publicReturnDisplay: '21% +50%*',
+        fundingProgress: 100,
+        primaryImage: { type: 'image', url: '/images/plaza-america.jpg', altText: 'Fachada Plaza América', position: 0 },
+        investorAccess: {
+          status: 'active',
+          committedAmount: { cents: 2500000, currency: 'EUR', formatted: '25.000 €' },
+          notes: 'Acceso concedido por el equipo',
+        },
+        investmentRequests: [{ public_reference: 'IR-TEST', status: 'requested', requested_amount_cents: 2500000, approved_amount_cents: null, transfer_reference: null }],
+      }],
+    });
+    const [sql, params] = pool.query.mock.calls[0] as unknown as [string, unknown[]];
+    expect(sql).toContain("o.visibility = 'public'");
+    expect(sql).toContain("o.editorial_status = 'published'");
+    expect(sql).toContain('LEFT JOIN project_user_access pua');
+    expect(sql).toContain('LEFT JOIN LATERAL');
+    expect(sql).toContain('investment_requests');
+    expect(params).toEqual(['app_user_1']);
+    expect(JSON.stringify(res.json())).not.toMatch(/target_amount|risk_level|editorial_status|published_at/i);
+
+    await app.close();
+  });
+
   it('lists active private documents from the canonical documents table using id or slug', async () => {
     const pool = {
       query: vi.fn(async () => ({

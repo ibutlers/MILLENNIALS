@@ -2,7 +2,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect, type ReactNode } from 'react';
 import { Link, useParams, useSearchParams } from 'react-router';
 import { setPageMetadata } from '../metadata';
-import { fetchOpportunityDetail, formatDate, formatReturnValue, getInvestmentBreakdown, statusLabel, type OpportunityDetail } from './api';
+import { fetchOpportunityDetail, formatDate, getInvestmentBreakdown, statusLabel, type OpportunityDetail } from './api';
 import { FundingProgress, Metric, StatusBadge } from './components';
 
 function isProvisionalMedia(media: OpportunityDetail['media'][number] | OpportunityDetail['primaryImage'] | null | undefined) {
@@ -68,7 +68,7 @@ export function OpportunityDetailPage() {
   const mainImage = opportunity.media[0] ?? opportunity.primaryImage;
   const mainImageIsProvisional = isProvisionalMedia(mainImage);
   const location = [opportunity.city, opportunity.district, opportunity.countryCode].filter(Boolean).join(' · ');
-  const showFinancials = (opportunity.targetAmount?.cents ?? 0) > 1;
+  const showFinancials = (opportunity.projectTotalAmount?.cents ?? 0) > 1;
   const showProgress = showFinancials;
   const investment = getInvestmentBreakdown(opportunity);
   const mediaItems = opportunity.media.filter((media) => media.url !== mainImage?.url);
@@ -184,7 +184,7 @@ export function OpportunityDetailPage() {
                   <Metric label="Financiación bancaria" value={investment.bankFinanced} />
                   <Metric label="Ticket mínimo" value={opportunity.minimumInvestment?.formatted ?? '—'} />
                   <Metric label="Plazo" value={`${opportunity.estimatedTermMonths} meses`} />
-                  <Metric label="Retorno estimado" value={formatReturnValue(opportunity.targetReturn, opportunity.estimatedTermMonths)} />
+                  <Metric label="Retorno estimado" value={opportunity.publicReturnDisplay} />
                   <Metric label="Cierre" value={formatDate(opportunity.closingDate)} />
                   <Metric label="Estado" value={statusLabel(opportunity.status)} />
                 </dl>

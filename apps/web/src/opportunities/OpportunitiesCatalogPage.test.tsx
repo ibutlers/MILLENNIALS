@@ -52,10 +52,7 @@ describe('public opportunities catalog', () => {
     expect(within(card).getByText(/15\.000\s*€/)).toBeInTheDocument();
     expect(within(card).getByText(/inversión total/i)).toBeInTheDocument();
     expect(within(card).getByText(/680\.000\s*€/)).toBeInTheDocument();
-    expect(within(card).getByText(/fondos aportados/i)).toBeInTheDocument();
-    expect(within(card).getByText(/530\.000\s*€/)).toBeInTheDocument();
-    expect(within(card).getByText(/financiación bancaria/i)).toBeInTheDocument();
-    expect(within(card).getByText(/150\.000\s*€/)).toBeInTheDocument();
+    expect(within(card).queryByText(/fondos aportados|financiación bancaria/i)).not.toBeInTheDocument();
     expect(within(card).getByText(/42,4%/)).toBeInTheDocument();
     expect(within(card).getByRole('progressbar', { name: /financiación/i })).toHaveAttribute('aria-valuenow', '42.4');
     expect(within(card).getByText(/18 meses/i)).toBeInTheDocument();

@@ -1,5 +1,5 @@
 import { Link } from 'react-router';
-import { formatProgress, formatReturnValue, getInvestmentBreakdown, statusLabel, type PublicOpportunity } from './api';
+import { formatProgress, statusLabel, type PublicOpportunity } from './api';
 
 export function Metric({ label, value }: { label: string; value: string }) {
   return (
@@ -40,11 +40,10 @@ export function FundingProgress({ value, dark = false }: { value: number; dark?:
 export function OpportunityCard({ opportunity, preserveSearch = true }: { opportunity: PublicOpportunity; preserveSearch?: boolean }) {
   const location = [opportunity.city, opportunity.district].filter(Boolean).join(' · ');
   const detailHref = `/proyectos/${opportunity.slug}${preserveSearch && typeof window !== 'undefined' ? window.location.search : ''}`;
-  const showFinancials = (opportunity.targetAmount?.cents ?? 0) > 1;
+  const showFinancials = (opportunity.projectTotalAmount?.cents ?? 0) > 1;
   const progress = Math.max(0, Math.min(100, opportunity.fundingProgress));
   const showProgress = showFinancials;
   const isFunded = progress === 100 && showProgress;
-  const investment = getInvestmentBreakdown(opportunity);
   const imageIsProvisional = !opportunity.primaryImage || /provisional/i.test(opportunity.primaryImage.altText);
 
   return (
@@ -68,13 +67,11 @@ export function OpportunityCard({ opportunity, preserveSearch = true }: { opport
         <p className="mt-2 text-xs font-black uppercase tracking-[0.18em] text-charcoal/70">{location}</p>
         {showProgress ? <div className="mt-4"><FundingProgress value={opportunity.fundingProgress} /></div> : null}
         {showFinancials ? (
-          <dl className="mt-5 grid grid-cols-2 gap-2 lg:grid-cols-3">
-            <Metric label="Inversión total" value={investment.total} />
+          <dl className="mt-5 grid grid-cols-2 gap-2 lg:grid-cols-4">
+            <Metric label="Inversión total" value={opportunity.projectTotalAmount?.formatted ?? '—'} />
             <Metric label="Plazo" value={`${opportunity.estimatedTermMonths} meses`} />
             <Metric label="Ticket mínimo" value={opportunity.minimumInvestment?.formatted ?? '—'} />
-            <Metric label="Retorno estimado" value={formatReturnValue(opportunity.targetReturn, opportunity.estimatedTermMonths)} />
-            <Metric label="Fondos aportados" value={investment.contributed} />
-            <Metric label="Financiación bancaria" value={investment.bankFinanced} />
+            <Metric label="Retorno estimado" value={opportunity.publicReturnDisplay} />
           </dl>
         ) : null}
         <div className="mt-auto pt-5">

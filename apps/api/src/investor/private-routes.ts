@@ -16,6 +16,7 @@ import {
   requireProjectAccess,
 } from '../auth/middleware.js';
 import type { ProviderSet } from '../providers/index.js';
+import { calculateFundingProgress, formatPublicReturnDisplay, serializeMoney } from '../opportunities/finance.js';
 import { createInvestmentRequest, reportInvestmentTransfer } from './investment-requests.js';
 import { z } from 'zod';
 
@@ -55,6 +56,41 @@ type DocumentRow = {
   project_slug?: string;
   project_title?: string;
   has_storage_ref?: boolean | null;
+};
+
+type InvestorOpportunityRow = {
+  slug: string;
+  title: string;
+  short_description: string;
+  city: string;
+  country_code: string;
+  district: string | null;
+  asset_type: string;
+  strategy: string;
+  status: string;
+  currency: string;
+  project_total_amount_cents: string | number | null;
+  minimum_investment_cents: string | number;
+  estimated_term_months: number;
+  target_return_bps: number | null;
+  committed_amount_cents: string | number;
+  target_amount_cents: string | number;
+  primary_image_url: string | null;
+  primary_image_alt_text: string | null;
+  access_status: string | null;
+  investor_committed_amount_cents: string | number | null;
+  investor_currency: string | null;
+  investor_notes: string | null;
+  investment_requests: unknown;
+};
+
+type InvestmentRequestSummary = {
+  public_reference: string;
+  status: string;
+  opportunity_slug?: string;
+  requested_amount_cents: number;
+  approved_amount_cents: number | null;
+  transfer_reference: string | null;
 };
 
 async function isStorageConfigured(storageProvider: ProviderSet['storage'] | undefined): Promise<boolean> {
@@ -101,6 +137,52 @@ function serializeDocument(row: DocumentRow, storageConfigured: boolean) {
     ...(row.project_slug ? { project_slug: row.project_slug } : {}),
     ...(row.project_title ? { project_title: row.project_title } : {}),
     download_available: Boolean(row.has_storage_ref) && storageConfigured,
+  };
+}
+
+function parseInvestmentRequests(value: unknown): InvestmentRequestSummary[] {
+  if (Array.isArray(value)) return value as InvestmentRequestSummary[];
+  if (typeof value === 'string') {
+    try {
+      const parsed = JSON.parse(value) as unknown;
+      return Array.isArray(parsed) ? parsed as InvestmentRequestSummary[] : [];
+    } catch {
+      return [];
+    }
+  }
+  return [];
+}
+
+function serializeInvestorOpportunity(row: InvestorOpportunityRow) {
+  const currency = row.currency;
+  const committed = Number(row.investor_committed_amount_cents ?? 0);
+  return {
+    slug: row.slug,
+    title: row.title,
+    shortDescription: row.short_description,
+    city: row.city,
+    countryCode: row.country_code,
+    district: row.district,
+    assetType: row.asset_type,
+    strategy: row.strategy,
+    status: row.status,
+    currency,
+    projectTotalAmount: serializeMoney(row.project_total_amount_cents ?? row.target_amount_cents, currency),
+    minimumInvestment: serializeMoney(row.minimum_investment_cents, currency),
+    estimatedTermMonths: row.estimated_term_months,
+    publicReturnDisplay: formatPublicReturnDisplay(row.target_return_bps, row.estimated_term_months),
+    fundingProgress: calculateFundingProgress(row.committed_amount_cents, row.target_amount_cents),
+    primaryImage: row.primary_image_url
+      ? { type: 'image', url: row.primary_image_url, altText: row.primary_image_alt_text ?? row.title, position: 0 }
+      : null,
+    investorAccess: row.access_status
+      ? {
+        status: row.access_status,
+        committedAmount: serializeMoney(committed, row.investor_currency ?? currency),
+        notes: row.investor_notes,
+      }
+      : null,
+    investmentRequests: parseInvestmentRequests(row.investment_requests),
   };
 }
 
@@ -218,6 +300,69 @@ export function registerPrivateInvestorRoutes(
 
     const storageConfigured = await isStorageConfigured(storageProvider);
     return { data: (result.rows as DocumentRow[]).map((row) => serializeDocument(row, storageConfigured)) };
+  });
+
+  // ── GET /api/investor/opportunities ──
+  app.get('/api/investor/opportunities', {
+    preHandler: authChain,
+  }, async (request: FastifyRequest) => {
+    const appUser = (request as any).appUser;
+    const { rows } = await pool.query<InvestorOpportunityRow>(
+      `SELECT o.slug,
+              o.title,
+              o.short_description,
+              o.city,
+              o.country_code,
+              o.district,
+              o.asset_type,
+              o.strategy,
+              o.status,
+              o.currency,
+              o.project_total_amount_cents,
+              o.minimum_investment_cents,
+              o.estimated_term_months,
+              o.target_return_bps,
+              o.committed_amount_cents,
+              o.target_amount_cents,
+              m.url AS primary_image_url,
+              m.alt_text AS primary_image_alt_text,
+              pua.status AS access_status,
+              pua.committed_amount_cents AS investor_committed_amount_cents,
+              pua.currency AS investor_currency,
+              pua.notes AS investor_notes,
+              COALESCE(ir.requests, '[]'::jsonb) AS investment_requests
+       FROM opportunities o
+       LEFT JOIN LATERAL (
+         SELECT url, alt_text
+         FROM opportunity_media
+         WHERE opportunity_id = o.id AND type = 'image'
+         ORDER BY position ASC
+         LIMIT 1
+       ) m ON true
+       LEFT JOIN project_user_access pua ON pua.opportunity_id = o.id
+         AND pua.app_user_id = $1
+         AND pua.status = 'active'
+       LEFT JOIN LATERAL (
+         SELECT jsonb_agg(jsonb_build_object(
+           'public_reference', req.public_reference,
+           'status', req.status,
+           'opportunity_slug', o.slug,
+           'requested_amount_cents', req.requested_amount_cents,
+           'approved_amount_cents', req.approved_amount_cents,
+           'transfer_reference', req.transfer_reference
+         ) ORDER BY req.created_at DESC) AS requests
+         FROM investment_requests req
+         WHERE req.opportunity_id = o.id AND req.app_user_id = $1
+       ) ir ON true
+       WHERE o.visibility = 'public'
+         AND o.editorial_status = 'published'
+         AND o.published_at IS NOT NULL
+       ORDER BY o.published_at DESC NULLS LAST, o.slug ASC
+       LIMIT 50`,
+      [appUser.id],
+    );
+
+    return { data: rows.map(serializeInvestorOpportunity) };
   });
 
   // ── GET /api/investor/projects ──

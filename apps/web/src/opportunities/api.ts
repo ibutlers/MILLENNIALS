@@ -1,7 +1,6 @@
 import { z } from 'zod';
 
 const moneySchema = z.object({ cents: z.number().int(), currency: z.string().length(3), formatted: z.string() }).nullable();
-const percentageSchema = z.object({ basisPoints: z.number().int().nullable(), decimal: z.number().nullable(), formatted: z.string().nullable() });
 const mediaSchema = z.object({ type: z.string(), url: z.string(), altText: z.string(), position: z.number().int() });
 const nullableMediaSchema = mediaSchema.nullable();
 
@@ -20,17 +19,10 @@ export const opportunitySummarySchema = z.object({
   strategy: z.string(),
   status: opportunityStatusSchema,
   currency: z.string(),
-  targetAmount: moneySchema,
-  committedAmount: moneySchema,
   projectTotalAmount: moneySchema,
-  bankFinancingAmount: moneySchema,
   minimumInvestment: moneySchema,
   estimatedTermMonths: z.number().int(),
-  targetReturnType: opportunityReturnTypeSchema,
-  targetReturn: percentageSchema,
-  riskLevel: opportunityRiskSchema,
-  closingDate: z.string().nullable(),
-  publishedAt: z.string().nullable(),
+  publicReturnDisplay: z.string(),
   fundingProgress: z.number(),
   primaryImage: nullableMediaSchema,
   disclaimer: z.string()
@@ -47,6 +39,9 @@ const riskSchema = z.object({ title: z.string(), description: z.string(), positi
 const milestoneSchema = z.object({ title: z.string(), description: z.string(), plannedDate: z.string().nullable(), completedAt: z.string().nullable(), position: z.number().int() });
 
 export const opportunityDetailSchema = opportunitySummarySchema.extend({
+  publicCommittedAmount: moneySchema,
+  bankFinancingAmount: moneySchema,
+  closingDate: z.string().nullable(),
   description: z.string(),
   highlights: z.array(highlightSchema),
   risks: z.array(riskSchema),
@@ -156,11 +151,11 @@ export function formatMoneyFromCents(cents: number, currency = 'EUR') {
   }).format(Math.max(0, cents) / 100);
 }
 
-export function getInvestmentBreakdown(opportunity: Pick<PublicOpportunity, 'targetAmount' | 'committedAmount' | 'projectTotalAmount' | 'bankFinancingAmount' | 'currency'>) {
-  const currency = opportunity.projectTotalAmount?.currency ?? opportunity.targetAmount?.currency ?? opportunity.committedAmount?.currency ?? opportunity.currency ?? 'EUR';
-  const totalCents = opportunity.projectTotalAmount?.cents ?? opportunity.targetAmount?.cents ?? 0;
-  const contributedCents = opportunity.committedAmount?.cents ?? 0;
-  const bankFinancedCents = opportunity.bankFinancingAmount?.cents ?? Math.max(0, totalCents - contributedCents);
+export function getInvestmentBreakdown(opportunity: Pick<OpportunityDetail, 'projectTotalAmount' | 'publicCommittedAmount' | 'bankFinancingAmount' | 'currency'> | Pick<PublicOpportunity, 'projectTotalAmount' | 'currency'>) {
+  const currency = opportunity.projectTotalAmount?.currency ?? opportunity.currency ?? 'EUR';
+  const totalCents = opportunity.projectTotalAmount?.cents ?? 0;
+  const contributedCents = 'publicCommittedAmount' in opportunity ? opportunity.publicCommittedAmount?.cents ?? 0 : 0;
+  const bankFinancedCents = 'bankFinancingAmount' in opportunity ? opportunity.bankFinancingAmount?.cents ?? Math.max(0, totalCents - contributedCents) : 0;
 
   return {
     total: formatMoneyFromCents(totalCents, currency),

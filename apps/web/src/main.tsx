@@ -31,6 +31,7 @@ const InvestorPortfolio = lazy(() => import('./investors/InvestorPortfolio').the
 const InvestorDocuments = lazy(() => import('./investors/InvestorDocuments').then((module) => ({ default: module.InvestorDocuments })));
 const InvestorVerification = lazy(() => import('./investors/InvestorVerification').then((module) => ({ default: module.InvestorVerification })));
 const InvestorOpportunities = lazy(() => import('./investors/InvestorOpportunities').then((module) => ({ default: module.InvestorOpportunities })));
+const InvestorProjectDetail = lazy(() => import('./investors/InvestorProjectDetail').then((module) => ({ default: module.InvestorProjectDetail })));
 const InvestorAccount = lazy(() => import('./investors/InvestorAccount').then((module) => ({ default: module.InvestorAccount })));
 const InvestorSecurity = lazy(() => import('./investors/InvestorSecurity').then((module) => ({ default: module.InvestorSecurity })));
 
@@ -121,6 +122,7 @@ const router = createBrowserRouter([
       { path: 'documentos', element: lazyPage(<InvestorDocuments />) },
       { path: 'verificacion', element: lazyPage(<InvestorVerification />) },
       { path: 'oportunidades', element: lazyPage(<InvestorOpportunities />) },
+      { path: 'proyectos/:slug', element: lazyPage(<InvestorProjectDetail />) },
       { path: 'cuenta', element: lazyPage(<InvestorAccount />) },
       { path: 'seguridad', element: lazyPage(<InvestorSecurity />) },
     ],
@@ -138,7 +140,7 @@ const router = createBrowserRouter([
     children: [
       { index: true, element: lazyPage(<InvestorDashboard />) },
       { path: 'proyectos', element: lazyPage(<InvestorOpportunities />) },
-      { path: 'proyectos/:id', element: lazyPage(<InvestorOpportunities />) },
+      { path: 'proyectos/:slug', element: lazyPage(<InvestorProjectDetail />) },
       { path: 'perfil', element: lazyPage(<InvestorProfile />) },
     ],
   },

@@ -13,17 +13,10 @@ const summary = {
   strategy: 'Rehabilitación energética',
   status: 'funding',
   currency: 'EUR',
-  targetAmount: { cents: 125000000, currency: 'EUR', formatted: '1.250.000 €' },
-  committedAmount: { cents: 53000000, currency: 'EUR', formatted: '530.000 €' },
   projectTotalAmount: { cents: 68000000, currency: 'EUR', formatted: '680.000 €' },
-  bankFinancingAmount: { cents: 15000000, currency: 'EUR', formatted: '150.000 €' },
   minimumInvestment: { cents: 1500000, currency: 'EUR', formatted: '15.000 €' },
   estimatedTermMonths: 18,
-  targetReturnType: 'target_annual_return',
-  targetReturn: { basisPoints: 820, decimal: 0.082, formatted: '8,2%' },
-  riskLevel: 'medium',
-  closingDate: '2026-10-15',
-  publishedAt: '2026-06-01T08:00:00.000Z',
+  publicReturnDisplay: '12,3% +50%*',
   fundingProgress: 42.4,
   primaryImage: { type: 'image', url: '/images/opportunity-rehabilitacion.webp', altText: 'Imagen demo', position: 0 },
   disclaimer: DEMO_OPPORTUNITY_DISCLAIMER
@@ -41,6 +34,9 @@ function appWithRepository(overrides: Partial<{ list: unknown; findBySlug: unkno
         ? {
             data: {
               ...summary,
+              publicCommittedAmount: { cents: 53000000, currency: 'EUR', formatted: '530.000 €' },
+              bankFinancingAmount: { cents: 15000000, currency: 'EUR', formatted: '150.000 €' },
+              closingDate: '2026-10-15',
               description: 'Descripción pública',
               highlights: [{ label: 'Uso', value: 'Residencial', position: 0 }],
               risks: [{ title: 'Riesgo de obra', description: 'Puede variar el calendario.', position: 0 }],

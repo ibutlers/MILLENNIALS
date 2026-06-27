@@ -54,7 +54,7 @@ export async function createInvestmentRequest(
   try {
     await client.query('BEGIN');
     const { rows: [opportunity] } = await client.query(
-      `SELECT id, slug, status, visibility, published_at, currency, minimum_investment_cents,
+      `SELECT id, slug, status, visibility, editorial_status, published_at, currency, minimum_investment_cents,
               target_amount_cents, committed_amount_cents
        FROM opportunities
        WHERE id::text = $1 OR slug = $1
@@ -62,7 +62,7 @@ export async function createInvestmentRequest(
       [input.opportunityIdOrSlug],
     );
     if (!opportunity) throw workflowError('opportunity_not_found', 'Proyecto no encontrado.', 404);
-    if (opportunity.visibility !== 'public' || !opportunity.published_at || !OPEN_PROJECT_STATUSES.has(String(opportunity.status))) {
+    if (opportunity.visibility !== 'public' || opportunity.editorial_status !== 'published' || !opportunity.published_at || !OPEN_PROJECT_STATUSES.has(String(opportunity.status))) {
       throw workflowError('opportunity_not_open', 'Este proyecto no está abierto a solicitudes de inversión.', 409);
     }
 

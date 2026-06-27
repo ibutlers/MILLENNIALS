@@ -13,6 +13,7 @@ type SeedOpportunity = {
   strategy: string;
   status: string;
   visibility: string;
+  editorialStatus: string;
   currency: string;
   targetAmountCents: number;
   committedAmountCents: number;
@@ -46,6 +47,7 @@ export const seedOpportunities: SeedOpportunity[] = [
     strategy: 'Promoción residencial',
     status: 'in_execution',
     visibility: 'public',
+    editorialStatus: 'published',
     currency: 'EUR',
     targetAmountCents: 80000000,
     committedAmountCents: 80000000,
@@ -87,6 +89,7 @@ export const seedOpportunities: SeedOpportunity[] = [
     strategy: 'Promoción residencial',
     status: 'in_study',
     visibility: 'public',
+    editorialStatus: 'published',
     currency: 'EUR',
     targetAmountCents: 200000000,
     committedAmountCents: 0,
@@ -129,6 +132,7 @@ export const seedOpportunities: SeedOpportunity[] = [
     strategy: 'Cambio de uso a hostal',
     status: 'in_study',
     visibility: 'public',
+    editorialStatus: 'published',
     currency: 'EUR',
     targetAmountCents: 80000000,
     committedAmountCents: 80000000,
@@ -171,6 +175,7 @@ export const seedOpportunities: SeedOpportunity[] = [
     strategy: 'Validación interna',
     status: 'open',
     visibility: 'private',
+    editorialStatus: 'draft',
     currency: 'EUR',
     targetAmountCents: 50000000,
     committedAmountCents: 10000000,
@@ -194,10 +199,10 @@ async function upsertOpportunity(client: PoolClient, opportunity: SeedOpportunit
   const result = await client.query<{ id: string }>(
     `INSERT INTO opportunities (
       slug, title, short_description, description, city, country_code, district, asset_type, strategy,
-      status, visibility, currency, target_amount_cents, committed_amount_cents, project_total_amount_cents,
+      status, visibility, editorial_status, currency, target_amount_cents, committed_amount_cents, project_total_amount_cents,
       bank_financing_amount_cents, minimum_investment_cents, estimated_term_months, target_return_type,
       target_return_bps, risk_level, closing_date, published_at
-    ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23)
+    ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24)
     ON CONFLICT (slug) DO UPDATE SET
       title = EXCLUDED.title,
       short_description = EXCLUDED.short_description,
@@ -209,6 +214,7 @@ async function upsertOpportunity(client: PoolClient, opportunity: SeedOpportunit
       strategy = EXCLUDED.strategy,
       status = EXCLUDED.status,
       visibility = EXCLUDED.visibility,
+      editorial_status = EXCLUDED.editorial_status,
       currency = EXCLUDED.currency,
       target_amount_cents = EXCLUDED.target_amount_cents,
       committed_amount_cents = EXCLUDED.committed_amount_cents,
@@ -225,7 +231,7 @@ async function upsertOpportunity(client: PoolClient, opportunity: SeedOpportunit
     [
       opportunity.slug, opportunity.title, opportunity.shortDescription, opportunity.description, opportunity.city,
       opportunity.countryCode, opportunity.district, opportunity.assetType, opportunity.strategy, opportunity.status,
-      opportunity.visibility, opportunity.currency, opportunity.targetAmountCents, opportunity.committedAmountCents,
+      opportunity.visibility, opportunity.editorialStatus, opportunity.currency, opportunity.targetAmountCents, opportunity.committedAmountCents,
       opportunity.projectTotalAmountCents, opportunity.bankFinancingAmountCents, opportunity.minimumInvestmentCents,
       opportunity.estimatedTermMonths, opportunity.targetReturnType, opportunity.targetReturnBps, opportunity.riskLevel,
       opportunity.closingDate, opportunity.publishedAt
