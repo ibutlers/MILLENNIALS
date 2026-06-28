@@ -160,7 +160,7 @@ describe('Private investor routes — project documents', () => {
           minimum_investment_cents: '500000',
           estimated_term_months: 36,
           target_return_bps: 700,
-          committed_amount_cents: '80000000',
+          committed_amount_cents: '53000000',
           target_amount_cents: '80000000',
           primary_image_url: '/images/plaza-america.jpg',
           primary_image_alt_text: 'Fachada Plaza América',
@@ -194,7 +194,7 @@ describe('Private investor routes — project documents', () => {
         minimumInvestment: { cents: 500000, currency: 'EUR', formatted: '5000 €' },
         estimatedTermMonths: 36,
         publicReturnDisplay: '21% +50%*',
-        fundingProgress: 100,
+        fundingProgress: 66.25,
         primaryImage: { type: 'image', url: '/images/plaza-america.jpg', altText: 'Fachada Plaza América', position: 0 },
         investorAccess: {
           status: 'active',

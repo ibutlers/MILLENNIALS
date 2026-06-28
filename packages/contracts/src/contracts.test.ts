@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { errorResponseSchema } from "./errors.js";
 import { userResponseSchema, loginRequestSchema, registerRequestSchema } from "./auth.js";
-import { opportunitySummarySchema, opportunityDetailSchema } from "./opportunities.js";
+import { opportunitySummarySchema, opportunityDetailSchema, opportunityStatusSchema } from "./opportunities.js";
 import { providerHealthSchema, kycStatusSchema } from "./providers.js";
 
 describe("shared contracts", () => {
@@ -111,6 +111,12 @@ describe("shared contracts", () => {
 
   // ── Opportunities ──
   describe("opportunitySummarySchema", () => {
+    it("accepts public project statuses exposed by the API", () => {
+      for (const status of ["coming_soon", "open", "funding", "funded", "in_execution", "in_study", "commercializing", "closed", "cancelled"]) {
+        expect(opportunityStatusSchema.safeParse(status).success).toBe(true);
+      }
+    });
+
     it("rejects invalid status", () => {
       const opp = {
         slug: "test",

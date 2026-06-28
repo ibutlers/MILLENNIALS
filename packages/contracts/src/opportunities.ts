@@ -4,7 +4,7 @@ import { paginationSchema } from "./errors.js";
 // ── Enums ──
 export const opportunityStatusSchema = z.enum([
   "coming_soon", "open", "funding", "funded",
-  "in_execution", "commercializing", "closed", "cancelled",
+  "in_execution", "in_study", "commercializing", "closed", "cancelled",
 ]);
 
 export const riskLevelSchema = z.enum(["low", "medium", "high", "very_high"]);

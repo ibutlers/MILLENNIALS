@@ -179,7 +179,7 @@ export function OpportunityDetailPage() {
               </div>
               {showFinancials ? (
                 <dl className="mt-6 grid gap-2">
-                  <Metric label="Inversión" value={investment.contributed} />
+                  <Metric label="Inversión" value={investment.required} />
                   <Metric label="Financiación bancaria" value={investment.bankFinanced} />
                   <Metric label="CAPEX total" value={investment.total} />
                   <Metric label="Ticket mínimo" value={opportunity.minimumInvestment?.formatted ?? '—'} />

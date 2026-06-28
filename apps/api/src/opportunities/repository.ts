@@ -63,7 +63,7 @@ function mapSummary(row: DbOpportunity, media: DbMedia | null = null) {
     strategy: row.strategy,
     status: row.status,
     currency,
-    publicInvestmentAmount: serializeMoney(row.committed_amount_cents, currency),
+    publicInvestmentAmount: serializeMoney(row.target_amount_cents, currency),
     minimumInvestment: serializeMoney(row.minimum_investment_cents, currency),
     estimatedTermMonths: row.estimated_term_months,
     publicReturnDisplay: formatPublicReturnDisplay(row.target_return_bps, row.estimated_term_months),
@@ -79,7 +79,7 @@ function mapDetail(row: DbOpportunity, media: DbMedia | null = null) {
   return {
     ...mapSummary(row, media),
     projectTotalAmount: serializeMoney(totalCents, currency),
-    bankFinancingAmount: serializeMoney(row.bank_financing_amount_cents ?? Math.max(0, Number(totalCents) - Number(row.committed_amount_cents)), currency),
+    bankFinancingAmount: serializeMoney(row.bank_financing_amount_cents ?? Math.max(0, Number(totalCents) - Number(row.target_amount_cents)), currency),
     closingDate: serializeDate(row.closing_date),
   };
 }

@@ -13,7 +13,7 @@ const summary = {
   strategy: 'Rehabilitación energética',
   status: 'funding',
   currency: 'EUR',
-  publicInvestmentAmount: { cents: 53000000, currency: 'EUR', formatted: '530.000 €' },
+  publicInvestmentAmount: { cents: 68000000, currency: 'EUR', formatted: '680.000 €' },
   minimumInvestment: { cents: 1500000, currency: 'EUR', formatted: '15.000 €' },
   estimatedTermMonths: 18,
   publicReturnDisplay: '12,3% +50%*',

@@ -16,10 +16,10 @@ function opportunityRow(overrides: Record<string, unknown> = {}) {
     strategy: 'Promoción residencial',
     status: 'in_execution',
     currency: 'EUR',
-    target_amount_cents: '80000000',
-    committed_amount_cents: '80000000',
-    project_total_amount_cents: '250000000',
-    bank_financing_amount_cents: '150000000',
+    target_amount_cents: '68000000',
+    committed_amount_cents: '53000000',
+    project_total_amount_cents: '83000000',
+    bank_financing_amount_cents: null,
     minimum_investment_cents: '500000',
     estimated_term_months: 36,
     target_return_type: 'target_annual_return',
@@ -53,8 +53,8 @@ describe('OpportunityRepository public DTO', () => {
 
     const item = result.data[0] as Record<string, unknown>;
     expect(item.publicReturnDisplay).toBe('21% +50%*');
-    expect(item.fundingProgress).toBe(100);
-    expect(item.publicInvestmentAmount).toMatchObject({ formatted: '800.000 €' });
+    expect(item.fundingProgress).toBe(77.94);
+    expect(item.publicInvestmentAmount).toMatchObject({ formatted: '680.000 €' });
     expect(item).not.toHaveProperty('projectTotalAmount');
     expect(item).not.toHaveProperty('targetAmount');
     expect(item).not.toHaveProperty('committedAmount');
@@ -69,7 +69,7 @@ describe('OpportunityRepository public DTO', () => {
       query: vi.fn()
         .mockResolvedValueOnce({ rows: [opportunityRow()] })
         .mockResolvedValueOnce({ rows: [{ type: 'image', url: '/images/plaza-america.jpg', alt_text: 'Fachada Plaza América', position: 0 }] })
-        .mockResolvedValueOnce({ rows: [{ label: 'Inversión', value: '800.000€ de inversión cubierta · 100%', position: 0 }] })
+        .mockResolvedValueOnce({ rows: [{ label: 'Inversión', value: '680.000€ necesarios · 77,94% cubierto', position: 0 }] })
         .mockResolvedValueOnce({ rows: [{ title: 'Riesgo licencia', description: 'Seguimiento de tramitación.', position: 0 }] })
         .mockResolvedValueOnce({ rows: [{ title: 'Inversión cubierta', description: 'Inversión cubierta.', planned_date: '2026-03-01', completed_at: '2026-03-01T10:00:00.000Z', position: 0 }] }),
     };
@@ -85,9 +85,9 @@ describe('OpportunityRepository public DTO', () => {
 
     expect(result).not.toBeNull();
     const data = result!.data as Record<string, unknown>;
-    expect(data.publicInvestmentAmount).toMatchObject({ formatted: '800.000 €' });
-    expect(data.projectTotalAmount).toMatchObject({ formatted: '2.500.000 €' });
-    expect(data.bankFinancingAmount).toMatchObject({ formatted: '1.500.000 €' });
+    expect(data.publicInvestmentAmount).toMatchObject({ formatted: '680.000 €' });
+    expect(data.projectTotalAmount).toMatchObject({ formatted: '830.000 €' });
+    expect(data.bankFinancingAmount).toMatchObject({ formatted: '150.000 €' });
     expect(data).not.toHaveProperty('publicCommittedAmount');
     expect(data.closingDate).toBeNull();
     expect(data.publicReturnDisplay).toBe('21% +50%*');

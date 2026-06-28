@@ -153,13 +153,13 @@ export function formatMoneyFromCents(cents: number, currency = 'EUR') {
 
 export function getInvestmentBreakdown(opportunity: Pick<OpportunityDetail, 'publicInvestmentAmount' | 'projectTotalAmount' | 'bankFinancingAmount' | 'currency'> | Pick<PublicOpportunity, 'publicInvestmentAmount' | 'currency'>) {
   const currency = opportunity.publicInvestmentAmount?.currency ?? opportunity.currency ?? 'EUR';
-  const contributedCents = opportunity.publicInvestmentAmount?.cents ?? 0;
-  const totalCents = 'projectTotalAmount' in opportunity ? opportunity.projectTotalAmount?.cents ?? contributedCents : contributedCents;
-  const bankFinancedCents = 'bankFinancingAmount' in opportunity ? opportunity.bankFinancingAmount?.cents ?? Math.max(0, totalCents - contributedCents) : 0;
+  const requiredInvestmentCents = opportunity.publicInvestmentAmount?.cents ?? 0;
+  const totalCents = 'projectTotalAmount' in opportunity ? opportunity.projectTotalAmount?.cents ?? requiredInvestmentCents : requiredInvestmentCents;
+  const bankFinancedCents = 'bankFinancingAmount' in opportunity ? opportunity.bankFinancingAmount?.cents ?? Math.max(0, totalCents - requiredInvestmentCents) : 0;
 
   return {
     total: formatMoneyFromCents(totalCents, currency),
-    contributed: formatMoneyFromCents(contributedCents, currency),
+    required: formatMoneyFromCents(requiredInvestmentCents, currency),
     bankFinanced: formatMoneyFromCents(bankFinancedCents, currency)
   };
 }

@@ -51,8 +51,8 @@ describe('public opportunities catalog', () => {
     expect(cardText.indexOf('Inversión')).toBeLessThan(cardText.indexOf('Retorno estimado'));
     expect(within(card).getByText(/15\.000\s*€/)).toBeInTheDocument();
     expect(within(card).getAllByText(/^inversión$/i).length).toBeGreaterThan(0);
-    expect(within(card).getByText(/530\.000\s*€/)).toBeInTheDocument();
-    expect(within(card).queryByText(/680\.000\s*€/)).not.toBeInTheDocument();
+    expect(within(card).getByText(/680\.000\s*€/)).toBeInTheDocument();
+    expect(within(card).queryByText(/530\.000\s*€/)).not.toBeInTheDocument();
     expect(within(card).queryByText(/fondos aportados|financiación bancaria/i)).not.toBeInTheDocument();
     expect(within(card).getByText(/42,4%/)).toBeInTheDocument();
     expect(within(card).getByRole('progressbar', { name: /inversión/i })).toHaveAttribute('aria-valuenow', '42.4');
@@ -107,7 +107,9 @@ describe('public opportunity detail', () => {
     expect(screen.getAllByRole('img', { name: /patio rehabilitado demo/i })[0]).toHaveAttribute('fetchpriority', 'high');
     expect(screen.getByText(/resumen/i)).toBeInTheDocument();
     expect(screen.getAllByText(/^inversión$/i).length).toBeGreaterThan(0);
+    expect(screen.getByText(/680\.000\s*€/)).toBeInTheDocument();
     expect(screen.getByText(/capex total/i)).toBeInTheDocument();
+    expect(screen.getByText(/830\.000\s*€/)).toBeInTheDocument();
     expect(screen.getByText(/financiación bancaria/i)).toBeInTheDocument();
     expect(screen.getByRole('progressbar', { name: /inversión/i })).toHaveAttribute('aria-valuenow', '42.4');
     expect(screen.getByText(/ticket mínimo/i)).toBeInTheDocument();

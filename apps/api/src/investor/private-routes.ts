@@ -167,7 +167,7 @@ function serializeInvestorOpportunity(row: InvestorOpportunityRow) {
     strategy: row.strategy,
     status: row.status,
     currency,
-    publicInvestmentAmount: serializeMoney(row.committed_amount_cents, currency),
+    publicInvestmentAmount: serializeMoney(row.target_amount_cents, currency),
     projectTotalAmount: serializeMoney(row.project_total_amount_cents ?? row.target_amount_cents, currency),
     minimumInvestment: serializeMoney(row.minimum_investment_cents, currency),
     estimatedTermMonths: row.estimated_term_months,

@@ -31,7 +31,7 @@ El backend conserva el modelo completo y es la fuente de verdad. Las APIs expone
 | Estado público del proyecto | Sí | Sí | Sí | Sí | Sí | Sí | No |
 | `visibility`, `editorial_status`, `published_at` | Sí | No | No | No | No | No | No |
 | Importes base internos (`target_amount_cents`, `committed_amount_cents`) | Sí | No como campos crudos | No como campos crudos | No como campos crudos | Sí en endpoint privado asignado | Sí en endpoint privado asignado | No |
-| `publicInvestmentAmount` | Sí | Sí | Sí | Sí | No | Sí | No |
+| `publicInvestmentAmount` / inversión necesaria | Sí | Sí | Sí | Sí | No | Sí | No |
 | `projectTotalAmount` / CAPEX total | Sí | No | Sí | Sí si la superficie privada lo requiere | No | Sí | No |
 | `minimumInvestment` | Sí | Sí | Sí | Sí | No | No | No |
 | `estimatedTermMonths` | Sí | Sí | Sí | Sí | No | Sí | No |
@@ -82,6 +82,7 @@ El backend conserva el modelo completo y es la fuente de verdad. Las APIs expone
 - `disclaimer`
 
 No entrega `riskLevel`, `targetAmount`, `committedAmount`, `publishedAt` ni `targetReturnType`.
+`publicInvestmentAmount` es el importe de inversión necesario/objetivo. El importe cubierto no se entrega como campo independiente en superficies públicas: se refleja únicamente en `fundingProgress`.
 
 ### Ficha pública
 
