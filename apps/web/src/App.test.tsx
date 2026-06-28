@@ -92,6 +92,7 @@ describe('MILLENNIALS CONSTRUYEN landing', () => {
     expect(firstProjectText.indexOf('Inversión')).toBeLessThan(firstProjectText.indexOf('Retorno estimado'));
     expect(firstProjectText).toContain('680.000');
     expect(firstProjectText).not.toContain('530.000');
+    expect(firstProjectText).not.toMatch(/inversión cubierta/i);
     // Disclaimer present on page
     expect(screen.getByText(/datos ilustrativos/i)).toBeInTheDocument();
     expect(screen.getByText(/los objetivos no están garantizados/i)).toBeInTheDocument();

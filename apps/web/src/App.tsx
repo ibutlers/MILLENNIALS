@@ -424,7 +424,6 @@ function OpportunityCard({ opportunity }: { opportunity: PublicOpportunity }) {
   const location = [opportunity.city, opportunity.district].filter(Boolean).join(' · ');
   const showFinancials = (opportunity.publicInvestmentAmount?.cents ?? 0) > 1;
   const showProgress = showFinancials;
-  const isFunded = progress === 100 && showProgress;
   const imageIsProvisional = !opportunity.primaryImage || /provisional/i.test(opportunity.primaryImage.altText);
   const secondaryMetrics = showFinancials
     ? [
@@ -450,7 +449,6 @@ function OpportunityCard({ opportunity }: { opportunity: PublicOpportunity }) {
         <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-ink/45 via-ink/5 to-transparent" aria-hidden="true" />
         <div className="absolute left-4 top-4 flex flex-wrap items-center gap-1.5">
           <span className="rounded-full border border-white/40 bg-white/90 px-2.5 py-1 text-[0.62rem] font-black uppercase tracking-[0.15em] text-electric shadow-sm backdrop-blur">{statusLabel(opportunity.status)}</span>
-          {isFunded ? <span className="rounded-full border border-white/40 bg-white/90 px-2.5 py-1 text-[0.62rem] font-black uppercase tracking-[0.15em] text-electric shadow-sm backdrop-blur">Inversión cubierta</span> : null}
         </div>
         <div className="absolute inset-x-4 bottom-4 flex items-end justify-between gap-3">
           <p className="text-xs font-black uppercase tracking-[0.16em] text-white drop-shadow-sm">{location}</p>
@@ -467,7 +465,7 @@ function OpportunityCard({ opportunity }: { opportunity: PublicOpportunity }) {
         <p className="mt-3 leading-7 text-charcoal/70 line-clamp-3">{opportunity.shortDescription}</p>
         {showProgress ? (
           <div className="mt-5 rounded-2xl border border-frost/80 bg-white p-3.5">
-            <div className="mb-2 flex justify-between gap-3 text-[0.68rem] font-black uppercase tracking-[0.14em] text-charcoal/70"><span>Inversión</span><span className="text-right">Inversión cubierta · {formatProgress(progress)}</span></div>
+            <div className="mb-2 flex justify-between gap-3 text-[0.68rem] font-black uppercase tracking-[0.14em] text-charcoal/70"><span>Progreso de inversión</span><span className="text-right">{formatProgress(progress)}</span></div>
             <div className="h-2 overflow-hidden rounded-full bg-frost" role="progressbar" aria-label="Inversión comprometida" aria-valuemin={0} aria-valuemax={100} aria-valuenow={progress}><div className="h-2 rounded-full bg-electric" style={{ width: `${progress}%` }} /></div>
           </div>
         ) : null}
