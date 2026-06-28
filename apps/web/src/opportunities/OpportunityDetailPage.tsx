@@ -2,25 +2,32 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect, type ReactNode } from 'react';
 import { Link, useParams, useSearchParams } from 'react-router';
 import { setPageMetadata } from '../metadata';
-import { fetchOpportunityDetail, formatDate, getInvestmentBreakdown, statusLabel, type OpportunityDetail } from './api';
-import { FundingProgress, Metric, StatusBadge } from './components';
+import { fetchOpportunityDetail, formatMoneyFromCents, getInvestmentBreakdown, type OpportunityDetail } from './api';
+import { FundingProgress, StatusBadge } from './components';
 
 function isProvisionalMedia(media: OpportunityDetail['media'][number] | OpportunityDetail['primaryImage'] | null | undefined) {
   return !media || /provisional/i.test(media.altText);
 }
 
-function DetailSection({ eyebrow, title, children }: { eyebrow?: string; title: string; children: ReactNode }) {
+function DetailCard({ children }: { children: ReactNode }) {
   return (
-    <section className="rounded-2xl border border-frost bg-white p-5 shadow-[0_18px_55px_rgba(5,5,5,0.035)] sm:p-7">
-      {eyebrow ? <p className="text-xs font-black uppercase tracking-[0.22em] text-electric">{eyebrow}</p> : null}
-      <h2 className="mt-2 font-serif text-3xl leading-tight tracking-[-0.035em] text-ink sm:text-4xl">{title}</h2>
-      <div className="mt-5">{children}</div>
+    <section className="rounded-[1.35rem] border border-frost bg-white p-5 shadow-[0_18px_55px_rgba(5,5,5,0.035)] sm:p-7">
+      {children}
     </section>
   );
 }
 
-function EmptyPublicBlock({ children }: { children: ReactNode }) {
-  return <p className="rounded-xl border border-frost bg-lavender/45 p-4 text-sm leading-6 text-charcoal/75">{children}</p>;
+function DataRow({ label, value, emphasis = false }: { label: string; value: string; emphasis?: boolean }) {
+  return (
+    <div className="flex items-start justify-between gap-4 border-b border-frost/75 py-3 last:border-b-0">
+      <dt className="max-w-[46%] text-xs font-black uppercase tracking-[0.16em] text-charcoal/70">{label}</dt>
+      <dd className={`text-right leading-6 text-ink ${emphasis ? 'font-black' : 'font-bold'}`}>{value}</dd>
+    </div>
+  );
+}
+
+function isInStudy(status: OpportunityDetail['status']) {
+  return status === 'in_study' || status === 'coming_soon';
 }
 
 export function OpportunityDetailPage() {
@@ -67,11 +74,25 @@ export function OpportunityDetailPage() {
   const opportunity = detailResponse.data;
   const mainImage = opportunity.media[0] ?? opportunity.primaryImage;
   const mainImageIsProvisional = isProvisionalMedia(mainImage);
-  const location = [opportunity.city, opportunity.district, opportunity.countryCode].filter(Boolean).join(' · ');
+  const location = [opportunity.city, opportunity.district].filter(Boolean).join(' · ');
   const showFinancials = (opportunity.projectTotalAmount?.cents ?? 0) > 1;
   const showProgress = showFinancials;
   const investment = getInvestmentBreakdown(opportunity);
   const mediaItems = opportunity.media.filter((media) => media.url !== mainImage?.url);
+  const publicHighlights = opportunity.highlights.filter((item) => !/^estado$/i.test(item.label));
+  const sideMetrics = showFinancials
+    ? [
+        { label: 'Inversión', value: investment.required, emphasis: true },
+        { label: 'Retorno estimado', value: opportunity.publicReturnDisplay },
+        { label: 'Plazo estimado', value: `${opportunity.estimatedTermMonths} meses` },
+        { label: 'Ticket mínimo', value: opportunity.minimumInvestment ? formatMoneyFromCents(opportunity.minimumInvestment.cents, opportunity.minimumInvestment.currency) : '—' },
+        { label: 'CAPEX total', value: investment.total },
+        { label: 'Financiación bancaria', value: investment.bankFinanced }
+      ]
+    : [
+        { label: 'Tipo de activo', value: opportunity.assetType },
+        { label: 'Estrategia', value: opportunity.strategy }
+      ];
 
   return (
     <div className="min-h-screen bg-lavender text-ink">
@@ -83,10 +104,9 @@ export function OpportunityDetailPage() {
               <Link to={backHref} className="hover:text-electric focus:outline-none focus-visible:ring-2 focus-visible:ring-electric">Proyectos</Link> <span aria-hidden="true">/</span>{' '}
               <span>{opportunity.title}</span>
             </nav>
-            <div className="grid gap-8 py-8 lg:grid-cols-[minmax(0,0.48fr)_minmax(0,0.52fr)] lg:items-end lg:py-12">
+            <div className="grid gap-8 py-8 lg:grid-cols-[minmax(0,0.5fr)_minmax(0,0.5fr)] lg:items-end lg:py-12">
               <div>
-                <div className="flex flex-wrap gap-2"><StatusBadge status={opportunity.status} /></div>
-                <h1 className="mt-5 font-serif text-5xl leading-[0.98] tracking-[-0.055em] sm:text-7xl">{opportunity.title}</h1>
+                <h1 className="font-serif text-5xl leading-[0.98] tracking-[-0.055em] sm:text-7xl">{opportunity.title}</h1>
                 <p className="mt-5 text-xs font-black uppercase tracking-[0.18em] text-charcoal/70">{location}</p>
                 <p className="mt-5 max-w-xl text-lg leading-8 text-charcoal/80">{opportunity.shortDescription}</p>
                 <div className="mt-7 flex flex-wrap gap-3">
@@ -108,58 +128,42 @@ export function OpportunityDetailPage() {
         </section>
 
         <section className="mx-auto max-w-7xl px-4 py-10 sm:px-6 sm:py-14 lg:px-8">
-          <div className="grid gap-8 lg:grid-cols-[minmax(0,0.68fr)_minmax(300px,0.32fr)] lg:items-start">
-            <article className="space-y-8">
-              <DetailSection eyebrow="Resumen" title="Descripción pública">
-                <p className="whitespace-pre-line text-lg leading-9 text-charcoal/80">{opportunity.description}</p>
-              </DetailSection>
-
-              <DetailSection title="Highlights">
-                {opportunity.highlights.length ? (
-                  <dl className="grid gap-3 sm:grid-cols-2">
-                    {opportunity.highlights.map((item) => (
-                      <div key={`${item.label}-${item.position}`} className="rounded-xl border border-frost bg-lavender/35 p-4">
-                        <dt className="text-xs font-black uppercase tracking-[0.16em] text-charcoal/70">{item.label}</dt>
-                        <dd className="mt-2 leading-7 text-ink">{item.value}</dd>
-                      </div>
-                    ))}
-                  </dl>
-                ) : <EmptyPublicBlock>No hay highlights públicos publicados para esta ficha.</EmptyPublicBlock>}
-              </DetailSection>
-
-              <DetailSection title="Riesgos">
-                {opportunity.risks.length ? (
-                  <div className="grid gap-3">
-                    {opportunity.risks.map((risk) => (
-                      <article key={`${risk.title}-${risk.position}`} className="rounded-xl border border-frost bg-lavender/35 p-4">
-                        <h3 className="font-bold text-ink">{risk.title}</h3>
-                        <p className="mt-2 leading-7 text-charcoal/80">{risk.description}</p>
-                      </article>
-                    ))}
+          <div className="grid gap-6 lg:grid-cols-[minmax(0,0.66fr)_minmax(320px,0.34fr)] lg:items-start">
+            <article className="space-y-6">
+              <DetailCard>
+                <div className="flex flex-col gap-4 border-b border-frost pb-5 sm:flex-row sm:items-end sm:justify-between">
+                  <div>
+                    <p className="text-xs font-black uppercase tracking-[0.22em] text-electric">Proyecto</p>
+                    <h2 className="mt-2 font-serif text-3xl leading-tight tracking-[-0.035em] text-ink sm:text-4xl">Información</h2>
                   </div>
-                ) : <EmptyPublicBlock>No hay riesgos públicos publicados para esta ficha.</EmptyPublicBlock>}
-              </DetailSection>
+                  <div className="rounded-2xl border border-electric/25 bg-electric/5 px-4 py-3 text-left sm:text-right">
+                    <p className="mb-2 text-[0.64rem] font-black uppercase tracking-[0.18em] text-electric">Estado del proyecto</p>
+                    <StatusBadge status={opportunity.status} />
+                  </div>
+                </div>
+                <p className="mt-5 whitespace-pre-line text-lg leading-9 text-charcoal/80">{opportunity.description}</p>
+                <dl className="mt-7 grid gap-x-8 gap-y-5 border-t border-frost pt-6 sm:grid-cols-2">
+                  <div>
+                    <dt className="text-xs font-black uppercase tracking-[0.16em] text-charcoal/70">Tipo de activo</dt>
+                    <dd className="mt-2 leading-7 text-ink">{opportunity.assetType}</dd>
+                  </div>
+                  <div>
+                    <dt className="text-xs font-black uppercase tracking-[0.16em] text-charcoal/70">Estrategia</dt>
+                    <dd className="mt-2 leading-7 text-ink">{opportunity.strategy}</dd>
+                  </div>
+                  {publicHighlights.map((item) => (
+                    <div key={`${item.label}-${item.position}`}>
+                      <dt className="text-xs font-black uppercase tracking-[0.16em] text-charcoal/70">{item.label}</dt>
+                      <dd className="mt-2 leading-7 text-ink">{item.value}</dd>
+                    </div>
+                  ))}
+                </dl>
+              </DetailCard>
 
-              <DetailSection title="Hitos">
-                {opportunity.milestones.length ? (
-                  <ol className="grid gap-3">
-                    {opportunity.milestones.map((milestone) => (
-                      <li key={`${milestone.title}-${milestone.position}`} className="grid gap-3 rounded-xl border border-frost bg-lavender/35 p-4 sm:grid-cols-[auto_1fr]">
-                        <span className="flex h-9 w-9 items-center justify-center rounded-full bg-electric text-sm font-black text-white">{milestone.position + 1}</span>
-                        <div>
-                          <h3 className="font-bold text-ink">{milestone.title}</h3>
-                          <p className="mt-1 text-sm text-charcoal/70">Planificado: {formatDate(milestone.plannedDate)}{milestone.completedAt ? ` · completado ${formatDate(milestone.completedAt)}` : ''}</p>
-                          <p className="mt-2 leading-7 text-charcoal/80">{milestone.description}</p>
-                        </div>
-                      </li>
-                    ))}
-                  </ol>
-                ) : <EmptyPublicBlock>No hay hitos públicos publicados para esta ficha.</EmptyPublicBlock>}
-              </DetailSection>
-
-              <DetailSection title="Media disponible">
-                {mediaItems.length ? (
-                  <div className="grid gap-4 sm:grid-cols-2">
+              {mediaItems.length ? (
+                <DetailCard>
+                  <h2 className="font-serif text-3xl leading-tight tracking-[-0.035em] text-ink sm:text-4xl">Imágenes adicionales</h2>
+                  <div className="mt-5 grid gap-4 sm:grid-cols-2">
                     {mediaItems.map((media) => (
                       <div key={`${media.url}-${media.position}`} className="relative overflow-hidden rounded-2xl border border-frost bg-electric/5">
                         <img src={media.url} alt={media.altText} width="720" height="480" loading="lazy" className="h-64 w-full object-cover" />
@@ -167,44 +171,23 @@ export function OpportunityDetailPage() {
                       </div>
                     ))}
                   </div>
-                ) : <EmptyPublicBlock>No hay imágenes adicionales publicadas.</EmptyPublicBlock>}
-              </DetailSection>
+                </DetailCard>
+              ) : null}
             </article>
 
-            <aside className="h-fit rounded-[1.4rem] border border-frost bg-white p-5 shadow-[0_24px_70px_rgba(5,5,5,0.06)] sm:p-6 lg:sticky lg:top-24">
-              <div>
-                <p className="text-xs font-black uppercase tracking-[0.22em] text-electric">Ficha pública</p>
-                <h2 className="mt-3 font-serif text-3xl tracking-[-0.035em]">Métricas públicas</h2>
-                <p className="mt-3 text-sm leading-6 text-charcoal/75">Información orientativa publicada para revisar estado, tesis y próximos pasos.</p>
+            <aside aria-label="Datos clave" className="h-fit rounded-[1.35rem] border border-frost bg-white p-5 shadow-[0_24px_70px_rgba(5,5,5,0.06)] sm:p-6 lg:sticky lg:top-24">
+              <p className="text-xs font-black uppercase tracking-[0.22em] text-electric">Ficha pública</p>
+              <h2 className="mt-3 font-serif text-3xl tracking-[-0.035em]">Datos clave</h2>
+              <dl className="mt-5">
+                {sideMetrics.map((metric) => <DataRow key={metric.label} label={metric.label} value={metric.value} emphasis={metric.emphasis} />)}
+              </dl>
+              {isInStudy(opportunity.status) ? <p className="mt-4 text-xs font-bold leading-5 text-electric">Proyecto en estudio: datos preliminares sujetos a actualización.</p> : null}
+              {showProgress ? <div className="mt-6 border-t border-frost pt-5"><FundingProgress value={opportunity.fundingProgress} /></div> : null}
+              <div className="mt-6 border-t border-frost pt-5">
+                <Link to={`/proyectos/${opportunity.slug}/solicitar-informacion`} onMouseEnter={() => queryClient.prefetchQuery({ queryKey: ['opportunities', 'prefetch'], queryFn: ({ signal }) => fetch('/api/v1/opportunities?limit=3', { signal }).then((r) => r.json()) })} className="block rounded-full bg-electric px-5 py-4 text-center text-sm font-black uppercase tracking-[0.16em] text-white transition hover:bg-electric-hover focus:outline-none focus-visible:ring-2 focus-visible:ring-electric focus-visible:ring-offset-2">Solicitar información</Link>
+                <Link to="/acceso#solicitud" className="mt-4 block text-center text-xs font-black uppercase tracking-[0.16em] text-electric transition hover:text-electric-hover focus:outline-none focus-visible:ring-2 focus-visible:ring-electric focus-visible:ring-offset-2">Solicitar acceso al club</Link>
               </div>
-              {showFinancials ? (
-                <dl className="mt-6 grid gap-2">
-                  <Metric label="Inversión" value={investment.required} />
-                  <Metric label="Financiación bancaria" value={investment.bankFinanced} />
-                  <Metric label="CAPEX total" value={investment.total} />
-                  <Metric label="Ticket mínimo" value={opportunity.minimumInvestment?.formatted ?? '—'} />
-                  <Metric label="Plazo" value={`${opportunity.estimatedTermMonths} meses`} />
-                  <Metric label="Retorno estimado" value={opportunity.publicReturnDisplay} />
-                  <Metric label="Cierre" value={formatDate(opportunity.closingDate)} />
-                  <Metric label="Estado" value={statusLabel(opportunity.status)} />
-                </dl>
-              ) : (
-                <dl className="mt-6 grid gap-2">
-                  <Metric label="Estado" value={statusLabel(opportunity.status)} />
-                  <Metric label="Estrategia" value={opportunity.strategy} />
-                  <Metric label="Tipo de activo" value={opportunity.assetType} />
-                </dl>
-              )}
-              {showProgress ? <div className="mt-6 rounded-2xl border border-frost bg-lavender/35 p-4"><FundingProgress value={opportunity.fundingProgress} /></div> : null}
-              <section className="mt-6 border-t border-frost pt-6">
-                <h2 className="font-serif text-3xl tracking-[-0.035em]">Próximos pasos</h2>
-                <p className="mt-3 text-sm leading-6 text-charcoal/80">Solicita información o acceso futuro para recibir documentación cuando la zona privada esté disponible. No hay inversión ni formulario transaccional en este hito.</p>
-                <div className="mt-5 grid gap-3">
-                  <Link to={`/proyectos/${opportunity.slug}/solicitar-informacion`} onMouseEnter={() => queryClient.prefetchQuery({ queryKey: ['opportunities', 'prefetch'], queryFn: ({ signal }) => fetch('/api/v1/opportunities?limit=3', { signal }).then((r) => r.json()) })} className="rounded-full bg-electric px-5 py-4 text-center text-sm font-black uppercase tracking-[0.16em] text-white transition hover:bg-electric-hover focus:outline-none focus-visible:ring-2 focus-visible:ring-electric focus-visible:ring-offset-2">Abrir formulario</Link>
-                  <Link to="/coinvierte" className="rounded-full border border-frost px-5 py-4 text-center text-sm font-black uppercase tracking-[0.16em] text-ink transition hover:border-electric hover:text-electric focus:outline-none focus-visible:ring-2 focus-visible:ring-electric focus-visible:ring-offset-2">Coinvierte con nosotros</Link>
-                </div>
-              </section>
-              <p className="mt-6 rounded-xl border border-frost bg-lavender/35 p-4 text-xs leading-5 text-charcoal/75">{detailResponse.meta.disclaimer}</p>
+              <p className="mt-5 text-xs leading-5 text-charcoal/65">{detailResponse.meta.disclaimer}</p>
             </aside>
           </div>
         </section>

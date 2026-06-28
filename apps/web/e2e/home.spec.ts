@@ -213,7 +213,7 @@ test.describe('public landing and projects', () => {
     const projectSlug = body.data[0].slug;
 
     await page.goto(`/proyectos/${projectSlug}`);
-    await page.getByRole('link', { name: /solicitar información/i }).click();
+    await page.getByRole('link', { name: /solicitar información/i }).first().click();
     await expect(page).toHaveURL(new RegExp(`/proyectos/${projectSlug}/solicitar-informacion`));
     await expect(page.getByRole('heading').first()).toBeVisible();
   });
