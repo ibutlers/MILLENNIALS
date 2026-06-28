@@ -72,9 +72,9 @@ export default function SectionReview({
             { label: 'Título y descripción completos', ok: !!formData.title.trim() && !!formData.description.trim() },
             { label: 'Localización definida', ok: !!formData.city.trim() && !!formData.countryCode.trim() },
             { label: 'Activo y estrategia definidos', ok: !!formData.assetType.trim() && !!formData.strategy.trim() },
-            { label: 'Métricas financieras completas', ok: formData.targetAmountCents > 0 && formData.minimumInvestmentCents > 0 },
-            { label: 'Highlights añadidos', ok: highlights.length > 0 },
-            { label: 'Al menos 1 riesgo identificado', ok: risks.length > 0 },
+            { label: 'Datos clave públicos completos', ok: formData.targetAmountCents > 0 && formData.projectTotalAmountCents > 0 && formData.minimumInvestmentCents > 0 },
+            { label: 'Datos de información añadidos', ok: highlights.length > 0 },
+            { label: 'Al menos 1 riesgo identificado (backend/admin)', ok: risks.length > 0 },
             { label: 'Al menos 1 imagen', ok: media.length > 0 },
             { label: 'Al menos 1 hito definido', ok: milestonesCount > 0 },
           ].map((item) => (
@@ -93,7 +93,7 @@ export default function SectionReview({
       {/* Counts summary */}
       <div className="grid gap-3 sm:grid-cols-4 text-center">
         {[
-          { label: 'Highlights', count: subEntityCounts.highlights },
+          { label: 'Información', count: subEntityCounts.highlights },
           { label: 'Riesgos', count: subEntityCounts.risks },
           { label: 'Hitos', count: subEntityCounts.milestones },
           { label: 'Imágenes', count: subEntityCounts.media },

@@ -24,7 +24,17 @@ type ActiveUser = TestUser & { context: BrowserContext; page: Page; totpUri: str
 
 type ApiResult = { status: number; body: JsonObject; headers: Record<string, string> };
 
-type Opportunity = { id: string; slug: string; title: string; version: number; editorial_status?: string; visibility?: string };
+type Opportunity = {
+  id: string;
+  slug: string;
+  title: string;
+  version: number;
+  editorial_status?: string;
+  visibility?: string;
+  target_amount_cents?: number | string;
+  project_total_amount_cents?: number | string | null;
+  bank_financing_amount_cents?: number | string | null;
+};
 
 type CapturedEmail = { to?: string; url?: string; type?: string; subject?: string };
 
@@ -706,7 +716,7 @@ test.describe('Admin Full Workflow', () => {
         shortDescription: 'Proyecto creado por E2E admin Better Auth',
         description: 'Descripción completa creada durante la migración E2E admin.',
         city: 'Vigo', countryCode: 'ES', assetType: 'residential', strategy: 'value_add',
-        currency: 'EUR', targetAmountCents: 120000000, minimumInvestmentCents: 500000,
+        currency: 'EUR', targetAmountCents: 120000000, projectTotalAmountCents: 300000000, bankFinancingAmountCents: 180000000, minimumInvestmentCents: 500000,
         estimatedTermMonths: 18, targetReturnType: 'target_irr', riskLevel: 'medium',
       },
     });
@@ -714,6 +724,8 @@ test.describe('Admin Full Workflow', () => {
     createdOpportunity = data<Opportunity>(res);
     currentOpportunity = createdOpportunity;
     expect(createdOpportunity.id).toBeTruthy();
+    expect(Number(createdOpportunity.project_total_amount_cents)).toBe(300000000);
+    expect(Number(createdOpportunity.bank_financing_amount_cents)).toBe(180000000);
   });
 
   test('34. Complete editor section: general', async () => {
@@ -740,10 +752,13 @@ test.describe('Admin Full Workflow', () => {
     currentOpportunity = data<Opportunity>(res);
   });
 
-  test('38. Complete editor section: financials', async () => {
-    const res = await adminApi(`/api/v1/admin/opportunities/${createdOpportunity.id}`, { method: 'PATCH', body: { version: currentOpportunity.version, targetAmountCents: 150000000, minimumInvestmentCents: 1000000, estimatedTermMonths: 24, targetReturnBps: 1250 } });
+  test('38. Complete editor section: Datos clave', async () => {
+    const res = await adminApi(`/api/v1/admin/opportunities/${createdOpportunity.id}`, { method: 'PATCH', body: { version: currentOpportunity.version, targetAmountCents: 150000000, projectTotalAmountCents: 350000000, bankFinancingAmountCents: 200000000, minimumInvestmentCents: 1000000, estimatedTermMonths: 24, targetReturnBps: 1250 } });
     expectOk(res);
     currentOpportunity = data<Opportunity>(res);
+    expect(Number(currentOpportunity.target_amount_cents)).toBe(150000000);
+    expect(Number(currentOpportunity.project_total_amount_cents)).toBe(350000000);
+    expect(Number(currentOpportunity.bank_financing_amount_cents)).toBe(200000000);
   });
 
   test('39. Complete editor section: description', async () => {
@@ -812,9 +827,17 @@ test.describe('Admin Full Workflow', () => {
   });
 
   test('49. Open public detail', async ({ page }) => {
+    const detail = await apiFetch(sharedRequest, `/api/v1/opportunities/${createdOpportunity.slug}`);
+    expectOk(detail);
+    const publicDetail = detail.body.data as { projectTotalAmount?: { cents?: number }; bankFinancingAmount?: { cents?: number } };
+    expect(publicDetail.projectTotalAmount?.cents).toBe(350000000);
+    expect(publicDetail.bankFinancingAmount?.cents).toBe(200000000);
+
     const resp = await page.goto(`${BASE}/proyectos/${createdOpportunity.slug}`, { waitUntil: 'domcontentloaded' });
     expect(resp?.status()).toBe(200);
     await expect(page.getByText(/Admin Better Auth E2E/i).first()).toBeVisible();
+    await expect(page.getByText('CAPEX total')).toBeVisible();
+    await expect(page.getByText('Financiación bancaria')).toBeVisible();
   });
 
   test('50. Version conflict returns 409', async () => {

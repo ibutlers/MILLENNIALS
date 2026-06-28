@@ -63,6 +63,8 @@ function makeRestorePool(options: { failDuringSubentityCopy?: boolean; snapshotO
     currency: 'EUR',
     target_amount_cents: 100_000_000,
     committed_amount_cents: 40_000_000,
+    project_total_amount_cents: 280_000_000,
+    bank_financing_amount_cents: 180_000_000,
     minimum_investment_cents: 5_000_000,
     estimated_term_months: 24,
     target_return_type: 'target_irr',
@@ -144,8 +146,8 @@ function makeRestorePool(options: { failDuringSubentityCopy?: boolean; snapshotO
     if (sql.includes('INSERT INTO opportunities')) {
       restoreCount += 1;
       const id = restoreCount === 1 ? RESTORED_ID_1 : RESTORED_ID_2;
-      const [slug, title, short_description, description, city, country_code, district, asset_type, strategy, status, visibility, currency, target_amount_cents, committed_amount_cents, minimum_investment_cents, estimated_term_months, target_return_type, target_return_bps, risk_level, closing_date, published_at, version, editorial_status, restored_from_opportunity_id, restored_from_version] = params ?? [];
-      const restored = { id, slug, title, short_description, description, city, country_code, district, asset_type, strategy, status, visibility, currency, target_amount_cents, committed_amount_cents, minimum_investment_cents, estimated_term_months, target_return_type, target_return_bps, risk_level, closing_date, published_at, version, editorial_status, restored_from_opportunity_id, restored_from_version, created_at: new Date().toISOString(), updated_at: new Date().toISOString() };
+      const [slug, title, short_description, description, city, country_code, district, asset_type, strategy, status, visibility, currency, target_amount_cents, committed_amount_cents, project_total_amount_cents, bank_financing_amount_cents, minimum_investment_cents, estimated_term_months, target_return_type, target_return_bps, risk_level, closing_date, published_at, version, editorial_status, restored_from_opportunity_id, restored_from_version] = params ?? [];
+      const restored = { id, slug, title, short_description, description, city, country_code, district, asset_type, strategy, status, visibility, currency, target_amount_cents, committed_amount_cents, project_total_amount_cents, bank_financing_amount_cents, minimum_investment_cents, estimated_term_months, target_return_type, target_return_bps, risk_level, closing_date, published_at, version, editorial_status, restored_from_opportunity_id, restored_from_version, created_at: new Date().toISOString(), updated_at: new Date().toISOString() };
       opportunities.set(id, restored);
       transactionCreatedIds.push(id);
       slugs.add(slug);
@@ -224,6 +226,8 @@ describe('Admin API — restore lineage', () => {
     expect(restored.restored_from_opportunity_id).toBe(ORIGINAL_ID);
     expect(restored.restored_from_version).toBe(3);
     expect(restored.committed_amount_cents).toBe(0);
+    expect(restored.project_total_amount_cents).toBe(280_000_000);
+    expect(restored.bank_financing_amount_cents).toBe(180_000_000);
     expect(ctx.opportunities.get(ORIGINAL_ID).slug).toBe('original-opportunity');
     expect(ctx.opportunities.get(ORIGINAL_ID).editorial_status).toBe('unlisted');
 

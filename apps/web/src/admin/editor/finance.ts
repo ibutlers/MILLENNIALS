@@ -5,13 +5,26 @@ export function parseLocaleNumber(value: string): number {
   const raw = value.trim().replace(/\s/g, '');
   if (!raw) return 0;
 
-  const lastComma = raw.lastIndexOf(',');
-  const lastDot = raw.lastIndexOf('.');
-  const decimalSeparator = lastComma > lastDot ? ',' : '.';
-  const thousandsSeparator = decimalSeparator === ',' ? '.' : ',';
-  const normalized = raw
-    .replace(new RegExp(`\\${thousandsSeparator}`, 'g'), '')
-    .replace(decimalSeparator, '.');
+  const hasComma = raw.includes(',');
+  const hasDot = raw.includes('.');
+  let normalized = raw;
+
+  if (hasComma && hasDot) {
+    const lastComma = raw.lastIndexOf(',');
+    const lastDot = raw.lastIndexOf('.');
+    const decimalSeparator = lastComma > lastDot ? ',' : '.';
+    const thousandsSeparator = decimalSeparator === ',' ? '.' : ',';
+    normalized = raw.replace(new RegExp(`\\${thousandsSeparator}`, 'g'), '').replace(decimalSeparator, '.');
+  } else if (hasComma) {
+    const parts = raw.split(',');
+    const last = parts.at(-1) ?? '';
+    normalized = parts.length > 2 || last.length === 3 ? parts.join('') : raw.replace(',', '.');
+  } else if (hasDot) {
+    const parts = raw.split('.');
+    const last = parts.at(-1) ?? '';
+    normalized = parts.length > 2 || last.length === 3 ? parts.join('') : raw;
+  }
+
   const parsed = Number.parseFloat(normalized.replace(/[^0-9.-]/g, ''));
 
   return Number.isFinite(parsed) ? parsed : 0;

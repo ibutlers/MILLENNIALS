@@ -27,6 +27,8 @@ const opportunityPatchSchema = z.object({
   currency: z.string().length(3).optional(),
   targetAmountCents: z.number().int().min(0).optional(),
   committedAmountCents: z.number().int().min(0).optional(),
+  projectTotalAmountCents: z.number().int().min(0).optional().nullable(),
+  bankFinancingAmountCents: z.number().int().min(0).optional().nullable(),
   minimumInvestmentCents: z.number().int().min(0).optional(),
   estimatedTermMonths: z.number().int().min(1).max(360).optional(),
   targetReturnType: z.enum(['target_annual_return','target_total_return','target_irr','target_roi']).optional().nullable(),
@@ -133,7 +135,8 @@ type OpportunitySnapshot = {
 const OPPORTUNITY_INSERT_COLUMNS = [
   'slug', 'title', 'short_description', 'description', 'city', 'country_code', 'district',
   'asset_type', 'strategy', 'status', 'visibility', 'currency', 'target_amount_cents',
-  'committed_amount_cents', 'minimum_investment_cents', 'estimated_term_months',
+  'committed_amount_cents', 'project_total_amount_cents', 'bank_financing_amount_cents',
+  'minimum_investment_cents', 'estimated_term_months',
   'target_return_type', 'target_return_bps', 'risk_level', 'closing_date', 'published_at',
   'version', 'editorial_status', 'restored_from_opportunity_id', 'restored_from_version',
 ] as const;
@@ -367,9 +370,13 @@ export function registerAdminRoutes(app: FastifyInstance, options: { pool: Pool;
     const slug = b.slug || `opp-${Date.now().toString(36)}`;
     const title = b.title || 'Sin t\u00edtulo';
     const { rows: [opp] } = await pool.query(
-      `INSERT INTO opportunities (slug, title, short_description, description, city, country_code, asset_type, strategy, currency, target_amount_cents, minimum_investment_cents, estimated_term_months, target_return_type, risk_level, editorial_status, visibility, status, version)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,'draft','private','coming_soon',1) RETURNING *`,
-      [slug, title, b.shortDescription || '', b.description || '', b.city || '', b.countryCode || 'ES', b.assetType || '', b.strategy || '', b.currency || 'EUR', b.targetAmountCents || 0, b.minimumInvestmentCents || 0, b.estimatedTermMonths || 12, b.targetReturnType || 'target_irr', b.riskLevel || 'medium']
+      `INSERT INTO opportunities (slug, title, short_description, description, city, country_code, asset_type, strategy, currency, target_amount_cents, committed_amount_cents, project_total_amount_cents, bank_financing_amount_cents, minimum_investment_cents, estimated_term_months, target_return_type, target_return_bps, risk_level, editorial_status, visibility, status, version)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,'draft','private','coming_soon',1) RETURNING *`,
+      [
+        slug, title, b.shortDescription || '', b.description || '', b.city || '', b.countryCode || 'ES', b.assetType || '', b.strategy || '', b.currency || 'EUR',
+        b.targetAmountCents || 0, b.committedAmountCents || 0, b.projectTotalAmountCents ?? null, b.bankFinancingAmountCents ?? null,
+        b.minimumInvestmentCents || 0, b.estimatedTermMonths || 12, b.targetReturnType || 'target_irr', b.targetReturnBps ?? null, b.riskLevel || 'medium'
+      ]
     );
     return reply.status(201).send({ data: opp });
   });
@@ -383,7 +390,7 @@ export function registerAdminRoutes(app: FastifyInstance, options: { pool: Pool;
     const ALLOWED: string[] = [
       'title','slug','shortDescription','description','city','countryCode','district',
       'assetType','strategy','status','visibility','editorialStatus','currency',
-      'targetAmountCents','committedAmountCents','minimumInvestmentCents',
+      'targetAmountCents','committedAmountCents','projectTotalAmountCents','bankFinancingAmountCents','minimumInvestmentCents',
       'estimatedTermMonths','targetReturnType','targetReturnBps','riskLevel',
       'closingDate','disclaimer'
     ];
@@ -391,6 +398,7 @@ export function registerAdminRoutes(app: FastifyInstance, options: { pool: Pool;
       shortDescription: 'short_description', countryCode: 'country_code',
       assetType: 'asset_type', editorialStatus: 'editorial_status',
       targetAmountCents: 'target_amount_cents', committedAmountCents: 'committed_amount_cents',
+      projectTotalAmountCents: 'project_total_amount_cents', bankFinancingAmountCents: 'bank_financing_amount_cents',
       minimumInvestmentCents: 'minimum_investment_cents', estimatedTermMonths: 'estimated_term_months',
       targetReturnType: 'target_return_type', targetReturnBps: 'target_return_bps',
       riskLevel: 'risk_level', closingDate: 'closing_date',
@@ -1133,6 +1141,8 @@ export function registerAdminRoutes(app: FastifyInstance, options: { pool: Pool;
         historicalData.currency || current.currency,
         historicalData.target_amount_cents ?? current.target_amount_cents,
         0,
+        historicalData.project_total_amount_cents ?? current.project_total_amount_cents ?? null,
+        historicalData.bank_financing_amount_cents ?? current.bank_financing_amount_cents ?? null,
         historicalData.minimum_investment_cents ?? current.minimum_investment_cents,
         historicalData.estimated_term_months ?? current.estimated_term_months,
         historicalData.target_return_type || current.target_return_type,

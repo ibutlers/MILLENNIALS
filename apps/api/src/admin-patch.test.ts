@@ -72,6 +72,8 @@ function makePatchPool(options: { updateReturnsRow: boolean } = { updateReturnsR
             title: 'Updated title',
             district: null,
             target_amount_cents: 120_000_000,
+            project_total_amount_cents: 280_000_000,
+            bank_financing_amount_cents: 160_000_000,
             visibility: 'unlisted',
             version: 2,
           }],
@@ -143,6 +145,8 @@ describe('Admin API — atomic opportunity PATCH', () => {
         title: 'Updated title',
         district: null,
         targetAmountCents: 120_000_000,
+        projectTotalAmountCents: 280_000_000,
+        bankFinancingAmountCents: 160_000_000,
         visibility: 'unlisted',
       },
     });
@@ -153,6 +157,8 @@ describe('Admin API — atomic opportunity PATCH', () => {
     expect(body.data.title).toBe('Updated title');
     expect(body.data.district).toBeNull();
     expect(body.data.target_amount_cents).toBe(120_000_000);
+    expect(body.data.project_total_amount_cents).toBe(280_000_000);
+    expect(body.data.bank_financing_amount_cents).toBe(160_000_000);
     expect(body.data.visibility).toBe('unlisted');
 
     expect(client.query).toHaveBeenNthCalledWith(1, 'BEGIN');
@@ -162,10 +168,12 @@ describe('Admin API — atomic opportunity PATCH', () => {
     expect(update?.sql).toContain('district=$2');
     expect(update?.sql).toContain('visibility=$3');
     expect(update?.sql).toContain('target_amount_cents=$4');
-    expect(update?.sql).toContain('version=$5');
-    expect(update?.sql).toContain('WHERE id=$6');
-    expect(update?.sql).toContain('AND version=$7');
-    expect(update?.params).toEqual(['Updated title', null, 'unlisted', 120_000_000, 2, OPP_ID, 1]);
+    expect(update?.sql).toContain('project_total_amount_cents=$5');
+    expect(update?.sql).toContain('bank_financing_amount_cents=$6');
+    expect(update?.sql).toContain('version=$7');
+    expect(update?.sql).toContain('WHERE id=$8');
+    expect(update?.sql).toContain('AND version=$9');
+    expect(update?.params).toEqual(['Updated title', null, 'unlisted', 120_000_000, 280_000_000, 160_000_000, 2, OPP_ID, 1]);
     expect(calls.some((call) => call.sql.includes('INSERT INTO opportunity_versions'))).toBe(true);
     expect(calls.some((call) => call.sql.includes('INSERT INTO audit_events'))).toBe(true);
     expect(client.query).toHaveBeenLastCalledWith('COMMIT');

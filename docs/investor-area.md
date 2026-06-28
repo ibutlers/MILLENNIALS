@@ -39,7 +39,8 @@ El backend conserva el modelo completo y es la fuente de verdad. Las APIs expone
 | `fundingProgress` / progreso público de inversión | Sí | Sí | Sí | Sí | No | Sí | No |
 | `bankFinancingAmount` | Sí | No | Sí | No | No | No | No |
 | `riskLevel`, `targetReturnType`, `targetReturnBps`, `closingDate` | Sí | No | Solo `closingDate` pública aprobada | No | No | Sí si procede | No |
-| Highlights, riesgos e hitos públicos | Sí | No | Sí | No | No | No | No |
+| Datos de información (`highlights`) | Sí | No | Sí, dentro de `Información` | No | No | No | No |
+| Riesgos e hitos | Sí, editables en admin/backend | No | No en la ficha pública simplificada | No | No | No | No |
 | Media pública | Sí | Imagen principal | Galería pública | Imagen principal | No | No | No |
 | Capital del usuario | Sí | No | No | Sí, solo si hay acceso | Sí | Sí | No |
 | Estado de acceso del usuario | Sí | No | No | Sí | Sí | Sí | Sí como autorización |
@@ -96,6 +97,25 @@ No entrega `riskLevel`, `targetAmount`, `committedAmount`, `publishedAt` ni `tar
 - `risks`
 - `milestones`
 - `media`
+
+La UI pública actual muestra `highlights` como filas homogéneas dentro de `Información`, y muestra `projectTotalAmount`/`bankFinancingAmount` como filas independientes de `Datos clave`. `risks` y `milestones` siguen disponibles en backend/admin para edición y futuras superficies, pero no se renderizan en la ficha pública simplificada.
+
+### Concordancia admin/backend/público de proyectos
+
+| Ficha pública | Campo admin editable | Campo backend/DB | Nota |
+|---------------|----------------------|------------------|------|
+| Estado del proyecto | Estado operativo | `status` | Destacado junto a `Información`, no duplicado en `Datos clave`. |
+| Descripción | Descripción | `description` | Cuerpo principal de `Información`. |
+| Tipo de activo | Activo y estrategia → Tipo de activo | `asset_type` | Fila homogénea de `Información`. |
+| Estrategia | Activo y estrategia → Estrategia | `strategy` | Fila homogénea de `Información`. |
+| Filas extra de `Información` | Datos de información | `opportunity_highlights` | Añadir/ordenar/eliminar desde admin. |
+| Inversión | Datos clave → Inversión / capital objetivo | `target_amount_cents` | El importe cubierto no se muestra como cifra independiente. |
+| Progreso de inversión | Datos clave → Capital comprometido | `committed_amount_cents` | Solo alimenta `fundingProgress`. |
+| CAPEX total | Datos clave → CAPEX total | `project_total_amount_cents` | Nullable; si falta, la API pública cae a inversión. |
+| Financiación bancaria | Datos clave → Financiación bancaria | `bank_financing_amount_cents` | Nullable; si falta, la API pública deriva `CAPEX - inversión`. |
+| Ticket mínimo | Datos clave → Ticket mínimo | `minimum_investment_cents` | Fila homogénea de `Datos clave`. |
+| Plazo estimado | Datos clave → Plazo estimado | `estimated_term_months` | Fila homogénea de `Datos clave`. |
+| Retorno estimado | Datos clave → Tipo/retorno objetivo | `target_return_type`, `target_return_bps` | La API pública devuelve `publicReturnDisplay`. |
 
 ## DTO privado de inversor
 

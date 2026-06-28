@@ -19,12 +19,14 @@ interface PreviewResponse {
     visibility: string;
     status: string;
     currency: string;
-    target_amount_cents: number;
-    committed_amount_cents: number;
-    minimum_investment_cents: number;
-    estimated_term_months: number;
+    target_amount_cents: number | string;
+    committed_amount_cents: number | string;
+    project_total_amount_cents: number | string | null;
+    bank_financing_amount_cents: number | string | null;
+    minimum_investment_cents: number | string;
+    estimated_term_months: number | string;
     target_return_type: string | null;
-    target_return_bps: number | null;
+    target_return_bps: number | string | null;
     risk_level: string;
     closing_date: string | null;
     disclaimer: string | null;
@@ -63,6 +65,8 @@ type LocalOverrides = Partial<{
   currency: string;
   targetAmountCents: number;
   committedAmountCents: number;
+  projectTotalAmountCents: number;
+  bankFinancingAmountCents: number;
   minimumInvestmentCents: number;
   estimatedTermMonths: number;
   targetReturnType: string;
@@ -76,8 +80,13 @@ interface AdminPreviewProps {
   localOverrides?: LocalOverrides | null;
 }
 
-const CENTS_TO_EUR = (c: number | undefined) => c ? `€${(c / 100).toLocaleString('es-ES', { minimumFractionDigits: 0 })}` : '—';
-const BPS_TO_PCT = (b: number | undefined | null) => b != null ? `${(b / 100).toFixed(1)}%` : '—';
+const toNumber = (value: number | string | null | undefined, fallback = 0) => {
+  if (value === null || value === undefined || value === '') return fallback;
+  const parsed = typeof value === 'number' ? value : Number(value);
+  return Number.isFinite(parsed) ? parsed : fallback;
+};
+const CENTS_TO_EUR = (c: number | string | null | undefined) => toNumber(c) ? `€${(toNumber(c) / 100).toLocaleString('es-ES', { minimumFractionDigits: 0 })}` : '—';
+const BPS_TO_PCT = (b: number | string | undefined | null) => b != null ? `${(toNumber(b) / 100).toFixed(1)}%` : '—';
 const RISK_LABELS: Record<string, string> = { low: 'Bajo', medium: 'Medio', high: 'Alto', very_high: 'Muy alto' };
 
 export default function AdminPreview({ localOverrides }: AdminPreviewProps = {}) {
@@ -131,6 +140,8 @@ export default function AdminPreview({ localOverrides }: AdminPreviewProps = {})
       currency: localOverrides.currency ?? opp.currency,
       target_amount_cents: localOverrides.targetAmountCents ?? opp.target_amount_cents,
       committed_amount_cents: localOverrides.committedAmountCents ?? opp.committed_amount_cents,
+      project_total_amount_cents: localOverrides.projectTotalAmountCents ?? opp.project_total_amount_cents,
+      bank_financing_amount_cents: localOverrides.bankFinancingAmountCents ?? opp.bank_financing_amount_cents,
       minimum_investment_cents: localOverrides.minimumInvestmentCents ?? opp.minimum_investment_cents,
       estimated_term_months: localOverrides.estimatedTermMonths ?? opp.estimated_term_months,
       target_return_type: localOverrides.targetReturnType !== undefined ? localOverrides.targetReturnType : opp.target_return_type,
@@ -148,6 +159,11 @@ export default function AdminPreview({ localOverrides }: AdminPreviewProps = {})
 
   const opp = applyOverrides(data.data);
   const primaryImg = opp.media?.find((m) => m.type === 'primary') || opp.media?.[0];
+  const projectTotalCents = toNumber(opp.project_total_amount_cents, toNumber(opp.target_amount_cents));
+  const bankFinancingCents = toNumber(
+    opp.bank_financing_amount_cents,
+    Math.max(0, projectTotalCents - toNumber(opp.target_amount_cents)),
+  );
 
   return (
     <div className="min-h-screen bg-[#FBF7F0]">
@@ -186,10 +202,10 @@ export default function AdminPreview({ localOverrides }: AdminPreviewProps = {})
           <div className="mt-4 whitespace-pre-wrap text-[#08191C]/80 leading-relaxed">{opp.description || 'Sin descripción.'}</div>
         </section>
 
-        {/* Highlights */}
+        {/* Datos de información */}
         {opp.highlights?.length > 0 && (
           <section>
-            <h2 className="font-serif text-2xl text-[#08191C]">Puntos destacados</h2>
+            <h2 className="font-serif text-2xl text-[#08191C]">Datos de información</h2>
             <dl className="mt-4 grid gap-4 sm:grid-cols-2">
               {opp.highlights.map((h, i) => (
                 <div key={i} className="rounded border border-[#08191C]/10 bg-white p-4">
@@ -215,27 +231,31 @@ export default function AdminPreview({ localOverrides }: AdminPreviewProps = {})
 
         {/* Financials */}
         <section className="rounded border border-[#08191C]/10 bg-white p-6">
-          <h2 className="font-serif text-2xl text-[#08191C]">Métricas financieras</h2>
+          <h2 className="font-serif text-2xl text-[#08191C]">Datos clave públicos</h2>
+          <p className="mt-2 text-sm text-[#08191C]/60">Debe concordar con la ficha pública: Inversión, Retorno, Plazo, Ticket, CAPEX total y Financiación bancaria.</p>
           <div className="mt-4 grid gap-4 sm:grid-cols-3">
-            <div><p className="text-sm text-[#9B7E5F]">Capital objetivo</p><p className="text-xl font-medium text-[#08191C]">{CENTS_TO_EUR(opp.target_amount_cents)}</p></div>
-            <div><p className="text-sm text-[#9B7E5F]">Comprometido</p><p className="text-xl font-medium text-[#08191C]">{CENTS_TO_EUR(opp.committed_amount_cents)}</p></div>
+            <div><p className="text-sm text-[#9B7E5F]">Inversión</p><p className="text-xl font-medium text-[#08191C]">{CENTS_TO_EUR(opp.target_amount_cents)}</p></div>
+            <div><p className="text-sm text-[#9B7E5F]">CAPEX total</p><p className="text-xl font-medium text-[#08191C]">{CENTS_TO_EUR(projectTotalCents)}</p></div>
+            <div><p className="text-sm text-[#9B7E5F]">Financiación bancaria</p><p className="text-xl font-medium text-[#08191C]">{CENTS_TO_EUR(bankFinancingCents)}</p></div>
             <div><p className="text-sm text-[#9B7E5F]">Ticket mínimo</p><p className="text-xl font-medium text-[#08191C]">{CENTS_TO_EUR(opp.minimum_investment_cents)}</p></div>
             <div><p className="text-sm text-[#9B7E5F]">Plazo estimado</p><p className="text-xl font-medium text-[#08191C]">{opp.estimated_term_months} meses</p></div>
+            <div><p className="text-sm text-[#9B7E5F]">Retorno estimado</p><p className="text-xl font-medium text-[#08191C]">{BPS_TO_PCT(opp.target_return_bps)}</p></div>
+            <div><p className="text-sm text-[#9B7E5F]">Comprometido</p><p className="text-xl font-medium text-[#08191C]">{CENTS_TO_EUR(opp.committed_amount_cents)}</p><p className="text-xs text-[#08191C]/55">Solo progreso público</p></div>
             <div><p className="text-sm text-[#9B7E5F]">Tipo de retorno</p><p className="text-xl font-medium text-[#08191C]">{opp.target_return_type || '—'}</p></div>
-            <div><p className="text-sm text-[#9B7E5F]">Retorno objetivo</p><p className="text-xl font-medium text-[#08191C]">{BPS_TO_PCT(opp.target_return_bps)}</p></div>
           </div>
         </section>
 
-        {/* Risk */}
+        {/* Internal/admin risk */}
         <section className="rounded border border-[#08191C]/10 bg-white p-6">
-          <h2 className="font-serif text-2xl text-[#08191C]">Riesgo</h2>
+          <h2 className="font-serif text-2xl text-[#08191C]">Riesgo interno/admin</h2>
           <p className="mt-2 text-[#08191C]/80">Nivel: {RISK_LABELS[opp.risk_level] || opp.risk_level}</p>
+          <p className="mt-1 text-xs text-[#08191C]/55">No se muestra en la ficha pública simplificada.</p>
         </section>
 
         {/* Risks */}
         {opp.risks?.length > 0 && (
           <section>
-            <h2 className="font-serif text-2xl text-[#08191C]">Riesgos identificados</h2>
+            <h2 className="font-serif text-2xl text-[#08191C]">Riesgos identificados <span className="text-sm font-normal text-[#08191C]/50">(backend/admin)</span></h2>
             <div className="mt-4 space-y-4">
               {opp.risks.map((r, i) => (
                 <div key={i} className="rounded border border-[#08191C]/10 bg-white p-5">
@@ -250,7 +270,7 @@ export default function AdminPreview({ localOverrides }: AdminPreviewProps = {})
         {/* Milestones */}
         {opp.milestones?.length > 0 && (
           <section>
-            <h2 className="font-serif text-2xl text-[#08191C]">Hitos</h2>
+            <h2 className="font-serif text-2xl text-[#08191C]">Hitos <span className="text-sm font-normal text-[#08191C]/50">(backend/admin)</span></h2>
             <div className="mt-4 space-y-3">
               {opp.milestones.map((m, i) => (
                 <div key={i} className={`rounded border p-4 ${m.completed_at ? 'border-[#7FA88C] bg-white' : 'border-[#08191C]/10 bg-white'}`}>

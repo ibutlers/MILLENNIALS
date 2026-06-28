@@ -131,9 +131,9 @@ Detalle de oportunidad, filtros persistentes por query string, formularios con e
 Componentes públicos añadidos:
 
 - `OpportunitiesCatalogPage`: página `/oportunidades` con fondo navy, filtros en panel técnico, tarjetas cream compactas y paginación.
-- `OpportunityCard`: tarjeta compacta con imagen local lazy, badges de estado/riesgo, métricas densas y progreso accesible.
-- `OpportunityDetailPage`: ficha visual `/oportunidades/:slug` con hero oscuro, imagen principal eager/fetch priority, cuerpo editorial cream y aside sticky de métricas.
-- `FundingProgress`, `Metric`, `StatusBadge`, `RiskBadge`: primitives reutilizables para mantener riesgo visible junto a retorno y evitar depender solo del color.
+- `OpportunityCard`: tarjeta compacta con imagen local lazy, estado, métricas densas y progreso accesible.
+- `OpportunityDetailPage`: ficha visual `/oportunidades/:slug` con hero oscuro, imagen principal eager/fetch priority, tarjeta `Información` y aside sticky `Datos clave` homogéneo. Riesgos e hitos permanecen editables en backend/admin, pero no se renderizan en la ficha pública simplificada.
+- `FundingProgress`, `Metric`, `StatusBadge`: primitives reutilizables para mantener métricas accesibles y evitar depender solo del color.
 
 Reglas visuales específicas:
 

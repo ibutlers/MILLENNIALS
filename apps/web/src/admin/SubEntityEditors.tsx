@@ -30,7 +30,7 @@ function ReorderButtons({ index, total, onMove }: { index: number; total: number
 }
 
 // ══════════════════════════════════════
-// Highlights Editor
+// Public information facts editor
 // ══════════════════════════════════════
 export interface HighlightItem extends Identifiable { label: string; value: string; position: number }
 
@@ -48,20 +48,20 @@ export function HighlightsEditor({ items, onChange }: { items: HighlightItem[]; 
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between">
-        <h3 className="font-serif text-lg text-[#7FA88C]">Highlights</h3>
+        <h3 className="font-serif text-lg text-[#7FA88C]">Datos de información</h3>
         <button type="button" onClick={add} className="rounded bg-[#7FA88C] px-3 py-1 text-xs font-medium text-[#08191C] hover:bg-[#5C8D7A]">+ Añadir</button>
       </div>
-      {items.length === 0 && <p className="text-sm text-[#5C8D7A]">Sin highlights. Añade puntos destacados de la oportunidad.</p>}
+      {items.length === 0 && <p className="text-sm text-[#5C8D7A]">Sin datos de información. Añade filas que aparecerán dentro de la tarjeta pública “Información”.</p>}
       {items.map((h, i) => (
         <div key={h._id} className="flex items-start gap-2 rounded border border-[#1A3E48] bg-[#0F2A30] p-3">
           <ReorderButtons index={i} total={items.length} onMove={(f, t) => onChange(reorder(items, f, t))} />
           <div className="flex-1 space-y-2">
-            <input value={h.label} onChange={(e) => update(h._id, 'label', e.target.value)} placeholder="Etiqueta" maxLength={200}
+            <input value={h.label} onChange={(e) => update(h._id, 'label', e.target.value)} placeholder="Etiqueta visible en Información" maxLength={200}
               className="block w-full rounded border border-[#1A3E48] bg-[#08191C] px-2 py-1 text-sm text-[#FBF7F0] placeholder:text-[#5C8D7A] focus:border-[#7FA88C] focus:outline-none" />
-            <input value={h.value} onChange={(e) => update(h._id, 'value', e.target.value)} placeholder="Valor" maxLength={500}
+            <input value={h.value} onChange={(e) => update(h._id, 'value', e.target.value)} placeholder="Valor visible" maxLength={500}
               className="block w-full rounded border border-[#1A3E48] bg-[#08191C] px-2 py-1 text-sm text-[#FBF7F0] placeholder:text-[#5C8D7A] focus:border-[#7FA88C] focus:outline-none" />
           </div>
-          <button type="button" onClick={() => remove(h._id)} className="rounded p-1 text-[#9B7E5F] hover:bg-[#1A3E48]" aria-label="Eliminar highlight">✕</button>
+          <button type="button" onClick={() => remove(h._id)} className="rounded p-1 text-[#9B7E5F] hover:bg-[#1A3E48]" aria-label="Eliminar dato de información">✕</button>
         </div>
       ))}
     </div>
@@ -87,10 +87,10 @@ export function RisksEditor({ items, onChange }: { items: RiskItem[]; onChange: 
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between">
-        <h3 className="font-serif text-lg text-[#7FA88C]">Riesgos <span className="text-xs text-[#9B7E5F]">(mín. 1 para publicar)</span></h3>
+        <h3 className="font-serif text-lg text-[#7FA88C]">Riesgos <span className="text-xs text-[#9B7E5F]">(mín. 1 para publicar; ocultos en ficha pública actual)</span></h3>
         <button type="button" onClick={add} className="rounded bg-[#7FA88C] px-3 py-1 text-xs font-medium text-[#08191C] hover:bg-[#5C8D7A]">+ Añadir</button>
       </div>
-      {items.length === 0 && <p className="text-sm text-[#9B7E5F]">Se requiere al menos un riesgo para publicar.</p>}
+      {items.length === 0 && <p className="text-sm text-[#9B7E5F]">Se requiere al menos un riesgo para publicar. Se conserva para backend/admin, pero no se muestra en la ficha pública simplificada.</p>}
       {items.map((r, i) => (
         <div key={r._id} className="flex items-start gap-2 rounded border border-[#1A3E48] bg-[#0F2A30] p-3">
           <ReorderButtons index={i} total={items.length} onMove={(f, t) => onChange(reorder(items, f, t))} />
@@ -126,7 +126,7 @@ export function MilestonesEditor({ items, onChange }: { items: MilestoneItem[]; 
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between">
-        <h3 className="font-serif text-lg text-[#7FA88C]">Hitos</h3>
+        <h3 className="font-serif text-lg text-[#7FA88C]">Hitos <span className="text-xs text-[#9B7E5F]">(backend/admin; ocultos en ficha pública actual)</span></h3>
         <button type="button" onClick={add} className="rounded bg-[#7FA88C] px-3 py-1 text-xs font-medium text-[#08191C] hover:bg-[#5C8D7A]">+ Añadir</button>
       </div>
       {items.length === 0 && <p className="text-sm text-[#5C8D7A]">Sin hitos definidos.</p>}

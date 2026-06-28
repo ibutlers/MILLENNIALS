@@ -29,12 +29,14 @@ export interface OppFull {
   visibility: string;
   status: string;
   currency: string;
-  target_amount_cents: number;
-  committed_amount_cents: number;
-  minimum_investment_cents: number;
-  estimated_term_months: number;
+  target_amount_cents: number | string;
+  committed_amount_cents: number | string;
+  project_total_amount_cents: number | string | null;
+  bank_financing_amount_cents: number | string | null;
+  minimum_investment_cents: number | string;
+  estimated_term_months: number | string;
   target_return_type: string | null;
-  target_return_bps: number | null;
+  target_return_bps: number | string | null;
   risk_level: string;
   closing_date: string | null;
   disclaimer: string | null;
@@ -69,6 +71,8 @@ export interface FormState {
   currency: string;
   targetAmountCents: number;
   committedAmountCents: number;
+  projectTotalAmountCents: number;
+  bankFinancingAmountCents: number;
   minimumInvestmentCents: number;
   estimatedTermMonths: number;
   targetReturnType: string;
@@ -95,6 +99,8 @@ export const EMPTY_FORM: FormState = {
   currency: 'EUR',
   targetAmountCents: 0,
   committedAmountCents: 0,
+  projectTotalAmountCents: 0,
+  bankFinancingAmountCents: 0,
   minimumInvestmentCents: 0,
   estimatedTermMonths: 12,
   targetReturnType: '',
@@ -118,9 +124,9 @@ export const SECTIONS: SectionDef[] = [
   { key: 'location', label: 'Localización', fields: ['city', 'countryCode', 'district'], isSubentity: false },
   { key: 'assetStrategy', label: 'Activo y estrategia', fields: ['assetType', 'strategy'], isSubentity: false },
   { key: 'statusVisibility', label: 'Estado y visibilidad', fields: ['editorialStatus', 'visibility', 'status'], isSubentity: false },
-  { key: 'financials', label: 'Financieras', fields: ['currency', 'targetAmountCents', 'committedAmountCents', 'minimumInvestmentCents', 'estimatedTermMonths', 'targetReturnType', 'targetReturnBps', 'riskLevel', 'closingDate'], isSubentity: false },
+  { key: 'financials', label: 'Datos clave', fields: ['currency', 'targetAmountCents', 'committedAmountCents', 'projectTotalAmountCents', 'bankFinancingAmountCents', 'minimumInvestmentCents', 'estimatedTermMonths', 'targetReturnType', 'targetReturnBps', 'riskLevel', 'closingDate'], isSubentity: false },
   { key: 'description', label: 'Descripción', fields: ['description', 'disclaimer'], isSubentity: false },
-  { key: 'highlights', label: 'Highlights', fields: [], isSubentity: true },
+  { key: 'highlights', label: 'Datos de información', fields: [], isSubentity: true },
   { key: 'risks', label: 'Riesgos', fields: [], isSubentity: true },
   { key: 'milestones', label: 'Hitos', fields: [], isSubentity: true },
   { key: 'media', label: 'Media', fields: [], isSubentity: true },
@@ -129,6 +135,12 @@ export const SECTIONS: SectionDef[] = [
 
 // ── Helpers ──
 export function oppToForm(opp: OppFull): FormState {
+  const toNumber = (value: number | string | null | undefined, fallback = 0) => {
+    if (value === null || value === undefined || value === '') return fallback;
+    const parsed = typeof value === 'number' ? value : Number(value);
+    return Number.isFinite(parsed) ? parsed : fallback;
+  };
+
   return {
     title: opp.title || '',
     slug: opp.slug || '',
@@ -143,12 +155,14 @@ export function oppToForm(opp: OppFull): FormState {
     visibility: opp.visibility || 'private',
     status: opp.status || 'coming_soon',
     currency: opp.currency || 'EUR',
-    targetAmountCents: opp.target_amount_cents || 0,
-    committedAmountCents: opp.committed_amount_cents || 0,
-    minimumInvestmentCents: opp.minimum_investment_cents || 0,
-    estimatedTermMonths: opp.estimated_term_months || 12,
+    targetAmountCents: toNumber(opp.target_amount_cents),
+    committedAmountCents: toNumber(opp.committed_amount_cents),
+    projectTotalAmountCents: toNumber(opp.project_total_amount_cents),
+    bankFinancingAmountCents: toNumber(opp.bank_financing_amount_cents),
+    minimumInvestmentCents: toNumber(opp.minimum_investment_cents),
+    estimatedTermMonths: toNumber(opp.estimated_term_months, 12),
     targetReturnType: opp.target_return_type || '',
-    targetReturnBps: opp.target_return_bps || 0,
+    targetReturnBps: toNumber(opp.target_return_bps),
     riskLevel: opp.risk_level || 'medium',
     closingDate: opp.closing_date ? opp.closing_date.slice(0, 10) : '',
     disclaimer: opp.disclaimer || '',
@@ -158,6 +172,7 @@ export function oppToForm(opp: OppFull): FormState {
 
 export function formToApiPayload(form: FormState): Record<string, any> {
   const positiveInt = (value: number, fallback = 0) => Number.isFinite(value) ? Math.max(0, Math.round(value)) : fallback;
+  const positiveIntOrNull = (value: number) => Number.isFinite(value) && value > 0 ? Math.round(value) : null;
   const boundedTerm = Number.isFinite(form.estimatedTermMonths)
     ? Math.min(360, Math.max(1, Math.round(form.estimatedTermMonths)))
     : 12;
@@ -181,6 +196,8 @@ export function formToApiPayload(form: FormState): Record<string, any> {
     currency,
     targetAmountCents: positiveInt(form.targetAmountCents),
     committedAmountCents: positiveInt(form.committedAmountCents),
+    projectTotalAmountCents: positiveIntOrNull(form.projectTotalAmountCents),
+    bankFinancingAmountCents: positiveIntOrNull(form.bankFinancingAmountCents),
     minimumInvestmentCents: positiveInt(form.minimumInvestmentCents),
     estimatedTermMonths: boundedTerm,
     targetReturnType: form.targetReturnType || null,
@@ -224,6 +241,8 @@ export function validateSection(
       break;
     case 'financials':
       if (form.targetAmountCents <= 0) errors.push('El capital objetivo debe ser mayor que 0');
+      if (form.projectTotalAmountCents > 0 && form.projectTotalAmountCents < form.targetAmountCents) errors.push('El CAPEX total no puede ser menor que la inversión');
+      if (form.projectTotalAmountCents > 0 && form.bankFinancingAmountCents > form.projectTotalAmountCents) errors.push('La financiación bancaria no puede superar el CAPEX total');
       if (form.minimumInvestmentCents <= 0) errors.push('El ticket mínimo debe ser mayor que 0');
       if (form.estimatedTermMonths <= 0) errors.push('El plazo estimado debe ser mayor que 0');
       break;
@@ -259,6 +278,7 @@ export function getMissingFields(form: FormState, highlights: HighlightItem[], r
   if (!form.strategy.trim()) missing.push('Estrategia');
   if (!form.description.trim()) missing.push('Descripción');
   if (form.targetAmountCents <= 0) missing.push('Capital objetivo');
+  if (form.projectTotalAmountCents <= 0) missing.push('CAPEX total');
   if (risks.length === 0) missing.push('Al menos 1 riesgo');
   if (media.length === 0) missing.push('Al menos 1 imagen');
   return missing;

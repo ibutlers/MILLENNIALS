@@ -5,6 +5,8 @@ describe('finance editor helpers', () => {
   it('parses Spanish and English formatted numbers safely', () => {
     expect(parseLocaleNumber('1.234.567,89')).toBe(1234567.89);
     expect(parseLocaleNumber('1,234,567.89')).toBe(1234567.89);
+    expect(parseLocaleNumber('6.500.000')).toBe(6500000);
+    expect(parseLocaleNumber('6,500,000')).toBe(6500000);
     expect(parseLocaleNumber('250000')).toBe(250000);
     expect(parseLocaleNumber('')).toBe(0);
     expect(parseLocaleNumber('abc')).toBe(0);
