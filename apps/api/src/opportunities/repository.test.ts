@@ -69,9 +69,9 @@ describe('OpportunityRepository public DTO', () => {
       query: vi.fn()
         .mockResolvedValueOnce({ rows: [opportunityRow()] })
         .mockResolvedValueOnce({ rows: [{ type: 'image', url: '/images/plaza-america.jpg', alt_text: 'Fachada Plaza América', position: 0 }] })
-        .mockResolvedValueOnce({ rows: [{ label: 'Inversión', value: '680.000€ necesarios · 77,94% cubierto', position: 0 }] })
+        .mockResolvedValueOnce({ rows: [{ label: 'Objetivo de inversión', value: '680.000€', position: 0 }] })
         .mockResolvedValueOnce({ rows: [{ title: 'Riesgo licencia', description: 'Seguimiento de tramitación.', position: 0 }] })
-        .mockResolvedValueOnce({ rows: [{ title: 'Inversión cubierta', description: 'Inversión cubierta.', planned_date: '2026-03-01', completed_at: '2026-03-01T10:00:00.000Z', position: 0 }] }),
+        .mockResolvedValueOnce({ rows: [{ title: 'Objetivo de inversión definido', description: 'Definición del objetivo de inversión.', planned_date: '2026-03-01', completed_at: '2026-03-01T10:00:00.000Z', position: 0 }] }),
     };
     const repository = new OpportunityRepository(pool as unknown as Pool);
 
@@ -91,6 +91,7 @@ describe('OpportunityRepository public DTO', () => {
     expect(data).not.toHaveProperty('publicCommittedAmount');
     expect(data.closingDate).toBeNull();
     expect(data.publicReturnDisplay).toBe('21% +50%*');
+    expect(JSON.stringify({ highlights: data.highlights, milestones: data.milestones })).not.toMatch(/cubiert[ao]s?|aportad[ao]s?|capital aportado|financiación bancaria/i);
     expect(data).not.toHaveProperty('targetAmount');
     expect(data).not.toHaveProperty('committedAmount');
     expect(data).not.toHaveProperty('riskLevel');

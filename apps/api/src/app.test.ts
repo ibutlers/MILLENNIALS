@@ -34,7 +34,7 @@ function appWithRepository(overrides: Partial<{ list: unknown; findBySlug: unkno
         ? {
             data: {
               ...summary,
-              projectTotalAmount: { cents: 68000000, currency: 'EUR', formatted: '680.000 €' },
+              projectTotalAmount: { cents: 83000000, currency: 'EUR', formatted: '830.000 €' },
               bankFinancingAmount: { cents: 15000000, currency: 'EUR', formatted: '150.000 €' },
               closingDate: '2026-10-15',
               description: 'Descripción pública',

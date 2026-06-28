@@ -2,6 +2,8 @@ import { describe, expect, it } from 'vitest';
 import { DEMO_OPPORTUNITY_DISCLAIMER, seedOpportunities } from './db/seed.js';
 
 describe('demo opportunity seed data', () => {
+  const forbiddenPublicCopyPattern = /cubiert[ao]s?|aportad[ao]s?|capital aportado|financiación bancaria/i;
+
   it('contains 3 to 5 original demo opportunities and one private exclusion fixture', () => {
     const publicSeeds = seedOpportunities.filter((item) => item.visibility === 'public');
     expect(publicSeeds.length).toBeGreaterThanOrEqual(3);
@@ -19,5 +21,20 @@ describe('demo opportunity seed data', () => {
     }
     expect(DEMO_OPPORTUNITY_DISCLAIMER).toMatch(/carácter informativo/i);
     expect(DEMO_OPPORTUNITY_DISCLAIMER).toMatch(/no constituye una oferta/i);
+  });
+
+  it('keeps covered capital and bank financing out of public narrative copy', () => {
+    const publicCopy = seedOpportunities
+      .filter((item) => item.visibility === 'public')
+      .flatMap((item) => [
+        item.shortDescription,
+        item.description,
+        ...item.highlights.flatMap((highlight) => [highlight.label, highlight.value]),
+        ...item.milestones.flatMap((milestone) => [milestone.title, milestone.description]),
+      ]);
+
+    for (const copy of publicCopy) {
+      expect(copy).not.toMatch(forbiddenPublicCopyPattern);
+    }
   });
 });
