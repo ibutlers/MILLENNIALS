@@ -57,7 +57,8 @@ export interface InvestorOpportunity {
   strategy: string;
   status: string;
   currency: string;
-  projectTotalAmount: InvestorMoney | null;
+  publicInvestmentAmount: InvestorMoney | null;
+  projectTotalAmount?: InvestorMoney | null;
   minimumInvestment: InvestorMoney | null;
   estimatedTermMonths: number;
   publicReturnDisplay: string;

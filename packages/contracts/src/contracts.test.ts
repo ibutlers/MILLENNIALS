@@ -123,7 +123,7 @@ describe("shared contracts", () => {
         strategy: "buy_and_hold",
         status: "invalid_status",
         currency: "EUR",
-        projectTotalAmount: { cents: 250000, currency: "EUR", formatted: "€2,500" },
+        publicInvestmentAmount: { cents: 250000, currency: "EUR", formatted: "€2,500" },
         minimumInvestment: { cents: 10000, currency: "EUR", formatted: "€100" },
         estimatedTermMonths: 12,
         publicReturnDisplay: "8% +50%*",

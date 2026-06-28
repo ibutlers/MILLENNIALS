@@ -13,7 +13,7 @@ const summary = {
   strategy: 'Rehabilitación energética',
   status: 'funding',
   currency: 'EUR',
-  projectTotalAmount: { cents: 68000000, currency: 'EUR', formatted: '680.000 €' },
+  publicInvestmentAmount: { cents: 53000000, currency: 'EUR', formatted: '530.000 €' },
   minimumInvestment: { cents: 1500000, currency: 'EUR', formatted: '15.000 €' },
   estimatedTermMonths: 18,
   publicReturnDisplay: '12,3% +50%*',
@@ -34,7 +34,7 @@ function appWithRepository(overrides: Partial<{ list: unknown; findBySlug: unkno
         ? {
             data: {
               ...summary,
-              publicCommittedAmount: { cents: 53000000, currency: 'EUR', formatted: '530.000 €' },
+              projectTotalAmount: { cents: 68000000, currency: 'EUR', formatted: '680.000 €' },
               bankFinancingAmount: { cents: 15000000, currency: 'EUR', formatted: '150.000 €' },
               closingDate: '2026-10-15',
               description: 'Descripción pública',

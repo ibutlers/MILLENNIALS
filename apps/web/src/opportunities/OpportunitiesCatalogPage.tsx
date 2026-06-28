@@ -12,7 +12,7 @@ const risks = [['','Todos los riesgos'], ['low','Bajo'], ['medium','Medio'], ['h
 const cities = [['','Todas las ciudades'], ['Vigo','Vigo'], ['Barcelona','Barcelona'], ['Madrid','Madrid'], ['Valencia','Valencia'], ['Málaga','Málaga']];
 const assetTypes = [['','Todos los activos'], ['Residencial','Residencial'], ['Logístico','Logístico'], ['Retail urbano','Retail urbano'], ['Coliving','Coliving']];
 const strategies = [['','Todas las estrategias'], ['Promoción residencial','Promoción residencial'], ['Cambio de uso','Cambio de uso'], ['Rehabilitación energética','Rehabilitación energética'], ['Reposicionamiento','Reposicionamiento'], ['Renta estabilizada','Renta estabilizada'], ['Desarrollo ligero','Desarrollo ligero']];
-const sorts = [['publishedAt','Publicación'], ['closingDate','Cierre'], ['fundingProgress','Progreso'], ['minimumInvestment','Ticket mínimo'], ['targetAmount','Capital objetivo']];
+const sorts = [['publishedAt','Publicación'], ['closingDate','Cierre'], ['fundingProgress','Progreso'], ['minimumInvestment','Ticket mínimo'], ['targetAmount','Inversión']];
 const directions = [['desc','Descendente'], ['asc','Ascendente']];
 const pageSize = 6;
 

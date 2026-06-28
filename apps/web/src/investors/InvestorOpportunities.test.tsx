@@ -16,6 +16,7 @@ const investorOpportunitiesResponse = {
       strategy: 'Promoción residencial',
       status: 'open',
       currency: 'EUR',
+      publicInvestmentAmount: { cents: 80000000, currency: 'EUR', formatted: '800.000 €' },
       projectTotalAmount: { cents: 250000000, currency: 'EUR', formatted: '2.500.000 €' },
       minimumInvestment: { cents: 500000, currency: 'EUR', formatted: '5000 €' },
       estimatedTermMonths: 36,
@@ -52,8 +53,10 @@ describe('InvestorOpportunities', () => {
     expect(await screen.findByRole('heading', { name: /catálogo público con acciones privadas/i })).toBeInTheDocument();
     expect(screen.getByText(/la información de proyecto visible aquí es pública/i)).toBeInTheDocument();
     expect(screen.getByText('Promoción Plaza América')).toBeInTheDocument();
-    expect(screen.getByText(/capital asignado:/i)).toHaveTextContent('25.000');
     const card = screen.getByRole('article', { name: /promoción plaza américa/i });
+    expect(within(card).getByText(/inversión:/i)).toHaveTextContent('800.000');
+    expect(within(card).queryByText(/inversión total/i)).not.toBeInTheDocument();
+    expect(screen.getByText(/capital asignado:/i)).toHaveTextContent('25.000');
     expect(within(card).getByRole('link', { name: /ver detalle privado/i })).toHaveAttribute('href', '/inversores/proyectos/plaza-america');
 
     await waitFor(() => expect(fetchMock).toHaveBeenCalledWith('/api/investor/opportunities', expect.objectContaining({ headers: { Accept: 'application/json' } })));

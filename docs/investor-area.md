@@ -31,12 +31,12 @@ El backend conserva el modelo completo y es la fuente de verdad. Las APIs expone
 | Estado público del proyecto | Sí | Sí | Sí | Sí | Sí | Sí | No |
 | `visibility`, `editorial_status`, `published_at` | Sí | No | No | No | No | No | No |
 | Importes base internos (`target_amount_cents`, `committed_amount_cents`) | Sí | No como campos crudos | No como campos crudos | No como campos crudos | Sí en endpoint privado asignado | Sí en endpoint privado asignado | No |
-| `projectTotalAmount` | Sí | Sí | Sí | Sí | No | Sí | No |
+| `publicInvestmentAmount` | Sí | Sí | Sí | Sí | No | Sí | No |
+| `projectTotalAmount` / CAPEX total | Sí | No | Sí | Sí si la superficie privada lo requiere | No | Sí | No |
 | `minimumInvestment` | Sí | Sí | Sí | Sí | No | No | No |
 | `estimatedTermMonths` | Sí | Sí | Sí | Sí | No | Sí | No |
 | `publicReturnDisplay` | Sí | Sí | Sí | Sí | No | Derivado privado visible | No |
-| `fundingProgress` / progreso público | Sí | Sí | Sí | Sí | No | Sí | No |
-| `publicCommittedAmount` | Sí | No | Sí | No | No | Sí | No |
+| `fundingProgress` / progreso público de inversión | Sí | Sí | Sí | Sí | No | Sí | No |
 | `bankFinancingAmount` | Sí | No | Sí | No | No | No | No |
 | `riskLevel`, `targetReturnType`, `targetReturnBps`, `closingDate` | Sí | No | Solo `closingDate` pública aprobada | No | No | Sí si procede | No |
 | Highlights, riesgos e hitos públicos | Sí | No | Sí | No | No | No | No |
@@ -74,7 +74,7 @@ El backend conserva el modelo completo y es la fuente de verdad. Las APIs expone
 - `status`
 - `currency`
 - `primaryImage`
-- `projectTotalAmount`
+- `publicInvestmentAmount`
 - `minimumInvestment`
 - `estimatedTermMonths`
 - `publicReturnDisplay`
@@ -88,7 +88,7 @@ No entrega `riskLevel`, `targetAmount`, `committedAmount`, `publishedAt` ni `tar
 `GET /api/v1/opportunities/:slug` añade:
 
 - `description`
-- `publicCommittedAmount`
+- `projectTotalAmount`
 - `bankFinancingAmount`
 - `closingDate`
 - `highlights`

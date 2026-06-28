@@ -38,8 +38,8 @@ export const seedOpportunities: SeedOpportunity[] = [
   {
     slug: 'promocion-9-viviendas-plaza-america-vigo',
     title: 'Promoción de 9 viviendas en Plaza América',
-    shortDescription: 'Promoción residencial de un edificio de 9 viviendas en Travesía de la calle Coruña, zona Plaza América, Vigo. El proyecto está en marcha, con financiación cerrada, proyecto básico presentado y licencia pendiente.',
-    description: 'Promoción residencial de 9 viviendas en Travesía de la calle Coruña, en la zona de Plaza América, Vigo. El proyecto está en marcha, cuenta con financiación cerrada, proyecto básico presentado y se encuentra pendiente de licencia. Los datos publicados tienen carácter informativo y pueden actualizarse durante la tramitación y ejecución.',
+    shortDescription: 'Promoción residencial de un edificio de 9 viviendas en Travesía de la calle Coruña, zona Plaza América, Vigo. El proyecto está en marcha, con inversión cubierta, proyecto básico presentado y licencia pendiente.',
+    description: 'Promoción residencial de 9 viviendas en Travesía de la calle Coruña, en la zona de Plaza América, Vigo. El proyecto está en marcha, cuenta con inversión cubierta, proyecto básico presentado y se encuentra pendiente de licencia. Los datos publicados tienen carácter informativo y pueden actualizarse durante la tramitación y ejecución.',
     city: 'Vigo',
     countryCode: 'ES',
     district: 'Travesía de la calle Coruña · Plaza América',
@@ -52,7 +52,7 @@ export const seedOpportunities: SeedOpportunity[] = [
     targetAmountCents: 80000000,
     committedAmountCents: 80000000,
     projectTotalAmountCents: 250000000,
-    bankFinancingAmountCents: 170000000,
+    bankFinancingAmountCents: 150000000,
     minimumInvestmentCents: 500000,
     estimatedTermMonths: 36,
     targetReturnType: 'target_annual_return',
@@ -63,7 +63,7 @@ export const seedOpportunities: SeedOpportunity[] = [
     image: { url: '/images/plaza-america.jpg', altText: 'Fachada del edificio en Plaza América, Vigo' },
     highlights: [
       { label: 'Viviendas', value: '9 unidades' },
-      { label: 'Financiación', value: '800.000€ cubiertos · 100%' },
+      { label: 'Inversión', value: '800.000€ de inversión cubierta · 100%' },
       { label: 'Estado', value: 'Proyecto básico presentado · licencia pendiente' }
     ],
     risks: [
@@ -71,7 +71,7 @@ export const seedOpportunities: SeedOpportunity[] = [
       { title: 'Riesgo de mercado', description: 'La velocidad de comercialización depende de la demanda local en el momento de finalización.' }
     ],
     milestones: [
-      { title: 'Financiación cerrada', description: 'Capital objetivo de 800.000€ completamente cubierto para el desarrollo del proyecto.', plannedDate: '2026-03-01', completedAt: '2026-03-01T10:00:00Z' },
+      { title: 'Inversión cubierta', description: 'Inversión prevista de 800.000€ completamente cubierta para el desarrollo del proyecto.', plannedDate: '2026-03-01', completedAt: '2026-03-01T10:00:00Z' },
       { title: 'Proyecto básico presentado', description: 'Presentación del proyecto básico para avanzar en la tramitación de licencia.', plannedDate: '2026-06-15', completedAt: '2026-06-15T10:00:00Z' },
       { title: 'Licencia pendiente', description: 'Seguimiento de la tramitación administrativa previa al inicio de obra.', plannedDate: '2026-10-31', completedAt: null },
       { title: 'Inicio estimado de obra', description: 'Arranque de los trabajos una vez obtenida la licencia y cerrada la planificación de ejecución.', plannedDate: '2027-01-31', completedAt: null }
@@ -123,7 +123,7 @@ export const seedOpportunities: SeedOpportunity[] = [
   {
     slug: 'cambio-uso-hostal-maria-berdiales-vigo',
     title: 'Cambio de uso en María Berdiales',
-    shortDescription: 'Proyecto de cambio de uso de viviendas a hostal con 10 apartamentos en María Berdiales, Vigo. La operación está en estudio y cuenta con 800.000€ aportados y 200.000€ de financiación bancaria prevista.',
+    shortDescription: 'Proyecto de cambio de uso de viviendas a hostal con 10 apartamentos en María Berdiales, Vigo. La operación está en estudio y cuenta con 800.000€ de inversión aportada.',
     description: 'Proyecto de transformación de un inmueble actualmente destinado a viviendas en un hostal con 10 apartamentos en la zona de María Berdiales, Vigo. La operación se encuentra en fase de estudio, con análisis de cambio de uso, adecuación normativa, obra y modelo de explotación.',
     city: 'Vigo',
     countryCode: 'ES',

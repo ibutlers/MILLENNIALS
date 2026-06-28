@@ -15,7 +15,7 @@ const apiResponse = {
       strategy: 'Rehabilitación energética',
       status: 'funding',
       currency: 'EUR',
-      projectTotalAmount: { cents: 68000000, currency: 'EUR', formatted: '680.000 €' },
+      publicInvestmentAmount: { cents: 53000000, currency: 'EUR', formatted: '530.000 €' },
       minimumInvestment: { cents: 1500000, currency: 'EUR', formatted: '15.000 €' },
       estimatedTermMonths: 18,
       publicReturnDisplay: '12,3% +50%*',
@@ -88,8 +88,10 @@ describe('MILLENNIALS CONSTRUYEN landing', () => {
     const firstProjectCard = projectLinks[0].closest('article');
     expect(firstProjectCard).not.toBeNull();
     const firstProjectText = firstProjectCard?.textContent ?? '';
-    expect(firstProjectText.indexOf('Inversión total')).toBeGreaterThanOrEqual(0);
-    expect(firstProjectText.indexOf('Inversión total')).toBeLessThan(firstProjectText.indexOf('Retorno estimado'));
+    expect(firstProjectText.indexOf('Inversión')).toBeGreaterThanOrEqual(0);
+    expect(firstProjectText.indexOf('Inversión')).toBeLessThan(firstProjectText.indexOf('Retorno estimado'));
+    expect(firstProjectText).toContain('530.000');
+    expect(firstProjectText).not.toContain('680.000');
     // Disclaimer present on page
     expect(screen.getByText(/datos ilustrativos/i)).toBeInTheDocument();
     expect(screen.getByText(/los objetivos no están garantizados/i)).toBeInTheDocument();

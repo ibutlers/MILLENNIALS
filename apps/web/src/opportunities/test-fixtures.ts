@@ -11,7 +11,7 @@ export const opportunitySummary = {
   strategy: 'Rehabilitación energética',
   status: 'funding',
   currency: 'EUR',
-  projectTotalAmount: { cents: 68000000, currency: 'EUR', formatted: '680.000 €' },
+  publicInvestmentAmount: { cents: 53000000, currency: 'EUR', formatted: '530.000 €' },
   minimumInvestment: { cents: 1500000, currency: 'EUR', formatted: '15.000 €' },
   estimatedTermMonths: 18,
   publicReturnDisplay: '12,3% +50%*',
@@ -43,7 +43,7 @@ export const opportunitiesResponse = {
 export const opportunityDetailResponse = {
   data: {
     ...opportunitySummary,
-    publicCommittedAmount: { cents: 53000000, currency: 'EUR', formatted: '530.000 €' },
+    projectTotalAmount: { cents: 68000000, currency: 'EUR', formatted: '680.000 €' },
     bankFinancingAmount: { cents: 15000000, currency: 'EUR', formatted: '150.000 €' },
     closingDate: '2026-10-15',
     description: 'Descripción pública demo con contexto urbano y alcance de la rehabilitación. No contiene documentos privados ni información de inversores.',

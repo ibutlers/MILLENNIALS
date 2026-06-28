@@ -189,6 +189,7 @@ describe('Private investor routes — project documents', () => {
         strategy: 'Promoción residencial',
         status: 'open',
         currency: 'EUR',
+        publicInvestmentAmount: { cents: 80000000, currency: 'EUR', formatted: '800.000 €' },
         projectTotalAmount: { cents: 250000000, currency: 'EUR', formatted: '2.500.000 €' },
         minimumInvestment: { cents: 500000, currency: 'EUR', formatted: '5000 €' },
         estimatedTermMonths: 36,

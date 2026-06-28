@@ -190,7 +190,7 @@ export function InvestorOpportunities() {
                   <p className="mt-3 line-clamp-2 text-sm leading-6 text-muted">{opportunity.shortDescription}</p>
                   <div className="mt-4 grid gap-2 text-sm text-muted">
                     <span>Ticket mínimo: {opportunity.minimumInvestment?.formatted ?? '—'}</span>
-                    <span>Inversión total: {opportunity.projectTotalAmount?.formatted ?? '—'}</span>
+                    <span>Inversión: {opportunity.publicInvestmentAmount?.formatted ?? '—'}</span>
                     <span>Retorno estimado: {opportunity.publicReturnDisplay}</span>
                     {opportunity.investorAccess ? <span>Capital asignado: {opportunity.investorAccess.committedAmount?.formatted ?? '—'}</span> : null}
                   </div>

@@ -63,7 +63,7 @@ function mapSummary(row: DbOpportunity, media: DbMedia | null = null) {
     strategy: row.strategy,
     status: row.status,
     currency,
-    projectTotalAmount: serializeMoney(row.project_total_amount_cents ?? row.target_amount_cents, currency),
+    publicInvestmentAmount: serializeMoney(row.committed_amount_cents, currency),
     minimumInvestment: serializeMoney(row.minimum_investment_cents, currency),
     estimatedTermMonths: row.estimated_term_months,
     publicReturnDisplay: formatPublicReturnDisplay(row.target_return_bps, row.estimated_term_months),
@@ -78,7 +78,7 @@ function mapDetail(row: DbOpportunity, media: DbMedia | null = null) {
   const totalCents = row.project_total_amount_cents ?? row.target_amount_cents;
   return {
     ...mapSummary(row, media),
-    publicCommittedAmount: serializeMoney(row.committed_amount_cents, currency),
+    projectTotalAmount: serializeMoney(totalCents, currency),
     bankFinancingAmount: serializeMoney(row.bank_financing_amount_cents ?? Math.max(0, Number(totalCents) - Number(row.committed_amount_cents)), currency),
     closingDate: serializeDate(row.closing_date),
   };

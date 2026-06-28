@@ -19,7 +19,7 @@ export const opportunitySummarySchema = z.object({
   strategy: z.string(),
   status: opportunityStatusSchema,
   currency: z.string(),
-  projectTotalAmount: moneySchema,
+  publicInvestmentAmount: moneySchema,
   minimumInvestment: moneySchema,
   estimatedTermMonths: z.number().int(),
   publicReturnDisplay: z.string(),
@@ -39,7 +39,7 @@ const riskSchema = z.object({ title: z.string(), description: z.string(), positi
 const milestoneSchema = z.object({ title: z.string(), description: z.string(), plannedDate: z.string().nullable(), completedAt: z.string().nullable(), position: z.number().int() });
 
 export const opportunityDetailSchema = opportunitySummarySchema.extend({
-  publicCommittedAmount: moneySchema,
+  projectTotalAmount: moneySchema,
   bankFinancingAmount: moneySchema,
   closingDate: z.string().nullable(),
   description: z.string(),
@@ -151,10 +151,10 @@ export function formatMoneyFromCents(cents: number, currency = 'EUR') {
   }).format(Math.max(0, cents) / 100);
 }
 
-export function getInvestmentBreakdown(opportunity: Pick<OpportunityDetail, 'projectTotalAmount' | 'publicCommittedAmount' | 'bankFinancingAmount' | 'currency'> | Pick<PublicOpportunity, 'projectTotalAmount' | 'currency'>) {
-  const currency = opportunity.projectTotalAmount?.currency ?? opportunity.currency ?? 'EUR';
-  const totalCents = opportunity.projectTotalAmount?.cents ?? 0;
-  const contributedCents = 'publicCommittedAmount' in opportunity ? opportunity.publicCommittedAmount?.cents ?? 0 : 0;
+export function getInvestmentBreakdown(opportunity: Pick<OpportunityDetail, 'publicInvestmentAmount' | 'projectTotalAmount' | 'bankFinancingAmount' | 'currency'> | Pick<PublicOpportunity, 'publicInvestmentAmount' | 'currency'>) {
+  const currency = opportunity.publicInvestmentAmount?.currency ?? opportunity.currency ?? 'EUR';
+  const contributedCents = opportunity.publicInvestmentAmount?.cents ?? 0;
+  const totalCents = 'projectTotalAmount' in opportunity ? opportunity.projectTotalAmount?.cents ?? contributedCents : contributedCents;
   const bankFinancedCents = 'bankFinancingAmount' in opportunity ? opportunity.bankFinancingAmount?.cents ?? Math.max(0, totalCents - contributedCents) : 0;
 
   return {

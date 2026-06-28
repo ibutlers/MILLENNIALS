@@ -40,7 +40,7 @@ export const opportunitySummarySchema = z.object({
   strategy: z.string(),
   status: opportunityStatusSchema,
   currency: z.string(),
-  projectTotalAmount: moneyResponseSchema,
+  publicInvestmentAmount: moneyResponseSchema,
   minimumInvestment: moneyResponseSchema,
   estimatedTermMonths: z.number().int(),
   publicReturnDisplay: z.string(),
@@ -50,7 +50,7 @@ export const opportunitySummarySchema = z.object({
 });
 
 export const opportunityDetailSchema = opportunitySummarySchema.extend({
-  publicCommittedAmount: moneyResponseSchema,
+  projectTotalAmount: moneyResponseSchema,
   bankFinancingAmount: moneyResponseSchema,
   closingDate: z.string().nullable(),
   description: z.string(),

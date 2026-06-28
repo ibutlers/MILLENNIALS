@@ -45,6 +45,7 @@ EXPECTED = [
     '0019_add_converted_lead_status.sql',
     '0020_unify_app_user_operator_role.sql',
     '0021_align_editorial_publication_status.sql',
+    '0022_update_plaza_america_investment_labels.sql',
 ]
 FAILED = False
 
@@ -209,7 +210,7 @@ def main():
         r = _psql(cn, sec, 'SELECT count(*) FROM schema_migrations')
         mc = r.stdout.strip()
         print('  migrations=' + mc)
-        _check(mc == '21', 'esperadas 21 migraciones, hay ' + mc)
+        _check(mc == '22', 'esperadas 22 migraciones, hay ' + mc)
 
         r = _psql(cn, sec,
                   'SELECT id FROM schema_migrations ORDER BY applied_at')
@@ -358,13 +359,13 @@ def main():
         cc = _psql_host(cn, sec,
                         'SELECT count(*) FROM schema_migrations',
                         db=cdb).stdout.strip()
-        _check(cc == '21', 'concurrencia: esperadas 21, hay ' + cc)
+        _check(cc == '22', 'concurrencia: esperadas 22, hay ' + cc)
         du = _psql_host(cn, sec,
                         'SELECT id, count(*) FROM schema_migrations '
                         'GROUP BY id HAVING count(*) > 1',
                         db=cdb).stdout.strip()
         _check(du == '', 'filas duplicadas: ' + du)
-        print('  concurrency: OK (21 migraciones, 0 duplicados)')
+        print('  concurrency: OK (22 migraciones, 0 duplicados)')
 
         # ─────────────────────────────────────────────────────────────────
         # Backup/restore auth tables

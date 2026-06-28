@@ -88,7 +88,7 @@ Contrastes base comprobados:
 - `FirmNarrative`: narrativa corporativa antes de oportunidades.
 - `ProcessSection`: indicadores de proceso sin cifras no verificadas.
 - `Methodology`: tesis, metodología, tecnología y análisis.
-- `Opportunities`: tarjetas públicas demo con rentabilidad objetivo estimada, plazo, ticket mínimo, capital objetivo, capital comprometido, estado, nivel de riesgo y progreso demo.
+- `Opportunities`: tarjetas públicas con inversión pública del proyecto, rentabilidad objetivo estimada, plazo, ticket mínimo, estado público y progreso de inversión. El CAPEX total y la financiación bancaria quedan para la ficha.
 - `PlannedAccess`: pantallas informativas honestas para `/acceso` e `/inversores`, sin formularios ni autenticación simulada.
 - `FAQ`: acordeones semánticos con `details/summary`.
 - `AccessCta`: acceso privado futuro y solicitud de acceso.
@@ -104,8 +104,8 @@ No usar «retorno histórico» en datos mock. Las tarjetas deben distinguir como
 - rentabilidad objetivo estimada;
 - plazo estimado;
 - ticket mínimo;
-- capital objetivo;
-- capital comprometido;
+- inversión pública;
+- CAPEX total y financiación bancaria solo en ficha;
 - estado del proyecto;
 - nivel de riesgo;
 - naturaleza ilustrativa de los datos.
