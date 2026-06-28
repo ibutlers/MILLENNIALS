@@ -20,8 +20,8 @@ export function FundingProgress({ value, dark = false }: { value: number; dark?:
   return (
     <div>
       <div className={`mb-2 flex justify-between gap-3 text-xs font-black uppercase tracking-[0.16em] ${dark ? 'text-charcoal/70' : 'text-charcoal/70'}`}>
-        <span>Inversión</span>
-        <span className="text-right">Inversión cubierta · {formatted}</span>
+        <span>Progreso de inversión</span>
+        <span className="text-right">{formatted}</span>
       </div>
       <div
         role="progressbar"
@@ -41,9 +41,7 @@ export function OpportunityCard({ opportunity, preserveSearch = true }: { opport
   const location = [opportunity.city, opportunity.district].filter(Boolean).join(' · ');
   const detailHref = `/proyectos/${opportunity.slug}${preserveSearch && typeof window !== 'undefined' ? window.location.search : ''}`;
   const showFinancials = (opportunity.publicInvestmentAmount?.cents ?? 0) > 1;
-  const progress = Math.max(0, Math.min(100, opportunity.fundingProgress));
   const showProgress = showFinancials;
-  const isFunded = progress === 100 && showProgress;
   const imageIsProvisional = !opportunity.primaryImage || /provisional/i.test(opportunity.primaryImage.altText);
 
   return (
@@ -60,7 +58,6 @@ export function OpportunityCard({ opportunity, preserveSearch = true }: { opport
       <div className="flex h-full flex-col p-5 sm:p-6">
         <div className="flex flex-wrap gap-2">
           <StatusBadge status={opportunity.status} />
-          {isFunded ? <span className="rounded-full border border-electric/30 bg-electric/5 px-2.5 py-1 text-[0.68rem] font-black uppercase tracking-[0.16em] text-electric">Inversión cubierta</span> : null}
           {opportunity.strategy === 'Cambio de uso' ? <span className="rounded-full border border-frost px-2.5 py-1 text-[0.68rem] font-bold uppercase tracking-[0.16em] text-charcoal/70">Cambio de uso</span> : null}
         </div>
         <h2 className="mt-4 font-serif text-4xl leading-tight tracking-[-0.04em] text-ink"><Link className="focus:outline-none focus-visible:ring-2 focus-visible:ring-electric" to={detailHref}>{opportunity.title}</Link></h2>

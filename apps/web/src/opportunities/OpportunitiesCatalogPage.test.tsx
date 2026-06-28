@@ -54,6 +54,7 @@ describe('public opportunities catalog', () => {
     expect(within(card).getByText(/680\.000\s*€/)).toBeInTheDocument();
     expect(within(card).queryByText(/530\.000\s*€/)).not.toBeInTheDocument();
     expect(within(card).queryByText(/fondos aportados|financiación bancaria/i)).not.toBeInTheDocument();
+    expect(within(card).queryByText(/inversión cubierta/i)).not.toBeInTheDocument();
     expect(within(card).getByText(/42,4%/)).toBeInTheDocument();
     expect(within(card).getByRole('progressbar', { name: /inversión/i })).toHaveAttribute('aria-valuenow', '42.4');
     expect(within(card).getByText(/18 meses/i)).toBeInTheDocument();
