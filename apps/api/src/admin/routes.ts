@@ -869,23 +869,28 @@ export function registerAdminRoutes(app: FastifyInstance, options: { pool: Pool;
   // Sub-entities — transactional update
   // ══════════════════════════════════════
 
+  const subEntityIdFields = {
+    _id: z.string().uuid().optional(),
+    id: z.string().uuid().optional(),
+  };
+
   const subEntitiesSchema = z.object({
     highlights: z.array(z.object({
-      _id: z.string().optional(),
+      ...subEntityIdFields,
       label: z.string().min(1).max(200),
       value: z.string().min(1).max(500),
       position: z.number().int().min(0),
     })).optional(),
     removedHighlightIds: z.array(z.string().uuid()).optional(),
     risks: z.array(z.object({
-      _id: z.string().optional(),
+      ...subEntityIdFields,
       title: z.string().min(1).max(200),
       description: z.string().min(1).max(2000),
       position: z.number().int().min(0),
     })).optional(),
     removedRiskIds: z.array(z.string().uuid()).optional(),
     milestones: z.array(z.object({
-      _id: z.string().optional(),
+      ...subEntityIdFields,
       title: z.string().min(1).max(200),
       description: z.string().min(1).max(2000),
       plannedDate: z.string().nullable().optional(),
@@ -894,7 +899,7 @@ export function registerAdminRoutes(app: FastifyInstance, options: { pool: Pool;
     })).optional(),
     removedMilestoneIds: z.array(z.string().uuid()).optional(),
     media: z.array(z.object({
-      _id: z.string().optional(),
+      ...subEntityIdFields,
       assetId: z.string().min(1).max(500).optional(),
       url: z.string().min(1).max(500).optional(),
       altText: z.string().max(500).optional().default(''),
@@ -913,21 +918,30 @@ export function registerAdminRoutes(app: FastifyInstance, options: { pool: Pool;
     const oppId = (req.params as any).id;
     const body = subEntitiesSchema.parse(req.body);
 
-    // Version check
-    const { rows: [current] } = await pool.query('SELECT id, version FROM opportunities WHERE id = $1', [oppId]);
-    if (!current) return reply.status(404).send({ error: { code: 'not_found', message: 'Oportunidad no encontrada.' } });
-    if (body.version !== current.version) {
-      return reply.status(409).send({
-        error: { code: 'version_conflict', message: 'La oportunidad fue modificada por otro usuario.', currentVersion: current.version, providedVersion: body.version }
-      });
-    }
-
     const client = await pool.connect();
     try {
       await client.query('BEGIN');
 
+      // Lock the opportunity before checking version and writing subentities.
+      // This keeps concurrent PATCH /subentities calls from accepting the same
+      // stale version and creating duplicate opportunity_versions snapshots.
+      const { rows: [current] } = await client.query('SELECT * FROM opportunities WHERE id = $1 FOR UPDATE', [oppId]);
+      if (!current) {
+        await client.query('ROLLBACK');
+        return reply.status(404).send({ error: { code: 'not_found', message: 'Oportunidad no encontrada.' } });
+      }
+      if (body.version !== current.version) {
+        await client.query('ROLLBACK');
+        return reply.status(409).send({
+          error: { code: 'version_conflict', message: 'La oportunidad fue modificada por otro usuario.', currentVersion: current.version, providedVersion: body.version }
+        });
+      }
+
       // Helper: upsert sub-entities by ID (preserving stable identities)
-      // Pattern: UPDATE existing rows, INSERT new ones, DELETE explicitly removed
+      // Semantics: a provided section is the complete desired state for that
+      // section. Existing rows omitted by the client are removed. Rows with
+      // `id` or `_id` are updated, new rows are inserted, and explicit removals
+      // win over items if a stale UI sends the same id in both places.
       async function upsertSubEntities(
         table: string,
         columns: string[],
@@ -935,28 +949,30 @@ export function registerAdminRoutes(app: FastifyInstance, options: { pool: Pool;
         removedIds: string[],
         oppId: string,
       ) {
+        const itemServerId = (item: Record<string, any>) => item._id ?? item.id;
+
         // Validate all _id values belong to this opportunity
         const existingIds = new Set(
           (await client.query(`SELECT id FROM ${table} WHERE opportunity_id = $1`, [oppId])).rows.map((r: any) => r.id)
         );
 
         for (const item of items) {
-          if (item._id && !existingIds.has(item._id)) {
-            if (existingIds.size > 0) {
-              throw Object.assign(new Error(`Sub-entity ${item._id} does not belong to this opportunity`), { statusCode: 403 });
-            }
+          const id = itemServerId(item);
+          if (id && !existingIds.has(id)) {
+            throw Object.assign(new Error('La subentidad no pertenece a esta oportunidad.'), { statusCode: 403, code: 'subentity_forbidden' });
           }
         }
 
-        // Treat a provided section as the complete desired state.
-        // Existing rows omitted by the client must be removed; otherwise a
-        // save from clients that cannot send server ids inserts duplicates.
+        const explicitRemovedIds = new Set(removedIds.filter((id) => existingIds.has(id)));
+        const itemsToApply = items.filter((item) => {
+          const id = itemServerId(item);
+          return !(id && explicitRemovedIds.has(id));
+        });
         const incomingExistingIds = new Set(
-          items
-            .map((item) => item._id)
+          itemsToApply
+            .map(itemServerId)
             .filter((id): id is string => Boolean(id) && existingIds.has(id)),
         );
-        const explicitRemovedIds = new Set(removedIds.filter((id) => existingIds.has(id)));
         const idsToDelete = [...existingIds].filter((id) => explicitRemovedIds.has(id) || !incomingExistingIds.has(id));
         const deletedIds = new Set(idsToDelete);
         if (idsToDelete.length > 0) {
@@ -967,14 +983,15 @@ export function registerAdminRoutes(app: FastifyInstance, options: { pool: Pool;
         }
 
         // Update existing, insert new
-        for (const item of items) {
-          const isExisting = item._id && existingIds.has(item._id) && !deletedIds.has(item._id);
+        for (const item of itemsToApply) {
+          const id = itemServerId(item);
+          const isExisting = id && existingIds.has(id) && !deletedIds.has(id);
           if (isExisting) {
             const setClauses = columns.map((col, i) => `${col} = $${i + 3}`);
             const values = columns.map((col) => item[col] ?? null);
             await client.query(
               `UPDATE ${table} SET ${setClauses.join(', ')} WHERE id = $1 AND opportunity_id = $2`,
-              [item._id, oppId, ...values]
+              [id, oppId, ...values]
             );
           } else {
             const placeholders = columns.map((_, i) => `$${i + 2}`);
@@ -1030,7 +1047,7 @@ export function registerAdminRoutes(app: FastifyInstance, options: { pool: Pool;
             url,
             alt_text: md.alt_text ?? md.altText ?? '',
             position: md.position,
-            _id: md._id,
+            _id: md._id ?? md.id,
           };
         });
         await upsertSubEntities(
@@ -1043,11 +1060,11 @@ export function registerAdminRoutes(app: FastifyInstance, options: { pool: Pool;
       }
 
       // Bump version
-      const newVersion = current.version + 1;
       const { rows: [opp] } = await client.query(
-        'UPDATE opportunities SET version = $1, updated_at = now() WHERE id = $2 RETURNING *',
-        [newVersion, oppId]
+        'UPDATE opportunities SET version = version + 1, updated_at = now() WHERE id = $1 RETURNING *',
+        [oppId]
       );
+      const newVersion = opp.version;
 
       // Snapshot
       await client.query(
@@ -1065,6 +1082,15 @@ export function registerAdminRoutes(app: FastifyInstance, options: { pool: Pool;
       return { data: opp };
     } catch (err) {
       await client.query('ROLLBACK');
+      const statusCode = (err as { statusCode?: number }).statusCode;
+      if (statusCode && statusCode >= 400 && statusCode < 500) {
+        return reply.status(statusCode).send({
+          error: {
+            code: (err as { code?: string }).code || 'subentity_update_rejected',
+            message: (err as Error).message || 'No se han podido actualizar los datos de la oportunidad.',
+          },
+        });
+      }
       throw err;
     } finally {
       client.release();

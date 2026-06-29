@@ -58,6 +58,14 @@ El backend conserva el modelo completo y es la fuente de verdad. Las APIs expone
 - El botón de publicar del admin pone `editorial_status='published'`, `visibility='public'` y completa `published_at` si estaba vacío.
 - Despublicar o archivar saca el proyecto de la superficie pública.
 
+## Contrato de subentidades admin
+
+- `PATCH /api/v1/admin/opportunities/:id/subentities` usa semántica de reemplazo por sección: si se envía `highlights`, `risks`, `milestones` o `media`, esa lista es el estado completo deseado de la sección enviada.
+- Las filas omitidas dentro de una sección enviada se eliminan; las secciones no enviadas no se modifican.
+- El endpoint acepta `id` y `_id` como alias del identificador persistente devuelto por `GET /subentities`, y rechaza ids que no pertenecen a la oportunidad.
+- Los `removed*Ids` ganan sobre filas enviadas con el mismo id para evitar reinserciones desde interfaces desactualizadas.
+- El control de `version` se valida dentro de la transacción con bloqueo de fila para devolver `409 version_conflict` ante escrituras concurrentes.
+
 ## DTOs públicos
 
 ### Home y cards públicas

@@ -7,6 +7,7 @@ const USER_ID = '00000000-0000-0000-0000-000000000001';
 const OPP_ID = '11111111-1111-1111-1111-111111111111';
 const HIGHLIGHT_A = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
 const HIGHLIGHT_B = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb';
+const HIGHLIGHT_OTHER = 'cccccccc-cccc-4ccc-8ccc-cccccccccccc';
 
 function makeConfig() {
   return {
@@ -35,26 +36,37 @@ function makeConfig() {
 
 type QueryRecord = { sql: string; params?: any[] };
 
-function makeSubentitiesPool() {
+type PoolOptions = {
+  version?: number;
+  highlightIds?: string[];
+  opportunityExists?: boolean;
+};
+
+function makeSubentitiesPool(options: PoolOptions = {}) {
   const calls: QueryRecord[] = [];
+  const opportunityExists = options.opportunityExists ?? true;
   const opportunity = {
     id: OPP_ID,
     slug: 'test-opportunity',
     title: 'Test opportunity',
-    version: 5,
+    version: options.version ?? 5,
   };
+  const highlightIds = options.highlightIds ?? [HIGHLIGHT_A, HIGHLIGHT_B];
 
   const client = {
     query: vi.fn(async (sql: string, params?: any[]) => {
       calls.push({ sql, params });
       if (sql === 'BEGIN' || sql === 'COMMIT' || sql === 'ROLLBACK') return { rows: [], rowCount: 0 };
-      if (sql.includes('SELECT id FROM opportunity_highlights')) {
-        return { rows: [{ id: HIGHLIGHT_A }, { id: HIGHLIGHT_B }], rowCount: 2 };
+      if (sql.includes('SELECT * FROM opportunities WHERE id = $1 FOR UPDATE')) {
+        return { rows: opportunityExists ? [{ ...opportunity }] : [], rowCount: opportunityExists ? 1 : 0 };
       }
-      if (sql.includes('DELETE FROM opportunity_highlights')) return { rows: [], rowCount: 2 };
+      if (sql.includes('SELECT id FROM opportunity_highlights')) {
+        return { rows: highlightIds.map((id) => ({ id })), rowCount: highlightIds.length };
+      }
+      if (sql.includes('DELETE FROM opportunity_highlights')) return { rows: [], rowCount: Array.isArray(params?.[1]) ? params?.[1].length : 0 };
       if (sql.includes('UPDATE opportunity_highlights')) return { rows: [], rowCount: 1 };
       if (sql.includes('INSERT INTO opportunity_highlights')) return { rows: [], rowCount: 1 };
-      if (sql.includes('UPDATE opportunities SET version')) return { rows: [{ ...opportunity, version: 6 }], rowCount: 1 };
+      if (sql.includes('UPDATE opportunities SET version')) return { rows: [{ ...opportunity, version: opportunity.version + 1 }], rowCount: 1 };
       if (sql.includes('SELECT label, value, position FROM opportunity_highlights')) {
         return { rows: [{ label: 'Nuevo dato', value: 'Nuevo valor', position: 0 }], rowCount: 1 };
       }
@@ -88,7 +100,7 @@ function makeSubentitiesPool() {
         };
       }
       if (sql.includes('SELECT role FROM user_roles')) return { rows: [{ role: 'admin' }], rowCount: 1 };
-      if (sql.includes('SELECT id, version FROM opportunities')) return { rows: [{ id: OPP_ID, version: 5 }], rowCount: 1 };
+      if (sql.includes('SELECT id, version FROM opportunities')) return { rows: opportunityExists ? [{ id: OPP_ID, version: opportunity.version }] : [], rowCount: opportunityExists ? 1 : 0 };
       throw new Error(`Unexpected pool SQL: ${sql}`);
     }),
   } as any;
@@ -131,5 +143,98 @@ describe('Admin API — opportunity subentities', () => {
     expect(calls.filter((call) => call.sql.includes('INSERT INTO opportunity_highlights'))).toHaveLength(1);
     expect(calls.filter((call) => call.sql.includes('UPDATE opportunity_highlights'))).toHaveLength(0);
     expect(client.query).toHaveBeenLastCalledWith('COMMIT');
+  });
+
+  it('checks the expected version under a row lock inside the transaction', async () => {
+    const { pool, calls } = makeSubentitiesPool();
+    const app = buildTestApp(pool);
+
+    const response = await app.inject({
+      method: 'PATCH',
+      url: `/api/v1/admin/opportunities/${OPP_ID}/subentities`,
+      headers: { cookie: `realstate_sid=${SESSION}` },
+      payload: {
+        version: 5,
+        highlights: [{ _id: HIGHLIGHT_A, label: 'Dato', value: 'Valor', position: 0 }],
+      },
+    });
+
+    expect(response.statusCode).toBe(200);
+    const preTransactionVersionReads = calls.filter((call) => call.sql.includes('SELECT id, version FROM opportunities'));
+    expect(preTransactionVersionReads).toHaveLength(0);
+    const beginIndex = calls.findIndex((call) => call.sql === 'BEGIN');
+    const lockIndex = calls.findIndex((call) => call.sql.includes('SELECT * FROM opportunities WHERE id = $1 FOR UPDATE'));
+    const updateIndex = calls.findIndex((call) => call.sql.includes('UPDATE opportunity_highlights'));
+    expect(beginIndex).toBeGreaterThanOrEqual(0);
+    expect(lockIndex).toBeGreaterThan(beginIndex);
+    expect(updateIndex).toBeGreaterThan(lockIndex);
+  });
+
+  it('accepts id from GET as an alias for _id and updates the existing row', async () => {
+    const { pool, calls } = makeSubentitiesPool();
+    const app = buildTestApp(pool);
+
+    const response = await app.inject({
+      method: 'PATCH',
+      url: `/api/v1/admin/opportunities/${OPP_ID}/subentities`,
+      headers: { cookie: `realstate_sid=${SESSION}` },
+      payload: {
+        version: 5,
+        highlights: [
+          { id: HIGHLIGHT_A, label: 'Dato conservado', value: 'Valor conservado', position: 0 },
+        ],
+      },
+    });
+
+    expect(response.statusCode).toBe(200);
+    const deleteHighlights = calls.filter((call) => call.sql.includes('DELETE FROM opportunity_highlights'));
+    expect(deleteHighlights).toHaveLength(1);
+    expect(deleteHighlights[0].params).toEqual([OPP_ID, [HIGHLIGHT_B]]);
+    expect(calls.filter((call) => call.sql.includes('UPDATE opportunity_highlights'))).toHaveLength(1);
+    expect(calls.filter((call) => call.sql.includes('INSERT INTO opportunity_highlights'))).toHaveLength(0);
+  });
+
+  it('does not reinsert rows that are present in items and explicit removed ids', async () => {
+    const { pool, calls } = makeSubentitiesPool();
+    const app = buildTestApp(pool);
+
+    const response = await app.inject({
+      method: 'PATCH',
+      url: `/api/v1/admin/opportunities/${OPP_ID}/subentities`,
+      headers: { cookie: `realstate_sid=${SESSION}` },
+      payload: {
+        version: 5,
+        highlights: [
+          { _id: HIGHLIGHT_A, label: 'Debe eliminarse', value: 'No reinserta', position: 0 },
+        ],
+        removedHighlightIds: [HIGHLIGHT_A],
+      },
+    });
+
+    expect(response.statusCode).toBe(200);
+    const deleteHighlights = calls.filter((call) => call.sql.includes('DELETE FROM opportunity_highlights'));
+    expect(deleteHighlights).toHaveLength(1);
+    expect(deleteHighlights[0].params).toEqual([OPP_ID, [HIGHLIGHT_A, HIGHLIGHT_B]]);
+    expect(calls.filter((call) => call.sql.includes('UPDATE opportunity_highlights'))).toHaveLength(0);
+    expect(calls.filter((call) => call.sql.includes('INSERT INTO opportunity_highlights'))).toHaveLength(0);
+  });
+
+  it('returns 403 for a subentity id that belongs outside the opportunity', async () => {
+    const { pool } = makeSubentitiesPool({ highlightIds: [HIGHLIGHT_A] });
+    const app = buildTestApp(pool);
+
+    const response = await app.inject({
+      method: 'PATCH',
+      url: `/api/v1/admin/opportunities/${OPP_ID}/subentities`,
+      headers: { cookie: `realstate_sid=${SESSION}` },
+      payload: {
+        version: 5,
+        highlights: [
+          { _id: HIGHLIGHT_OTHER, label: 'Ajeno', value: 'No permitido', position: 0 },
+        ],
+      },
+    });
+
+    expect(response.statusCode).toBe(403);
   });
 });
