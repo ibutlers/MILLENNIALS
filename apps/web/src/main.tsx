@@ -49,7 +49,6 @@ const AdminInvestmentRequests = lazy(() => import('./admin/AdminInvestmentReques
 const AdminUserList = lazy(() => import('./admin/AdminUserList').then((module) => ({ default: module.default })));
 const AdminUserDetail = lazy(() => import('./admin/AdminUserDetail').then((module) => ({ default: module.default })));
 const AdminAuditLog = lazy(() => import('./admin/AdminAuditLog').then((module) => ({ default: module.default })));
-const AdminPreview = lazy(() => import('./admin/AdminPreview').then((module) => ({ default: module.default })));
 
 const queryClient = new QueryClient();
 function PageLoader() { return <main className="min-h-screen bg-carbon p-8 text-textLight" role="status">Cargando página…</main>; }
@@ -160,7 +159,6 @@ const router = createBrowserRouter([
       { index: true, element: lazyPage(<AdminDashboard />) },
       { path: 'oportunidades', element: lazyPage(<AdminOpportunityList />) },
       { path: 'oportunidades/nueva', element: lazyPage(<AdminOpportunityEditor />) },
-      { path: 'oportunidades/:id/preview', element: lazyPage(<AdminPreview />) },
       { path: 'oportunidades/:id', element: lazyPage(<AdminOpportunityEditor />) },
       { path: 'leads', element: lazyPage(<AdminLeadList />) },
       { path: 'leads/:reference', element: lazyPage(<AdminLeadDetail />) },

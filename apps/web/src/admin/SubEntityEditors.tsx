@@ -32,7 +32,7 @@ function ReorderButtons({ index, total, onMove }: { index: number; total: number
 // ══════════════════════════════════════
 // Public information facts editor
 // ══════════════════════════════════════
-export interface HighlightItem extends Identifiable { label: string; value: string; position: number }
+export interface HighlightItem extends Identifiable { id?: string; label: string; value: string; position: number }
 
 export function HighlightsEditor({ items, onChange }: { items: HighlightItem[]; onChange: (items: HighlightItem[]) => void }) {
   function add() {
@@ -71,7 +71,7 @@ export function HighlightsEditor({ items, onChange }: { items: HighlightItem[]; 
 // ══════════════════════════════════════
 // Risks Editor
 // ══════════════════════════════════════
-export interface RiskItem extends Identifiable { title: string; description: string; position: number }
+export interface RiskItem extends Identifiable { id?: string; title: string; description: string; position: number }
 
 export function RisksEditor({ items, onChange }: { items: RiskItem[]; onChange: (items: RiskItem[]) => void }) {
   function add() {
@@ -110,7 +110,7 @@ export function RisksEditor({ items, onChange }: { items: RiskItem[]; onChange: 
 // ══════════════════════════════════════
 // Milestones Editor
 // ══════════════════════════════════════
-export interface MilestoneItem extends Identifiable { title: string; description: string; plannedDate: string; completedAt: string; position: number }
+export interface MilestoneItem extends Identifiable { id?: string; title: string; description: string; plannedDate: string; completedAt: string; position: number }
 
 export function MilestonesEditor({ items, onChange }: { items: MilestoneItem[]; onChange: (items: MilestoneItem[]) => void }) {
   function add() {
@@ -161,7 +161,7 @@ export function MilestonesEditor({ items, onChange }: { items: MilestoneItem[]; 
 // ══════════════════════════════════════
 import { CATALOG, type AssetEntry } from './assetCatalog';
 
-export interface MediaItem extends Identifiable { assetId: string; alt: string; primary: boolean; position: number }
+export interface MediaItem extends Identifiable { id?: string; assetId: string; alt: string; primary: boolean; position: number }
 
 export function MediaEditor({ items, onChange }: { items: MediaItem[]; onChange: (items: MediaItem[]) => void }) {
   const [showCatalog, setShowCatalog] = useState(false);

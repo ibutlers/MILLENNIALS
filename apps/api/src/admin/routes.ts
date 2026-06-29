@@ -948,20 +948,27 @@ export function registerAdminRoutes(app: FastifyInstance, options: { pool: Pool;
           }
         }
 
-        // Delete explicitly removed items (only IDs that exist and are marked for removal)
-        if (removedIds.length > 0) {
-          const validRemoved = removedIds.filter((id) => existingIds.has(id));
-          if (validRemoved.length > 0) {
-            await client.query(
-              `DELETE FROM ${table} WHERE opportunity_id = $1 AND id = ANY($2::uuid[])`,
-              [oppId, validRemoved]
-            );
-          }
+        // Treat a provided section as the complete desired state.
+        // Existing rows omitted by the client must be removed; otherwise a
+        // save from clients that cannot send server ids inserts duplicates.
+        const incomingExistingIds = new Set(
+          items
+            .map((item) => item._id)
+            .filter((id): id is string => Boolean(id) && existingIds.has(id)),
+        );
+        const explicitRemovedIds = new Set(removedIds.filter((id) => existingIds.has(id)));
+        const idsToDelete = [...existingIds].filter((id) => explicitRemovedIds.has(id) || !incomingExistingIds.has(id));
+        const deletedIds = new Set(idsToDelete);
+        if (idsToDelete.length > 0) {
+          await client.query(
+            `DELETE FROM ${table} WHERE opportunity_id = $1 AND id = ANY($2::uuid[])`,
+            [oppId, idsToDelete],
+          );
         }
 
         // Update existing, insert new
         for (const item of items) {
-          const isExisting = item._id && existingIds.has(item._id);
+          const isExisting = item._id && existingIds.has(item._id) && !deletedIds.has(item._id);
           if (isExisting) {
             const setClauses = columns.map((col, i) => `${col} = $${i + 3}`);
             const values = columns.map((col) => item[col] ?? null);
@@ -1180,30 +1187,6 @@ export function registerAdminRoutes(app: FastifyInstance, options: { pool: Pool;
     } finally {
       client.release();
     }
-  });
-
-  // ══════════════════════════════════════
-  // Preview
-  // ══════════════════════════════════════
-  app.get('/api/v1/admin/opportunities/:id/preview', {
-    preHandler: [adminGate(config), requireRole(pool, config, 'admin', 'operator')]
-  }, async (req, reply) => {
-    const oppId = (req.params as any).id;
-    const { rows: [opp] } = await pool.query('SELECT * FROM opportunities WHERE id = $1', [oppId]);
-    if (!opp) return reply.status(404).send({ error: { code: 'not_found', message: 'Oportunidad no encontrada.' } });
-
-    // Fetch sub-entities
-    const [{ rows: highlights }, { rows: risks }, { rows: milestones }, { rows: media }] = await Promise.all([
-      pool.query('SELECT * FROM opportunity_highlights WHERE opportunity_id = $1 ORDER BY position', [oppId]),
-      pool.query('SELECT * FROM opportunity_risks WHERE opportunity_id = $1 ORDER BY position', [oppId]),
-      pool.query('SELECT * FROM opportunity_milestones WHERE opportunity_id = $1 ORDER BY position', [oppId]),
-      pool.query('SELECT * FROM opportunity_media WHERE opportunity_id = $1 ORDER BY position', [oppId]),
-    ]);
-
-    return {
-      data: { ...opp, highlights, risks, milestones, media },
-      meta: { preview: true, message: 'Vista previa privada — no compartir públicamente' }
-    };
   });
 
   // ══════════════════════════════════════

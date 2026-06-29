@@ -46,12 +46,12 @@ export interface OppFull {
   updated_at: string;
 }
 
-interface SubEntitiesResponse {
+export interface SubEntitiesResponse {
   data: {
-    highlights: Array<{ label: string; value: string; position: number }>;
-    risks: Array<{ title: string; description: string; position: number }>;
-    milestones: Array<{ title: string; description: string; planned_date: string | null; completed_at: string | null; position: number }>;
-    media: Array<{ asset_id?: string; url?: string; alt_text: string | null; primary?: boolean; position: number }>;
+    highlights: Array<{ id?: string; label: string; value: string; position: number }>;
+    risks: Array<{ id?: string; title: string; description: string; position: number }>;
+    milestones: Array<{ id?: string; title: string; description: string; planned_date: string | null; completed_at: string | null; position: number }>;
+    media: Array<{ id?: string; asset_id?: string; type?: string; url?: string; alt_text: string | null; primary?: boolean; position: number }>;
   };
 }
 
@@ -205,6 +205,90 @@ export function formToApiPayload(form: FormState): Record<string, any> {
     riskLevel: form.riskLevel,
     closingDate: form.closingDate ? new Date(`${form.closingDate}T00:00:00.000Z`).toISOString() : null,
     disclaimer: form.disclaimer || null,
+  };
+}
+
+export function subEntitiesToEditorState(data: SubEntitiesResponse['data']) {
+  const highlights: HighlightItem[] = (data.highlights || []).map((item, i) => ({
+    _id: makeClientId(),
+    id: item.id,
+    label: item.label,
+    value: item.value,
+    position: item.position ?? i,
+  }));
+  const risks: RiskItem[] = (data.risks || []).map((item, i) => ({
+    _id: makeClientId(),
+    id: item.id,
+    title: item.title,
+    description: item.description,
+    position: item.position ?? i,
+  }));
+  const milestones: MilestoneItem[] = (data.milestones || []).map((item, i) => ({
+    _id: makeClientId(),
+    id: item.id,
+    title: item.title,
+    description: item.description,
+    plannedDate: item.planned_date || '',
+    completedAt: item.completed_at || '',
+    position: item.position ?? i,
+  }));
+  const media: MediaItem[] = (data.media || []).map((item, i) => ({
+    _id: makeClientId(),
+    id: item.id,
+    assetId: item.url || item.asset_id || '',
+    alt: item.alt_text || '',
+    primary: i === 0 || Boolean(item.primary),
+    position: item.position ?? i,
+  }));
+
+  return { highlights, risks, milestones, media };
+}
+
+export function buildSubentityPayload({
+  highlights,
+  risks,
+  milestones,
+  media,
+  version,
+}: {
+  highlights: HighlightItem[];
+  risks: RiskItem[];
+  milestones: MilestoneItem[];
+  media: MediaItem[];
+  version: number;
+}) {
+  return {
+    highlights: highlights.map((h, i) => ({
+      ...(h.id ? { _id: h.id } : {}),
+      label: h.label,
+      value: h.value,
+      position: i,
+    })),
+    risks: risks.map((r, i) => ({
+      ...(r.id ? { _id: r.id } : {}),
+      title: r.title,
+      description: r.description,
+      position: i,
+    })),
+    milestones: milestones.map((m, i) => ({
+      ...(m.id ? { _id: m.id } : {}),
+      title: m.title,
+      description: m.description,
+      plannedDate: m.plannedDate || null,
+      completedAt: m.completedAt || null,
+      position: i,
+    })),
+    media: media.map((m, i) => {
+      const catalogAsset = getAssetById(m.assetId);
+      return {
+        ...(m.id ? { _id: m.id } : {}),
+        type: 'image',
+        url: catalogAsset ? assetUrl(catalogAsset) : m.assetId,
+        alt_text: m.alt || null,
+        position: i,
+      };
+    }),
+    version,
   };
 }
 
@@ -381,7 +465,7 @@ export function useEditorForm(): UseEditorFormReturn {
   });
 
   // ── Query: subentities ──
-  const { data: subData } = useQuery<SubEntitiesResponse>({
+  const { data: subData, isLoading: isSubentitiesLoading, error: subentitiesError } = useQuery<SubEntitiesResponse>({
     queryKey: ['admin', 'opportunities', id, 'subentities'],
     queryFn: () => apiFetch(`/api/v1/admin/opportunities/${id}/subentities`),
     enabled: !isNew && !!id,
@@ -399,42 +483,16 @@ export function useEditorForm(): UseEditorFormReturn {
   // ── Load subentity data ──
   useEffect(() => {
     if (subData?.data) {
-      const h: HighlightItem[] = (subData.data.highlights || []).map((item, i) => ({
-        _id: makeClientId(),
-        label: item.label,
-        value: item.value,
-        position: item.position ?? i,
-      }));
-      const r: RiskItem[] = (subData.data.risks || []).map((item, i) => ({
-        _id: makeClientId(),
-        title: item.title,
-        description: item.description,
-        position: item.position ?? i,
-      }));
-      const m: MilestoneItem[] = (subData.data.milestones || []).map((item, i) => ({
-        _id: makeClientId(),
-        title: item.title,
-        description: item.description,
-        plannedDate: item.planned_date || '',
-        completedAt: item.completed_at || '',
-        position: item.position ?? i,
-      }));
-      const med: MediaItem[] = (subData.data.media || []).map((item, i) => ({
-        _id: makeClientId(),
-        assetId: item.url || item.asset_id || '',
-        alt: item.alt_text || '',
-        primary: i === 0,
-        position: item.position ?? i,
-      }));
+      const mapped = subEntitiesToEditorState(subData.data);
 
-      setHighlights(h);
-      setInitialHighlights(h);
-      setRisks(r);
-      setInitialRisks(r);
-      setMilestones(m);
-      setInitialMilestones(m);
-      setMedia(med);
-      setInitialMedia(med);
+      setHighlights(mapped.highlights);
+      setInitialHighlights(mapped.highlights);
+      setRisks(mapped.risks);
+      setInitialRisks(mapped.risks);
+      setMilestones(mapped.milestones);
+      setInitialMilestones(mapped.milestones);
+      setMedia(mapped.media);
+      setInitialMedia(mapped.media);
     }
   }, [subData]);
 
@@ -524,33 +582,23 @@ export function useEditorForm(): UseEditorFormReturn {
   const subentityMutation = useMutation({
     mutationFn: async (baseVersion?: number) => {
       if (!id) throw new Error('No ID');
-      const body = {
-        highlights: highlights.map((h, i) => ({ label: h.label, value: h.value, position: i })),
-        risks: risks.map((r, i) => ({ title: r.title, description: r.description, position: i })),
-        milestones: milestones.map((m, i) => ({
-          title: m.title,
-          description: m.description,
-          planned_date: m.plannedDate || null,
-          completed_at: m.completedAt || null,
-          position: i,
-        })),
-        media: media.map((m, i) => {
-          const catalogAsset = getAssetById(m.assetId);
-          return {
-            type: 'image',
-            url: catalogAsset ? assetUrl(catalogAsset) : m.assetId,
-            alt_text: m.alt || null,
-            position: i,
-          };
-        }),
+      const body = buildSubentityPayload({
+        highlights,
+        risks,
+        milestones,
+        media,
         version: baseVersion ?? form.version,
-      };
+      });
       return apiFetch(`/api/v1/admin/opportunities/${id}/subentities`, {
         method: 'PATCH',
         body: JSON.stringify(body),
       });
     },
-    onSuccess: () => {
+    onSuccess: (resp: any) => {
+      if (resp?.data?.version) {
+        setForm((prev) => ({ ...prev, version: resp.data.version }));
+        setInitialForm((prev) => prev ? { ...prev, version: resp.data.version } : null);
+      }
       setInitialHighlights([...highlights]);
       setInitialRisks([...risks]);
       setInitialMilestones([...milestones]);
@@ -746,8 +794,8 @@ export function useEditorForm(): UseEditorFormReturn {
     showValidation,
 
     // Loading
-    isLoading: isLoading && !isNew,
-    error: !!error && !isNew,
+    isLoading: (isLoading || isSubentitiesLoading) && !isNew,
+    error: (!!error || !!subentitiesError) && !isNew,
     isNew,
     id,
 

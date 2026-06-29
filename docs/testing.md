@@ -12,7 +12,7 @@
 
 - `migration.test.ts` — Baseline inmutable, runner-owned tracking, sin INSERT en SQL, sin IF NOT EXISTS, checksum
 - `auth.test.ts` — Registro, login, verificación, recuperación, sesiones
-- `admin.test.ts` — CRUD oportunidades, workflow editorial, sub-entidades, preview
+- `admin.test.ts` — CRUD oportunidades, workflow editorial y sub-entidades
 - `leads.test.ts` — Creación, asignación, notas, estados
 - `app.test.ts` — Health checks, CORS, rate limiting
 - `finance.test.ts` — Serialización de céntimos, basis points, progreso
@@ -46,7 +46,7 @@
 - Login y recuperación de contraseña
 - Leads
 - Área privada vacía real
-- Operator: crear/editar/preview/publicar/retirar/restaurar oportunidad
+- Operator: crear/editar/publicar/retirar/restaurar oportunidad
 - Admin: gestión de usuarios, roles, sesiones
 - Auditoría
 - Teardown garantizado

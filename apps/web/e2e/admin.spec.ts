@@ -773,6 +773,27 @@ test.describe('Admin Full Workflow', () => {
     currentOpportunity = data<Opportunity>(res);
   });
 
+  test('40b. Re-save Datos de información without ids does not duplicate existing rows', async () => {
+    const save = await adminApi(`/api/v1/admin/opportunities/${createdOpportunity.id}/subentities`, {
+      method: 'PATCH',
+      body: {
+        version: currentOpportunity.version,
+        highlights: [
+          { label: 'Ubicación', value: 'Centro de Vigo', position: 0 },
+          { label: 'Superficie', value: '1.250 m²', position: 1 },
+        ],
+      },
+    });
+    expectOk(save);
+    currentOpportunity = data<Opportunity>(save);
+
+    const read = await adminApi(`/api/v1/admin/opportunities/${createdOpportunity.id}/subentities`);
+    expectOk(read);
+    const payload = read.body.data as { highlights?: Array<{ label?: string; value?: string }> };
+    expect(payload.highlights?.map((item) => item.label)).toEqual(['Ubicación', 'Superficie']);
+    expect(payload.highlights).toHaveLength(2);
+  });
+
   test('41. Add risks via subentities', async () => {
     const res = await adminApi(`/api/v1/admin/opportunities/${createdOpportunity.id}/subentities`, { method: 'PATCH', body: { version: currentOpportunity.version, risks: [{ title: 'Riesgo de ejecución', description: 'Riesgo controlado en prueba E2E.', position: 0 }] } });
     expectOk(res);
@@ -797,7 +818,7 @@ test.describe('Admin Full Workflow', () => {
     expect(currentOpportunity.version).toBeGreaterThanOrEqual(before);
   });
 
-  test('45. Preview subentities', async () => {
+  test('45. Read subentities after save', async () => {
     const res = await adminApi(`/api/v1/admin/opportunities/${createdOpportunity.id}/subentities`);
     expectOk(res);
     const payload = res.body.data as { highlights?: unknown[]; risks?: unknown[]; milestones?: unknown[]; media?: unknown[] };

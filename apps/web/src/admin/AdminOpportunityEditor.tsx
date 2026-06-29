@@ -29,7 +29,7 @@ export default function AdminOpportunityEditor() {
     mobileMenuOpen, setMobileMenuOpen,
     sectionErrors, isSectionDirty,
     validationErrors, showValidation,
-    isLoading, error, isNew, id,
+    isLoading, error, isNew,
     activeSectionRef,
     subEntityCounts,
   } = useEditorForm();
@@ -56,11 +56,6 @@ export default function AdminOpportunityEditor() {
           {isNew ? 'Nueva oportunidad' : 'Editar oportunidad'}
         </h2>
         <div className="flex items-center gap-4">
-          {!isNew && id && (
-            <Link to={`/admin/oportunidades/${id}/preview`} className="text-sm text-[#7FA88C] hover:underline" target="_blank" rel="noopener noreferrer">
-              Vista previa ↗
-            </Link>
-          )}
           <Link to="/admin/oportunidades" className="text-sm text-[#9B7E5F] hover:text-[#FBF7F0]">
             ← Volver al listado
           </Link>
